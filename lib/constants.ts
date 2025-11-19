@@ -31,7 +31,7 @@ export const TAX_CODES = {
 export const WEBHOOKS = {
   AUDIT_LOG: "https://hook.eu2.make.com/YOUR_AUDIT_WEBHOOK_ID",
   XERO_INVOICE: "https://hook.eu2.make.com/YOUR_XERO_INVOICE_WEBHOOK_ID",
-  XERO_CONTACTS: "https://hook.eu2.make.com/YOUR_XERO_CONTACTS_WEBHOOK_ID",
+  XERO_CONTACTS: "https://hook.eu2.make.com/knai3w9y6zsblc2kc1qu8j33cp4pwlhj",
 } as const
 
 /**
