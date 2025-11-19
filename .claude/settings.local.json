@@ -3,7 +3,10 @@
     "allow": [
       "Bash(tree:*)",
       "Bash(npm run build)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
