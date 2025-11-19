@@ -1,4 +1,4 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { isAuthorizedEmail } from "./lib/auth-users";
 
@@ -9,7 +9,7 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
 
   // Allow public routes
   if (isPublicRoute(request)) {
@@ -24,7 +24,10 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   // Check whitelist authorization
-  const userEmail = sessionClaims?.email as string | undefined;
+  // Fetch user to get email address (not available in sessionClaims by default)
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const userEmail = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
 
   if (!isAuthorizedEmail(userEmail)) {
     // User is authenticated but not authorized - redirect to access denied
