@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useClerk } from '@clerk/nextjs'
 import { getInvoiceResult, CURRENCIES } from '@/lib/constants'
 import { fetchXeroContacts, sendInvoiceToXero, XeroContact } from '@/lib/xero'
+import InvoiceSuccessModal from './InvoiceSuccessModal'
 import { logAuditEvent } from '@/lib/audit'
 
 type InvoiceFlowProps = {
@@ -36,6 +37,15 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
   const [isSearchActive, setIsSearchActive] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [sending, setSending] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [successData, setSuccessData] = useState({
+    invoiceNumber: '',
+    contactName: '',
+    total: '',
+    amountDue: '',
+    taxSummary: '',
+    invoiceUrl: '',
+  })
 
   const dropdownRef = useRef<HTMLDivElement>(null)
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
@@ -132,7 +142,7 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
         }
       )
 
-      await sendInvoiceToXero(
+      const response = await sendInvoiceToXero(
         result,
         customerName,
         itemDescription,
@@ -150,6 +160,7 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
           price: parseFloat(price),
           currency,
           accountCode: result.accountCode,
+          invoiceNumber: response.invoiceNumber,
         },
         {
           email: user.email,
@@ -159,8 +170,31 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
         }
       )
 
-      alert('Invoice created successfully in Xero!')
+      // Validate we have an invoice URL
+      if (!response.invoiceUrl) {
+        window.location.href = '/invoice/error'
+        return
+      }
+
+      // Build tax summary from result
+      const taxSummary = `Tax Type: ${result.taxLabel}
+Account Code: ${result.accountCode}
+Amounts Are: ${result.amountsAre}
+Brand Theme: ${result.brandTheme}
+VAT Reclaim: ${result.vatReclaim}`
+
+      // Set success data and show modal
+      setSuccessData({
+        invoiceNumber: response.invoiceNumber || 'N/A',
+        contactName: response.contactName || customerName,
+        total: response.total?.toString() || price,
+        amountDue: response.amountDue?.toString() || price,
+        taxSummary,
+        invoiceUrl: response.invoiceUrl,
+      })
+
       setSending(false)
+      setShowSuccess(true)
     } catch (err) {
       // Log invoice creation failure
       await logAuditEvent(
@@ -677,6 +711,21 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
             Start Over
           </button>
         </div>
+      )}
+
+      {/* Success Modal */}
+      {showSuccess && (
+        <InvoiceSuccessModal
+          show={showSuccess}
+          onClose={() => setShowSuccess(false)}
+          invoiceNumber={successData.invoiceNumber}
+          contactName={successData.contactName}
+          total={successData.total}
+          amountDue={successData.amountDue}
+          taxSummary={successData.taxSummary}
+          invoiceUrl={successData.invoiceUrl}
+          onCreateAnother={reset}
+        />
       )}
     </div>
   )

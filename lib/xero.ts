@@ -64,6 +64,20 @@ const LINE_AMOUNT_TYPE_MAP: Record<string, string> = {
 }
 
 /**
+ * Response from Xero invoice creation
+ */
+export type XeroInvoiceResponse = {
+  status: string
+  invoiceId?: string
+  invoiceNumber?: string
+  contactName?: string
+  total?: string | number
+  amountDue?: string | number
+  invoiceUrl?: string
+  taxSummary?: string
+}
+
+/**
  * Send invoice to Xero via Make webhook
  * Exact implementation from prototype
  */
@@ -74,7 +88,7 @@ export async function sendInvoiceToXero(
   price: string,
   currency: string,
   dueDate: string
-): Promise<void> {
+): Promise<XeroInvoiceResponse> {
   const invoiceData: XeroInvoicePayload = {
     accountCode: result.accountCode,
     // Xero must receive taxType only (OUTPUT2 or ZERORATEDOUTPUT)
@@ -106,4 +120,7 @@ export async function sendInvoiceToXero(
   if (!response.ok) {
     throw new Error('Xero creation failed')
   }
+
+  const data = await response.json()
+  return data as XeroInvoiceResponse
 }
