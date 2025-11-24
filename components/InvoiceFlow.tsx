@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useClerk } from '@clerk/nextjs'
-import { getInvoiceResult, CURRENCIES } from '@/lib/constants'
+import { getInvoiceResult, CURRENCIES, BRANDS, CATEGORIES } from '@/lib/constants'
 import { fetchXeroContacts, sendInvoiceToXero, XeroContact } from '@/lib/xero'
 import InvoiceSuccessModal from './InvoiceSuccessModal'
 import { logAuditEvent } from '@/lib/audit'
@@ -27,6 +27,8 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
   const [directShip, setDirectShip] = useState<string | null>(null)
   const [insuranceLanded, setInsuranceLanded] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState('')
+  const [brand, setBrand] = useState('')
+  const [category, setCategory] = useState('')
   const [itemDescription, setItemDescription] = useState('')
   const [price, setPrice] = useState('')
   const [currency, setCurrency] = useState('GBP')
@@ -86,6 +88,8 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
   const validateFields = () => {
     const newErrors: Record<string, string> = {}
     if (!customerName) newErrors.customerName = 'Customer name is required.'
+    if (!brand) newErrors.brand = 'Brand is required.'
+    if (!category) newErrors.category = 'Category is required.'
     if (!itemDescription) newErrors.itemDescription = 'Item description is required.'
     if (!price) newErrors.price = 'Price is required.'
     if (!dueDate) newErrors.dueDate = 'Due date is required.'
@@ -93,7 +97,7 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
     return Object.keys(newErrors).length === 0
   }
 
-  const isFormValid = customerName && itemDescription && price && dueDate
+  const isFormValid = customerName && brand && category && itemDescription && price && dueDate
 
   /* --------------------------------------------------
      TAX LOGIC (FULLY FIXED)
@@ -121,12 +125,17 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
     setSending(true)
 
     try {
+      // Build full item description with brand and category
+      const fullItemDescription = `${brand} - ${category} - ${itemDescription}`
+
       // Log invoice creation attempt
       await logAuditEvent(
         'INVOICE_CREATE_ATTEMPT',
         {
           customerName,
-          itemDescription,
+          brand,
+          category,
+          itemDescription: fullItemDescription,
           price: parseFloat(price),
           currency,
           dueDate,
@@ -145,7 +154,7 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
       const response = await sendInvoiceToXero(
         result,
         customerName,
-        itemDescription,
+        fullItemDescription,
         price,
         currency,
         dueDate
@@ -156,7 +165,9 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
         'INVOICE_CREATE_SUCCESS',
         {
           customerName,
-          itemDescription,
+          brand,
+          category,
+          itemDescription: fullItemDescription,
           price: parseFloat(price),
           currency,
           accountCode: result.accountCode,
@@ -244,6 +255,8 @@ VAT Reclaim: ${result.vatReclaim}`
     setDirectShip(null)
     setInsuranceLanded(null)
     setCustomerName('')
+    setBrand('')
+    setCategory('')
     setPrice('')
     setItemDescription('')
     setCurrency('GBP')
@@ -624,6 +637,50 @@ VAT Reclaim: ${result.vatReclaim}`
               )}
             </div>
 
+            {/* Brand */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                Brand
+              </label>
+              <select
+                className="w-full p-3 border-2 rounded focus:outline-none focus:border-black bg-white"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+              >
+                <option value="">Select Brand...</option>
+                {BRANDS.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+              {errors.brand && (
+                <p className="text-red-600 text-sm mt-1">{errors.brand}</p>
+              )}
+            </div>
+
+            {/* Category */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                Category
+              </label>
+              <select
+                className="w-full p-3 border-2 rounded focus:outline-none focus:border-black bg-white"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="">Select Category...</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              {errors.category && (
+                <p className="text-red-600 text-sm mt-1">{errors.category}</p>
+              )}
+            </div>
+
             {/* Item Description */}
             <div className="mb-4">
               <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
@@ -632,6 +689,7 @@ VAT Reclaim: ${result.vatReclaim}`
               <input
                 className="w-full p-3 border-2 rounded focus:outline-none focus:border-black"
                 value={itemDescription}
+                placeholder="e.g. 2025 Clutch, Gold Hardware"
                 onChange={(e) => setItemDescription(e.target.value)}
               />
               {errors.itemDescription && (

@@ -35,6 +35,42 @@ export const WEBHOOKS = {
 } as const
 
 /**
+ * Product brands for sales tracking
+ */
+export const BRANDS = [
+  "Chanel",
+  "Dior",
+  "Hermès",
+  "Bottega Veneta",
+  "Alaïa",
+  "Gucci",
+  "Loro Piana",
+  "The Row",
+  "Emilio Pucci",
+  "Rolex",
+  "Patek Philippe",
+  "Audemars Piguet",
+  "Cartier",
+  "Van Cleef and Arpels",
+  "Other",
+] as const
+
+/**
+ * Product categories for sales tracking
+ */
+export const CATEGORIES = [
+  "Bag",
+  "Shoes",
+  "RTW",
+  "Accessories",
+  "Home",
+  "FJ",
+  "Watches",
+  "Vintage",
+  "Other",
+] as const
+
+/**
  * Supported currencies
  */
 export const CURRENCIES = [
