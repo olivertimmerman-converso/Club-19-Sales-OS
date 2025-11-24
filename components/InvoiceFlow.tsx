@@ -168,16 +168,6 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
         dueDate
       )
 
-      // Debug logging for webhook response
-      console.log('=== WEBHOOK RESPONSE DEBUG ===')
-      console.log('Full response:', response)
-      console.log('invoiceId:', response.invoiceId)
-      console.log('invoiceId type:', typeof response.invoiceId)
-      console.log('invoiceId length:', response.invoiceId?.length)
-      console.log('invoiceId trimmed:', response.invoiceId?.trim())
-      console.log('invoiceUrl:', response.invoiceUrl)
-      console.log('==============================')
-
       // Log successful invoice creation
       await logAuditEvent(
         'INVOICE_CREATE_SUCCESS',
@@ -211,12 +201,6 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
       const xeroDeepLink = hasInvoiceId
         ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=!KvvH6&redirecturl=/AccountsReceivable/View.aspx?InvoiceID=${response.invoiceId!.trim()}`
         : response.invoiceUrl
-
-      console.log('=== DEEP LINK CONSTRUCTION ===')
-      console.log('hasInvoiceId?', hasInvoiceId)
-      console.log('Using deep link?', hasInvoiceId)
-      console.log('Final URL:', xeroDeepLink)
-      console.log('===============================')
 
       // Build tax summary from result
       const taxSummary = `Tax Type: ${result.taxLabel}
