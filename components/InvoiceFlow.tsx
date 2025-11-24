@@ -53,6 +53,14 @@ export default function InvoiceFlow({ user }: InvoiceFlowProps) {
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
   /* --------------------------------------------------
+     SET DEFAULT DUE DATE TO TODAY
+  -------------------------------------------------- */
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0]
+    setDueDate(today)
+  }, [])
+
+  /* --------------------------------------------------
      CUSTOMER SEARCH (Xero → Make webhook)
   -------------------------------------------------- */
   const handleCustomerInput = async (value: string) => {
