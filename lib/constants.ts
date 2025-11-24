@@ -38,9 +38,9 @@ export const WEBHOOKS = {
  * Product brands for sales tracking
  */
 export const BRANDS = [
+  "Hermès",
   "Chanel",
   "Dior",
-  "Hermès",
   "Bottega Veneta",
   "Alaïa",
   "Gucci",
