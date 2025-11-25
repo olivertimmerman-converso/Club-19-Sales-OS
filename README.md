@@ -101,9 +101,9 @@ The following are configured directly in the codebase:
   - alys@sketch24ltd.com
 
 - **Webhooks** (in `lib/constants.ts`):
-  - Audit Log: `https://hook.eu2.make.com/YOUR_AUDIT_WEBHOOK_ID`
-  - Xero Invoice: `https://hook.eu2.make.com/YOUR_XERO_INVOICE_WEBHOOK_ID`
-  - Xero Contacts: `https://hook.eu2.make.com/YOUR_XERO_CONTACTS_WEBHOOK_ID`
+  - Audit Log: `https://hook.eu2.make.com/t2myffeixh2kfhfdyl944d4t5lua41zv`
+  - Xero Invoice: `https://hook.eu2.make.com/6yd7c1j1we7wzujw7vdne6cr6wd8jp9b`
+  - Xero Contacts: `https://hook.eu2.make.com/knai3w9y6zsblc2kc1qu8j33cp4pwlhj`
 
 ## Authorization
 

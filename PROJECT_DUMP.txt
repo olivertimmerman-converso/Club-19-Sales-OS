@@ -1,0 +1,1716 @@
+==================== COMPLETE PROJECT STRUCTURE ====================
+./.claude/settings.local.json
+./README.md
+./app/globals.css
+./app/invoice/page.tsx
+./app/layout.tsx
+./app/page.tsx
+./app/sign-in/[[...sign-in]]/page.tsx
+./app/sign-up/[[...sign-up]]/page.tsx
+./components/AccessDenied.tsx
+./components/InvoiceFlow.tsx
+./components/Loader.tsx
+./lib/audit.ts
+./lib/constants.ts
+./lib/xero.ts
+./middleware.ts
+./next-env.d.ts
+./next.config.js
+./package-lock.json
+./package.json
+./postcss.config.js
+./tailwind.config.js
+./tsconfig.json
+
+==================== FILE CONTENTS ====================
+
+----- FILE: middleware.ts -----
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+
+const isPublicRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+]);
+
+export default clerkMiddleware((auth, request) => {
+  if (!isPublicRoute(request)) {
+    auth().protect();
+  }
+});
+
+export const config = {
+  matcher: [
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
+};
+
+----- FILE: app/page.tsx -----
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+
+export default async function HomePage() {
+  const { userId } = await auth();
+
+  if (!userId) {
+    redirect("/sign-in");
+  }
+
+  redirect("/invoice");
+}
+
+----- FILE: app/layout.tsx -----
+import { ClerkProvider } from '@clerk/nextjs'
+import type { Metadata } from 'next'
+import { Inter, Playfair_Display } from 'next/font/google'
+import './globals.css'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  weight: ['300', '400', '500', '600'],
+})
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+  weight: ['400', '500', '600', '700'],
+})
+
+export const metadata: Metadata = {
+  title: 'Club 19 London | Invoice Management',
+  description: 'Luxury invoice management system for Club 19 London',
+  icons: {
+    icon: '/favicon.ico',
+  },
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: '#000000',
+          colorBackground: '#ffffff',
+          colorText: '#000000',
+        },
+        elements: {
+          formButtonPrimary: 'bg-club19-black hover:bg-club19-charcoal text-white uppercase tracking-wide',
+          card: 'border border-club19-platinum',
+        },
+      }}
+    >
+      <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+        <body className={inter.className}>
+          <div className="min-h-screen bg-white">
+            {children}
+          </div>
+        </body>
+      </html>
+    </ClerkProvider>
+  )
+}
+
+----- FILE: app/globals.css -----
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+@layer base {
+  :root {
+    --background: #FFFFFF;
+    --foreground: #000000;
+    --border: #E8E8E8;
+    --club19-black: #000000;
+    --club19-platinum: #E8E8E8;
+    --club19-silver: #C0C0C0;
+    --club19-charcoal: #333333;
+  }
+
+  * {
+    @apply border-club19-platinum;
+  }
+
+  body {
+    @apply bg-white text-club19-black;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+}
+
+@layer components {
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-club19-off-white;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-club19-silver hover:bg-club19-silver-dark;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-white border border-club19-platinum transition-all duration-300;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:border-club19-black;
+  }
+
+  /* Button styles */
+  .btn {
+    @apply px-6 py-3 font-medium transition-all duration-300 focus:outline-none uppercase tracking-luxury border;
+  }
+
+  .btn-primary {
+    @apply btn bg-club19-black text-white border-club19-black hover:bg-club19-charcoal;
+  }
+
+  .btn-secondary {
+    @apply btn bg-white text-club19-black border-club19-black hover:bg-club19-black hover:text-white;
+  }
+
+  .btn-success {
+    @apply btn bg-club19-black text-white border-club19-black hover:bg-club19-charcoal;
+  }
+
+  .btn-danger {
+    @apply btn bg-club19-black text-white border-club19-black hover:bg-club19-charcoal;
+  }
+
+  .btn-outline {
+    @apply btn border-club19-black text-club19-black hover:bg-club19-black hover:text-white;
+  }
+
+  /* Input styles */
+  .input {
+    @apply w-full px-4 py-3 border border-club19-platinum focus:outline-none focus:border-club19-black transition-all duration-300;
+  }
+
+  .input-error {
+    @apply border-club19-black;
+  }
+
+  /* Label styles */
+  .label {
+    @apply block text-sm font-medium text-club19-black mb-2 uppercase tracking-wide;
+  }
+
+  /* Badge styles */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 text-xs font-medium uppercase tracking-wide border;
+  }
+
+  .badge-success {
+    @apply badge bg-white text-club19-black border-club19-black;
+  }
+
+  .badge-warning {
+    @apply badge bg-club19-platinum text-club19-black border-club19-silver;
+  }
+
+  .badge-error {
+    @apply badge bg-club19-black text-white border-club19-black;
+  }
+
+  .badge-info {
+    @apply badge bg-white text-club19-black border-club19-platinum;
+  }
+
+  /* Progress bar */
+  .progress-bar {
+    @apply h-1 bg-club19-platinum overflow-hidden;
+  }
+
+  .progress-fill {
+    @apply h-full bg-club19-black transition-all duration-500 ease-out;
+  }
+
+  /* Alert styles */
+  .alert {
+    @apply p-4 border flex items-start gap-3;
+  }
+
+  .alert-success {
+    @apply alert bg-white border-club19-black text-club19-black;
+  }
+
+  .alert-warning {
+    @apply alert bg-club19-platinum border-club19-silver text-club19-black;
+  }
+
+  .alert-error {
+    @apply alert bg-club19-black border-club19-black text-white;
+  }
+
+  .alert-info {
+    @apply alert bg-white border-club19-platinum text-club19-black;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply animate-spin rounded-full border-2 border-club19-platinum border-t-club19-black;
+  }
+
+  /* Fade in animation */
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  /* Slide up animation */
+  .slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  /* Club 19 Luxury Divider */
+  .club19-divider {
+    @apply w-full h-px bg-club19-platinum my-8;
+  }
+
+  /* Club 19 Heading */
+  .club19-heading {
+    @apply font-serif text-club19-black tracking-luxury;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-luxury {
+    @apply tracking-luxury;
+  }
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    @apply bg-white;
+  }
+
+  .card {
+    @apply border-club19-platinum;
+  }
+}
+
+----- FILE: app/sign-in/[[...sign-in]]/page.tsx -----
+import { SignIn } from "@clerk/nextjs";
+
+export default function SignInPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-white">
+      <SignIn
+        fallbackRedirectUrl="/invoice"
+        signUpUrl="/sign-up"
+      />
+    </div>
+  );
+}
+
+----- FILE: app/sign-up/[[...sign-up]]/page.tsx -----
+import { SignUp } from "@clerk/nextjs";
+
+export default function SignUpPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-white">
+      <SignUp
+        fallbackRedirectUrl="/invoice"
+        signInUrl="/sign-in"
+      />
+    </div>
+  );
+}
+
+----- FILE: app/invoice/page.tsx -----
+import { auth, currentUser } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
+import InvoiceFlow from '@/components/InvoiceFlow'
+import AccessDenied from '@/components/AccessDenied'
+import { ALLOWED_EMAILS } from '@/lib/constants'
+import { logAuditEvent } from '@/lib/audit'
+
+export default async function InvoicePage() {
+  const { userId } = await auth()
+
+  if (!userId) {
+    redirect('/sign-in')
+  }
+
+  const user = await currentUser()
+
+  if (!user || !user.emailAddresses?.[0]?.emailAddress) {
+    redirect('/sign-in')
+  }
+
+  const userEmail = user.emailAddresses[0].emailAddress
+  const userName = user.firstName || user.username || 'User'
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || userName
+
+  const isAuthorized = ALLOWED_EMAILS.includes(userEmail)
+
+  if (isAuthorized) {
+    await logAuditEvent(
+      'USER_LOGIN_SUCCESS',
+      { loginTime: new Date().toISOString() },
+      {
+        email: userEmail,
+        userId: user.id,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+      }
+    )
+
+    return (
+      <InvoiceFlow
+        user={{
+          email: userEmail,
+          name: userName,
+          fullName: fullName,
+          imageUrl: user.imageUrl,
+        }}
+      />
+    )
+  } else {
+    await logAuditEvent(
+      'USER_LOGIN_DENIED',
+      {
+        attemptTime: new Date().toISOString(),
+        reason: 'Email not in allowed list',
+      },
+      {
+        email: userEmail,
+        userId: user.id,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+      }
+    )
+
+    return <AccessDenied userEmail={userEmail} userName={fullName} />
+  }
+}
+
+----- FILE: lib/constants.ts -----
+/**
+ * Authorized user emails from the prototype
+ */
+export const ALLOWED_EMAILS = [
+  "sophie@club19london.com",
+  "hope@club19london.com",
+  "maryclair@club19london.com",
+  "oliver@converso.uk",
+  "alys@sketch24ltd.com",
+]
+
+/**
+ * Check if a user email is authorized
+ */
+export function isAuthorizedUser(email?: string | null): boolean {
+  if (!email) return false
+  return ALLOWED_EMAILS.includes(email.toLowerCase())
+}
+
+/**
+ * Xero internal tax codes (from prototype)
+ */
+export const TAX_CODES = {
+  TAX_20: "OUTPUT2",        // 20% VAT on Income
+  TAX_ZERO: "ZERORATEDOUTPUT", // Zero Rated Income 0%
+} as const
+
+/**
+ * Webhook URLs from prototype
+ */
+export const WEBHOOKS = {
+  AUDIT_LOG: "https://hook.eu2.make.com/YOUR_AUDIT_WEBHOOK_ID",
+  XERO_INVOICE: "https://hook.eu2.make.com/YOUR_XERO_INVOICE_WEBHOOK_ID",
+  XERO_CONTACTS: "https://hook.eu2.make.com/YOUR_XERO_CONTACTS_WEBHOOK_ID",
+} as const
+
+/**
+ * Supported currencies
+ */
+export const CURRENCIES = [
+  { code: "GBP", symbol: "£" },
+  { code: "USD", symbol: "$" },
+  { code: "EUR", symbol: "€" },
+  { code: "CHF", symbol: "CHF" },
+  { code: "JPY", symbol: "¥" },
+] as const
+
+/**
+ * Tax scenarios from the prototype logic
+ */
+export type InvoiceScenario = {
+  taxLiability: string
+  note?: string
+  brandTheme: string
+  amountsAre: string
+  accountCode: string
+  taxType: string
+  taxLabel: string
+  vatReclaim: string
+}
+
+/**
+ * Get invoice configuration based on user selections
+ * This is the exact logic from the prototype
+ */
+export function getInvoiceResult(
+  itemLocation: string | null,
+  clientLocation: string | null,
+  purchaseType?: string | null,
+  shippingOption?: string | null,
+  directShip?: string | null,
+  insuranceLanded?: string | null
+): InvoiceScenario | null {
+  const { TAX_20, TAX_ZERO } = TAX_CODES
+
+  /* -----------------------------------------------
+     UK Item → UK Client
+  ----------------------------------------------- */
+  if (itemLocation === "uk" && clientLocation && purchaseType) {
+    const scenarios: Record<string, InvoiceScenario> = {
+      "uk-retail": {
+        taxLiability:
+          "Full price of item including VAT on first line\n+ Service Fee on second line",
+        brandTheme: "CN 20% VAT",
+        amountsAre: "Inclusive",
+        accountCode: "425",
+        taxType: TAX_20,
+        taxLabel: "20% VAT on Income",
+        vatReclaim: "Business reclaims VAT from original purchase",
+      },
+      "uk-margin": {
+        taxLiability: "Item is purchased on UK margin rule",
+        brandTheme: "CN Margin Scheme",
+        amountsAre: "Inclusive",
+        accountCode: "424",
+        taxType: TAX_ZERO,
+        taxLabel: "Zero Rated Income 0%",
+        vatReclaim: "None",
+      },
+      "outside-retail": {
+        taxLiability:
+          "Full price of item including VAT on first line\n+ Service Fee on second line",
+        brandTheme: "CN Export Sales",
+        amountsAre: "Exclusive",
+        accountCode: "423",
+        taxType: TAX_ZERO,
+        taxLabel: "Zero Rated Income 0%",
+        vatReclaim: "Business reclaims VAT from original purchase",
+      },
+      "outside-margin": {
+        taxLiability: "Item is purchased on UK margin rule",
+        brandTheme: "CN Export Sales",
+        amountsAre: "Exclusive",
+        accountCode: "423",
+        taxType: TAX_ZERO,
+        taxLabel: "Zero Rated Income 0%",
+        vatReclaim: "None",
+      },
+    }
+
+    return scenarios[`${clientLocation}-${purchaseType}`] || null
+  }
+
+  /* -----------------------------------------------
+     Item Outside → UK Client
+  ----------------------------------------------- */
+  if (itemLocation === "outside" && clientLocation === "uk") {
+    // Cannot ship OR cannot direct ship
+    if (
+      shippingOption === "no" ||
+      (shippingOption === "yes" && directShip === "no")
+    ) {
+      return {
+        taxLiability: "Full VAT needs adding to Cost and Sale Price",
+        note: "Item needs to come to UK",
+        brandTheme: "CN 20% VAT",
+        amountsAre: "Inclusive",
+        accountCode: "425",
+        taxType: TAX_20,
+        taxLabel: "20% VAT on Income",
+        vatReclaim: "None",
+      }
+    }
+
+    // Shipping allowed AND direct ship
+    if (shippingOption === "yes" && directShip === "yes" && insuranceLanded) {
+      const landed = insuranceLanded === "yes"
+      return {
+        taxLiability: landed
+          ? "No liability, provide client item price plus margin plus delivery"
+          : "Full VAT needs adding to Cost and Sale Price",
+        note: landed ? undefined : "Item needs to come to UK",
+        brandTheme: landed ? "CN Export Sales" : "CN 20% VAT",
+        amountsAre: "Inclusive",
+        accountCode: landed ? "423" : "425",
+        taxType: landed ? TAX_ZERO : TAX_20,
+        taxLabel: landed ? "Zero Rated Income 0%" : "20% VAT on Income",
+        vatReclaim: "None",
+      }
+    }
+  }
+
+  /* -----------------------------------------------
+     Outside → Outside (export)
+  ----------------------------------------------- */
+  if (itemLocation === "outside" && clientLocation === "outside") {
+    return {
+      taxLiability:
+        "No liability, provide client item price plus margin plus delivery",
+      brandTheme: "CN Export Sales",
+      amountsAre: "Inclusive",
+      accountCode: "423",
+      taxType: TAX_ZERO,
+      taxLabel: "Zero Rated Income 0%",
+      vatReclaim: "None",
+    }
+  }
+
+  return null
+}
+
+----- FILE: lib/audit.ts -----
+import { WEBHOOKS } from './constants'
+
+export type AuditEventType =
+  | 'USER_LOGIN_SUCCESS'
+  | 'USER_LOGIN_DENIED'
+  | 'USER_LOGOUT'
+  | 'INVOICE_CREATE_ATTEMPT'
+  | 'INVOICE_CREATE_SUCCESS'
+  | 'INVOICE_CREATE_FAILURE'
+
+export type AuditUser = {
+  email: string
+  userId: string
+  firstName?: string
+  lastName?: string
+}
+
+export type AuditPayload = {
+  eventType: AuditEventType
+  timestamp: string
+  user: AuditUser
+  eventData: Record<string, any>
+  sessionId: string
+  userAgent: string
+  url: string
+}
+
+/**
+ * Log audit event - exact implementation from prototype
+ */
+export async function logAuditEvent(
+  eventType: AuditEventType,
+  eventData: Record<string, any>,
+  user: {
+    email?: string | null
+    userId?: string | null
+    firstName?: string | null
+    lastName?: string | null
+  }
+): Promise<void> {
+  try {
+    const auditPayload: AuditPayload = {
+      eventType,
+      timestamp: new Date().toISOString(),
+      user: {
+        email: user?.email || 'unknown',
+        userId: user?.userId || 'unknown',
+        firstName: user?.firstName || '',
+        lastName: user?.lastName || '',
+      },
+      eventData,
+      sessionId: `${user?.userId || 'unknown'}_${Date.now()}`,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'server',
+      url: typeof window !== 'undefined' ? window.location.href : 'server',
+    }
+
+    await fetch(WEBHOOKS.AUDIT_LOG, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(auditPayload),
+    })
+
+    console.log(`[AUDIT] ${eventType}:`, auditPayload)
+  } catch (error) {
+    console.error('Audit logging failed:', error)
+  }
+}
+
+----- FILE: lib/xero.ts -----
+import { WEBHOOKS } from './constants'
+import { InvoiceScenario } from './constants'
+
+/**
+ * Xero contact result from search
+ */
+export type XeroContact = {
+  Name: string
+  ContactID?: string
+  EmailAddress?: string
+}
+
+/**
+ * Fetch Xero contacts via Make webhook
+ * Exact implementation from prototype
+ */
+export async function fetchXeroContacts(query: string): Promise<XeroContact[]> {
+  try {
+    const response = await fetch(WEBHOOKS.XERO_CONTACTS, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    })
+
+    const data = await response.json()
+    return data.contacts || []
+  } catch (err) {
+    console.error('Contact search error:', err)
+    return []
+  }
+}
+
+/**
+ * Invoice data payload for Xero
+ */
+export type XeroInvoicePayload = {
+  accountCode: string
+  taxType: string
+  taxLabel: string
+  brandTheme: string
+  amountsAre: string
+  lineAmountTypes: string
+  taxLiability: string
+  vatReclaim: string
+  customerName: string
+  itemDescription: string
+  price: number
+  currency: string
+  dueDate: string
+  timestamp: string
+}
+
+/**
+ * Map UI values to Xero's LineAmountTypes API values
+ */
+const LINE_AMOUNT_TYPE_MAP: Record<string, string> = {
+  Inclusive: 'Inclusive',
+  Exclusive: 'Exclusive',
+  'No tax': 'NoTax',
+  NoTax: 'NoTax',
+  None: 'NoTax',
+}
+
+/**
+ * Send invoice to Xero via Make webhook
+ * Exact implementation from prototype
+ */
+export async function sendInvoiceToXero(
+  result: InvoiceScenario,
+  customerName: string,
+  itemDescription: string,
+  price: string,
+  currency: string,
+  dueDate: string
+): Promise<void> {
+  const invoiceData: XeroInvoicePayload = {
+    accountCode: result.accountCode,
+    // Xero must receive taxType only (OUTPUT2 or ZERORATEDOUTPUT)
+    taxType: result.taxType,
+    // Include taxLabel only for human readability in Make (NOT used by Xero)
+    taxLabel: result.taxLabel,
+    brandTheme: result.brandTheme,
+    amountsAre: result.amountsAre,
+    // LineAmountTypes field for Xero API
+    lineAmountTypes: LINE_AMOUNT_TYPE_MAP[result.amountsAre],
+    taxLiability: result.taxLiability,
+    vatReclaim: result.vatReclaim,
+    customerName,
+    itemDescription,
+    price: parseFloat(price),
+    currency,
+    dueDate,
+    timestamp: new Date().toISOString(),
+  }
+
+  const response = await fetch(WEBHOOKS.XERO_INVOICE, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(invoiceData),
+  })
+
+  if (!response.ok) {
+    throw new Error('Xero creation failed')
+  }
+}
+
+----- FILE: components/AccessDenied.tsx -----
+'use client'
+
+import { useClerk } from '@clerk/nextjs'
+
+type AccessDeniedProps = {
+  userEmail: string
+  userName: string
+}
+
+export default function AccessDenied({ userEmail, userName }: AccessDeniedProps) {
+  const { signOut } = useClerk()
+
+  const handleLogout = async () => {
+    await signOut()
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+        <div className="mb-6">
+          <div className="font-serif tracking-widest text-3xl mb-2">
+            CLUB<span className="text-4xl">19</span>
+          </div>
+          <div className="font-serif tracking-widest text-sm">LONDON</div>
+        </div>
+        <div className="mb-6">
+          <svg
+            className="w-16 h-16 text-red-500 mx-auto mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-4">
+            You do not have access to this application.
+          </p>
+          <p className="text-sm text-gray-500">
+            Logged in as: <span className="font-mono">{userEmail}</span>
+          </p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full bg-black text-white py-3 px-4 rounded font-medium hover:bg-gray-800 transition"
+        >
+          Sign Out
+        </button>
+      </div>
+    </div>
+  )
+}
+
+----- FILE: components/InvoiceFlow.tsx -----
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
+import { useClerk } from '@clerk/nextjs'
+import { getInvoiceResult, CURRENCIES } from '@/lib/constants'
+import { fetchXeroContacts, sendInvoiceToXero, XeroContact } from '@/lib/xero'
+import { logAuditEvent } from '@/lib/audit'
+
+type InvoiceFlowProps = {
+  user: {
+    email: string
+    name: string
+    fullName: string
+    imageUrl?: string
+  }
+}
+
+export default function InvoiceFlow({ user }: InvoiceFlowProps) {
+  const { signOut } = useClerk()
+
+  /* ---------------- STATE ---------------- */
+  const [itemLocation, setItemLocation] = useState<string | null>(null)
+  const [clientLocation, setClientLocation] = useState<string | null>(null)
+  const [purchaseType, setPurchaseType] = useState<string | null>(null)
+  const [shippingOption, setShippingOption] = useState<string | null>(null)
+  const [directShip, setDirectShip] = useState<string | null>(null)
+  const [insuranceLanded, setInsuranceLanded] = useState<string | null>(null)
+  const [customerName, setCustomerName] = useState('')
+  const [itemDescription, setItemDescription] = useState('')
+  const [price, setPrice] = useState('')
+  const [currency, setCurrency] = useState('GBP')
+  const [dueDate, setDueDate] = useState('')
+  const [dropdownResults, setDropdownResults] = useState<XeroContact[]>([])
+  const [loadingCustomers, setLoadingCustomers] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [isSearchActive, setIsSearchActive] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [sending, setSending] = useState(false)
+
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null)
+
+  /* --------------------------------------------------
+     CUSTOMER SEARCH (Xero → Make webhook)
+  -------------------------------------------------- */
+  const handleCustomerInput = async (value: string) => {
+    setCustomerName(value)
+    setSelectedIndex(-1)
+    setIsSearchActive(true)
+
+    if (debounceTimer.current) clearTimeout(debounceTimer.current)
+
+    if (value.length >= 2) {
+      debounceTimer.current = setTimeout(async () => {
+        setLoadingCustomers(true)
+        const results = await fetchXeroContacts(value)
+        setDropdownResults(results)
+        setLoadingCustomers(false)
+      }, 300)
+    } else {
+      setDropdownResults([])
+      setIsSearchActive(false)
+    }
+  }
+
+  const selectCustomer = (contact: XeroContact) => {
+    setCustomerName(contact.Name)
+    setDropdownResults([])
+    setSelectedIndex(-1)
+    setIsSearchActive(false)
+  }
+
+  /* --------------------------------------------------
+     VALIDATION
+  -------------------------------------------------- */
+  const validateFields = () => {
+    const newErrors: Record<string, string> = {}
+    if (!customerName) newErrors.customerName = 'Customer name is required.'
+    if (!itemDescription) newErrors.itemDescription = 'Item description is required.'
+    if (!price) newErrors.price = 'Price is required.'
+    if (!dueDate) newErrors.dueDate = 'Due date is required.'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const isFormValid = customerName && itemDescription && price && dueDate
+
+  /* --------------------------------------------------
+     TAX LOGIC (FULLY FIXED)
+  -------------------------------------------------- */
+  const result = getInvoiceResult(
+    itemLocation,
+    clientLocation,
+    purchaseType,
+    shippingOption,
+    directShip,
+    insuranceLanded
+  )
+
+  /* --------------------------------------------------
+     SEND TO XERO (Make Webhook)
+  -------------------------------------------------- */
+  const sendToXero = async () => {
+    if (!result) {
+      alert('Please complete invoice setup first.')
+      return
+    }
+
+    if (!validateFields()) return
+
+    setSending(true)
+
+    try {
+      // Log invoice creation attempt
+      await logAuditEvent(
+        'INVOICE_CREATE_ATTEMPT',
+        {
+          customerName,
+          itemDescription,
+          price: parseFloat(price),
+          currency,
+          dueDate,
+          accountCode: result.accountCode,
+          taxType: result.taxType,
+          brandTheme: result.brandTheme,
+        },
+        {
+          email: user.email,
+          userId: user.email,
+          firstName: user.name,
+          lastName: '',
+        }
+      )
+
+      await sendInvoiceToXero(
+        result,
+        customerName,
+        itemDescription,
+        price,
+        currency,
+        dueDate
+      )
+
+      // Log successful invoice creation
+      await logAuditEvent(
+        'INVOICE_CREATE_SUCCESS',
+        {
+          customerName,
+          itemDescription,
+          price: parseFloat(price),
+          currency,
+          accountCode: result.accountCode,
+        },
+        {
+          email: user.email,
+          userId: user.email,
+          firstName: user.name,
+          lastName: '',
+        }
+      )
+
+      alert('Invoice created successfully in Xero!')
+      setSending(false)
+    } catch (err) {
+      // Log invoice creation failure
+      await logAuditEvent(
+        'INVOICE_CREATE_FAILURE',
+        {
+          customerName,
+          error: err instanceof Error ? err.message : 'Unknown error',
+        },
+        {
+          email: user.email,
+          userId: user.email,
+          firstName: user.name,
+          lastName: '',
+        }
+      )
+
+      alert('Error: ' + (err instanceof Error ? err.message : 'Unknown error'))
+      setSending(false)
+    }
+  }
+
+  /* --------------------------------------------------
+     LOGOUT HANDLER
+  -------------------------------------------------- */
+  const handleLogout = async () => {
+    await logAuditEvent(
+      'USER_LOGOUT',
+      { logoutTime: new Date().toISOString() },
+      {
+        email: user.email,
+        userId: user.email,
+        firstName: user.name,
+        lastName: '',
+      }
+    )
+    await signOut()
+  }
+
+  /* --------------------------------------------------
+     RESET FORM
+  -------------------------------------------------- */
+  const reset = () => {
+    setItemLocation(null)
+    setClientLocation(null)
+    setPurchaseType(null)
+    setShippingOption(null)
+    setDirectShip(null)
+    setInsuranceLanded(null)
+    setCustomerName('')
+    setPrice('')
+    setItemDescription('')
+    setCurrency('GBP')
+    setDueDate('')
+    setDropdownResults([])
+    setErrors({})
+    setSelectedIndex(-1)
+    setIsSearchActive(false)
+  }
+
+  /* --------------------------------------------------
+     UI RENDER
+  -------------------------------------------------- */
+  return (
+    <div className="max-w-xl mx-auto py-8 px-4">
+      {/* HEADER */}
+      <div className="bg-black text-white p-6 rounded-lg shadow mb-6">
+        <div className="flex justify-between items-start">
+          <div className="flex-1 text-center">
+            <div className="font-serif tracking-widest text-2xl">
+              CLUB<span className="text-3xl">19</span>
+            </div>
+            <div className="font-serif tracking-widest text-sm">LONDON</div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="text-xs bg-white text-black px-3 py-1 rounded hover:bg-gray-200 transition"
+          >
+            Logout
+          </button>
+        </div>
+        <div className="border-t border-gray-600 mt-4 pt-3 text-center text-lg">
+          Invoice Flow
+        </div>
+        <div className="text-center text-xs text-gray-400 mt-2">
+          Logged in as {user.email}
+        </div>
+      </div>
+
+      {/* STEP 1 */}
+      <div className="bg-white p-4 rounded-lg shadow mb-4">
+        <h2 className="font-semibold mb-3">1. Where is the item?</h2>
+        <button
+          className={`w-full p-3 border rounded mb-2 ${
+            itemLocation === 'uk' ? 'border-black bg-gray-100' : 'border-gray-300'
+          }`}
+          onClick={() => {
+            setItemLocation('uk')
+            setClientLocation(null)
+            setPurchaseType(null)
+            setShippingOption(null)
+            setDirectShip(null)
+            setInsuranceLanded(null)
+          }}
+        >
+          Item is in UK
+        </button>
+        <button
+          className={`w-full p-3 border rounded ${
+            itemLocation === 'outside' ? 'border-black bg-gray-100' : 'border-gray-300'
+          }`}
+          onClick={() => {
+            setItemLocation('outside')
+            setClientLocation(null)
+            setPurchaseType(null)
+            setShippingOption(null)
+            setDirectShip(null)
+            setInsuranceLanded(null)
+          }}
+        >
+          Item is outside UK
+        </button>
+      </div>
+
+      {/* STEP 2 */}
+      {itemLocation && (
+        <div className="bg-white p-4 rounded-lg shadow mb-4 animate-fade-in">
+          <h2 className="font-semibold mb-3">2. Where is the client?</h2>
+          <button
+            className={`w-full p-3 border rounded mb-2 ${
+              clientLocation === 'uk' ? 'border-black bg-gray-100' : 'border-gray-300'
+            }`}
+            onClick={() => {
+              setClientLocation('uk')
+              setPurchaseType(null)
+              setShippingOption(null)
+              setDirectShip(null)
+              setInsuranceLanded(null)
+            }}
+          >
+            Client is in UK
+          </button>
+          <button
+            className={`w-full p-3 border rounded ${
+              clientLocation === 'outside' ? 'border-black bg-gray-100' : 'border-gray-300'
+            }`}
+            onClick={() => {
+              setClientLocation('outside')
+              setPurchaseType(null)
+              setShippingOption(null)
+              setDirectShip(null)
+              setInsuranceLanded(null)
+            }}
+          >
+            Client is outside UK
+          </button>
+        </div>
+      )}
+
+      {/* STEP 3 — UK purchase type */}
+      {itemLocation === 'uk' && clientLocation && (
+        <div className="bg-white p-4 rounded-lg shadow mb-4 animate-fade-in">
+          <h2 className="font-semibold mb-3">3. How is the item purchased?</h2>
+          <button
+            onClick={() => setPurchaseType('retail')}
+            className={`w-full p-3 border rounded mb-2 ${
+              purchaseType === 'retail' ? 'border-black bg-gray-100' : 'border-gray-300'
+            }`}
+          >
+            From retail store
+          </button>
+          <button
+            onClick={() => setPurchaseType('margin')}
+            className={`w-full p-3 border rounded ${
+              purchaseType === 'margin' ? 'border-black bg-gray-100' : 'border-gray-300'
+            }`}
+          >
+            On UK margin rule
+          </button>
+        </div>
+      )}
+
+      {/* STEP 3 — Outside → UK shipping */}
+      {itemLocation === 'outside' && clientLocation === 'uk' && (
+        <div className="bg-white p-4 rounded-lg shadow mb-4 animate-fade-in">
+          <h2 className="font-semibold mb-3">3. Can client ship to other countries?</h2>
+          <button
+            onClick={() => {
+              setShippingOption('no')
+              setDirectShip(null)
+              setInsuranceLanded(null)
+            }}
+            className={`w-full p-3 border rounded mb-2 ${
+              shippingOption === 'no' ? 'border-black bg-gray-100' : 'border-gray-300'
+            }`}
+          >
+            No
+          </button>
+          <button
+            onClick={() => {
+              setShippingOption('yes')
+              setDirectShip(null)
+              setInsuranceLanded(null)
+            }}
+            className={`w-full p-3 border rounded ${
+              shippingOption === 'yes' ? 'border-black bg-gray-100' : 'border-gray-300'
+            }`}
+          >
+            Yes
+          </button>
+        </div>
+      )}
+
+      {/* STEP 4 — Direct ship */}
+      {shippingOption === 'yes' &&
+        itemLocation === 'outside' &&
+        clientLocation === 'uk' && (
+          <div className="bg-white p-4 rounded-lg shadow mb-4 animate-fade-in">
+            <h2 className="font-semibold mb-3">
+              4. Can supplier ship directly to client?
+            </h2>
+            <button
+              onClick={() => {
+                setDirectShip('no')
+                setInsuranceLanded(null)
+              }}
+              className={`w-full p-3 border rounded mb-2 ${
+                directShip === 'no' ? 'border-black bg-gray-100' : 'border-gray-300'
+              }`}
+            >
+              No
+            </button>
+            <button
+              onClick={() => {
+                setDirectShip('yes')
+                setInsuranceLanded(null)
+              }}
+              className={`w-full p-3 border rounded ${
+                directShip === 'yes' ? 'border-black bg-gray-100' : 'border-gray-300'
+              }`}
+            >
+              Yes
+            </button>
+          </div>
+        )}
+
+      {/* STEP 5 — Insurance / landed cost */}
+      {directShip === 'yes' &&
+        itemLocation === 'outside' &&
+        clientLocation === 'uk' &&
+        shippingOption === 'yes' && (
+          <div className="bg-white p-4 rounded-lg shadow mb-4 animate-fade-in">
+            <h2 className="font-semibold mb-3">
+              5. Can supplier provide full insurance & landed cost?
+            </h2>
+            <button
+              onClick={() => setInsuranceLanded('no')}
+              className={`w-full p-3 border rounded mb-2 ${
+                insuranceLanded === 'no' ? 'border-black bg-gray-100' : 'border-gray-300'
+              }`}
+            >
+              No
+            </button>
+            <button
+              onClick={() => setInsuranceLanded('yes')}
+              className={`w-full p-3 border rounded ${
+                insuranceLanded === 'yes' ? 'border-black bg-gray-100' : 'border-gray-300'
+              }`}
+            >
+              Yes
+            </button>
+          </div>
+        )}
+
+      {/* FINAL SETTINGS PANEL */}
+      {result && (
+        <div className="bg-gray-100 border-t-4 border-black p-4 rounded-lg shadow animate-fade-in mb-6">
+          <h3 className="font-bold text-lg mb-3">Invoice Settings</h3>
+          <div className="space-y-4">
+            {/* Invoice Item Line Detail */}
+            <div className="bg-white border p-3 rounded shadow-sm">
+              <div className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                Invoice Item Line Detail
+              </div>
+              <div className="font-medium whitespace-pre-line">
+                {result.taxLiability}
+              </div>
+              {result.note && (
+                <div className="text-sm text-amber-700 mt-2 italic">
+                  {result.note}
+                </div>
+              )}
+            </div>
+
+            {/* Brand Theme */}
+            <div className="bg-white border p-3 rounded shadow-sm">
+              <div className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                Brand Theme
+              </div>
+              <div className="font-medium">{result.brandTheme}</div>
+            </div>
+
+            {/* Amounts Are */}
+            <div className="bg-white border p-3 rounded shadow-sm">
+              <div className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                Amounts Are
+              </div>
+              <div className="font-medium">{result.amountsAre}</div>
+            </div>
+
+            {/* Account Code */}
+            <div className="bg-white border p-3 rounded shadow-sm">
+              <div className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                Account Code
+              </div>
+              <div className="font-medium text-xl">{result.accountCode}</div>
+            </div>
+
+            {/* Xero Tax Code */}
+            <div className="bg-white border p-3 rounded shadow-sm">
+              <div className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                Xero Tax Code
+              </div>
+              <div className="font-medium">{result.taxType}</div>
+            </div>
+
+            {/* Friendly Tax Description */}
+            <div className="bg-white border p-3 rounded shadow-sm">
+              <div className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                Friendly Tax Description
+              </div>
+              <div className="font-medium">{result.taxLabel}</div>
+            </div>
+
+            {/* VAT Reclaim */}
+            <div className="bg-white border p-3 rounded shadow-sm">
+              <div className="text-xs font-semibold uppercase text-gray-500 mb-1">
+                VAT Reclaim
+              </div>
+              <div className="font-medium">{result.vatReclaim}</div>
+            </div>
+          </div>
+
+          {/* INVOICE DETAILS FORM */}
+          <div className="mt-6 border-t pt-4">
+            <h3 className="font-bold text-lg mb-3">Invoice Details</h3>
+
+            {/* Customer Name */}
+            <div className="mb-4" ref={dropdownRef}>
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                Customer Name
+              </label>
+              <div className="relative">
+                <input
+                  className="w-full p-3 border-2 rounded focus:outline-none focus:border-black"
+                  value={customerName}
+                  placeholder="Start typing customer name…"
+                  onChange={(e) => handleCustomerInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (!dropdownResults.length) return
+                    if (e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      setSelectedIndex((i) =>
+                        i < dropdownResults.length - 1 ? i + 1 : i
+                      )
+                    }
+                    if (e.key === 'ArrowUp') {
+                      e.preventDefault()
+                      setSelectedIndex((i) => (i > 0 ? i - 1 : 0))
+                    }
+                    if (e.key === 'Enter' && selectedIndex >= 0) {
+                      e.preventDefault()
+                      selectCustomer(dropdownResults[selectedIndex])
+                    }
+                    if (e.key === 'Escape') {
+                      setDropdownResults([])
+                      setIsSearchActive(false)
+                    }
+                  }}
+                />
+                {loadingCustomers && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                )}
+                {dropdownResults.length > 0 && (
+                  <ul className="absolute z-10 mt-1 bg-white border-2 border-black rounded-lg max-h-48 overflow-auto w-full shadow">
+                    {dropdownResults.map((c, i) => (
+                      <li
+                        key={i}
+                        className={`p-3 cursor-pointer ${
+                          selectedIndex === i
+                            ? 'bg-black text-white'
+                            : 'hover:bg-gray-200'
+                        }`}
+                        onClick={() => selectCustomer(c)}
+                        onMouseEnter={() => setSelectedIndex(i)}
+                      >
+                        {c.Name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              {errors.customerName && (
+                <p className="text-red-600 text-sm mt-1">{errors.customerName}</p>
+              )}
+            </div>
+
+            {/* Item Description */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                Item Description
+              </label>
+              <input
+                className="w-full p-3 border-2 rounded focus:outline-none focus:border-black"
+                value={itemDescription}
+                onChange={(e) => setItemDescription(e.target.value)}
+              />
+              {errors.itemDescription && (
+                <p className="text-red-600 text-sm mt-1">{errors.itemDescription}</p>
+              )}
+            </div>
+
+            {/* Price */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                Price
+              </label>
+              <div className="flex gap-2">
+                <select
+                  className="p-3 border-2 rounded bg-white focus:border-black"
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                >
+                  {CURRENCIES.map((curr) => (
+                    <option key={curr.code} value={curr.code}>
+                      {curr.symbol} {curr.code}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="flex-1 p-3 border-2 rounded focus:outline-none focus:border-black"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                />
+              </div>
+              {errors.price && <p className="text-red-600 text-sm mt-1">{errors.price}</p>}
+            </div>
+
+            {/* Due Date */}
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                Due Date
+              </label>
+              <input
+                type="date"
+                className="w-full p-3 border-2 rounded focus:outline-none focus:border-black"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+              {errors.dueDate && (
+                <p className="text-red-600 text-sm mt-1">{errors.dueDate}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <button
+            onClick={sendToXero}
+            disabled={sending || !isFormValid}
+            className={`w-full mt-4 p-3 rounded font-medium flex justify-center items-center ${
+              sending || !isFormValid
+                ? 'bg-gray-400 text-gray-200'
+                : 'bg-green-600 text-white hover:bg-green-700'
+            }`}
+          >
+            {sending ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                Sending…
+              </>
+            ) : (
+              'Create Invoice in Xero'
+            )}
+          </button>
+          <button
+            onClick={reset}
+            className="w-full mt-2 p-3 rounded font-medium bg-black text-white hover:bg-gray-800"
+          >
+            Start Over
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+----- FILE: components/Loader.tsx -----
+export default function Loader() {
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-black border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
+----- FILE: next.config.js -----
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  images: {
+    domains: ['img.clerk.com'],
+  },
+}
+
+module.exports = nextConfig
+
+----- FILE: tailwind.config.js -----
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+  ],
+  theme: {
+    extend: {
+      fontFamily: {
+        serif: ["Playfair Display", "Georgia", "serif"],
+        sans: ["Inter", "system-ui", "sans-serif"],
+      },
+      colors: {
+        // Club 19 Core Palette
+        club19: {
+          black: "#000000",
+          platinum: "#E8E8E8",
+          silver: "#C0C0C0",
+          "silver-dark": "#A8A8A8",
+          charcoal: "#333333",
+          "off-white": "#FAFAFA",
+          gold: "#D4AF37", // Subtle accent only
+        },
+        // Semantic colors mapped to Club 19 palette
+        primary: {
+          DEFAULT: "#000000",
+          50: "#FAFAFA",
+          100: "#F5F5F5",
+          200: "#E8E8E8",
+          300: "#D1D1D1",
+          400: "#A8A8A8",
+          500: "#808080",
+          600: "#333333",
+          700: "#1A1A1A",
+          800: "#0D0D0D",
+          900: "#000000",
+        },
+        success: "#000000",
+        warning: "#333333",
+        error: "#000000",
+        info: "#000000",
+        border: "#E8E8E8",
+        background: "#FFFFFF",
+        foreground: "#000000",
+      },
+      letterSpacing: {
+        "luxury": "0.05em",
+        "wide": "0.1em",
+      },
+      borderWidth: {
+        "1": "1px",
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.3s ease-in-out',
+        'slide-up': 'slideUp 0.3s ease-out',
+        'fade-in-up': 'fadeInUp 0.5s ease-out',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        fadeInUp: {
+          '0%': { transform: 'translateY(20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+      },
+    },
+  },
+  plugins: [],
+}
+
+----- FILE: tsconfig.json -----
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"],
+      "@/components/*": ["./components/*"],
+      "@/lib/*": ["./lib/*"],
+      "@/app/*": ["./app/*"]
+    },
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+
+----- FILE: package.json -----
+{
+  "name": "club19-invoice-flow",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^5.0.0",
+    "next": "14.2.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "date-fns": "^3.6.0",
+    "lucide-react": "^0.378.0",
+    "clsx": "^2.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.19",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.3",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.17.0",
+    "npm": ">=9.0.0"
+  }
+}
+
+----- FILE: postcss.config.js -----
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+==================== END OF DUMP ====================
