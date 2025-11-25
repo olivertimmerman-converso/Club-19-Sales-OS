@@ -168,20 +168,14 @@ export function StepTaxScenario() {
           Tax Scenario
         </h2>
         <p className="text-sm text-gray-600">
-          Answer these questions to determine the correct tax treatment for this
-          sale.
+          Answer to determine tax treatment
         </p>
       </div>
 
       {/* Q1: Where is the item? */}
       <div className="space-y-3">
         <div>
-          <h3 className="font-semibold text-gray-900">
-            1. Where is the item right now?
-          </h3>
-          <p className="text-xs text-gray-500 mt-1">
-            Where the product is physically located before it moves anywhere.
-          </p>
+          <h3 className="font-semibold text-gray-900">1. Where is the item?</h3>
         </div>
         <button
           type="button"
@@ -199,7 +193,7 @@ export function StepTaxScenario() {
             setInsuranceLanded(null);
           }}
         >
-          Item is in the UK
+          In the UK
         </button>
         <button
           type="button"
@@ -217,7 +211,7 @@ export function StepTaxScenario() {
             setInsuranceLanded(null);
           }}
         >
-          Item is outside the UK
+          Outside UK
         </button>
       </div>
 
@@ -226,12 +220,8 @@ export function StepTaxScenario() {
         <div className="space-y-3 animate-fade-in">
           <div>
             <h3 className="font-semibold text-gray-900">
-              2. Where is the delivery address for this order?
+              2. Delivery address?
             </h3>
-            <p className="text-xs text-gray-500 mt-1">
-              If the client can take delivery outside the UK (e.g. EU, US, HK),
-              choose that country. This can change how tax is handled.
-            </p>
           </div>
           <button
             type="button"
@@ -248,7 +238,7 @@ export function StepTaxScenario() {
               setInsuranceLanded(null);
             }}
           >
-            Delivery address is in the UK
+            UK delivery
           </button>
           <button
             type="button"
@@ -265,7 +255,7 @@ export function StepTaxScenario() {
               setInsuranceLanded(null);
             }}
           >
-            Delivery address is outside the UK
+            Outside UK
           </button>
         </div>
       )}
@@ -305,25 +295,17 @@ export function StepTaxScenario() {
       {shouldShowShippingQuestions && (
         <>
           <div className="border-t pt-6 animate-fade-in">
-            <h3 className="text-sm font-semibold text-gray-800 mb-1">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">
               Shipping & logistics
             </h3>
-            <p className="text-xs text-gray-500 mb-4">
-              How the item will move between supplier, Club 19 and the client.
-            </p>
           </div>
 
           {/* Q4: Client can arrange onward shipping */}
           <div className="space-y-3 animate-fade-in">
             <div>
               <h3 className="font-semibold text-gray-900">
-                {itemLocation === "uk" ? "4" : "3"}. Can the client arrange
-                onward shipping themselves?
+                {itemLocation === "uk" ? "4" : "3"}. Client arranging shipping?
               </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                For example, they have their own shipper or logistics and will
-                move the item to another country themselves.
-              </p>
             </div>
             <button
               type="button"
@@ -364,13 +346,8 @@ export function StepTaxScenario() {
         <div className="space-y-3 animate-fade-in">
           <div>
             <h3 className="font-semibold text-gray-900">
-              {itemLocation === "uk" ? "5" : "4"}. Can the supplier ship
-              directly to the client?
+              {itemLocation === "uk" ? "5" : "4"}. Supplier ships direct?
             </h3>
-            <p className="text-xs text-gray-500 mt-1">
-              Choose &ldquo;Yes&rdquo; if the supplier can send the item
-              directly to the client without passing through Club 19.
-            </p>
           </div>
           <button
             type="button"
@@ -384,7 +361,7 @@ export function StepTaxScenario() {
                 : "border-gray-300 hover:border-gray-400 text-gray-700"
             }`}
           >
-            No, item will come via us
+            No, via us
           </button>
           <button
             type="button"
@@ -398,7 +375,7 @@ export function StepTaxScenario() {
                 : "border-gray-300 hover:border-gray-400 text-gray-700"
             }`}
           >
-            Yes, supplier ships straight to client
+            Yes, direct to client
           </button>
         </div>
       )}
@@ -408,12 +385,10 @@ export function StepTaxScenario() {
         <div className="space-y-3 animate-fade-in">
           <div>
             <h3 className="font-semibold text-gray-900">
-              {itemLocation === "uk" ? "6" : "5"}. Can the supplier provide
-              fully insured, landed delivery?
+              {itemLocation === "uk" ? "6" : "5"}. Landed delivery?
             </h3>
             <p className="text-xs text-gray-500 mt-1">
-              &ldquo;Landed&rdquo; means duties, customs and insurance are
-              included.
+              &ldquo;Landed&rdquo; means duties, customs & insurance included
             </p>
           </div>
           <button
@@ -436,7 +411,7 @@ export function StepTaxScenario() {
                 : "border-gray-300 hover:border-gray-400 text-gray-700"
             }`}
           >
-            Yes – supplier covers duties & insurance
+            Yes
           </button>
         </div>
       )}
@@ -445,7 +420,7 @@ export function StepTaxScenario() {
       {result && (
         <div className="border-t-4 border-green-600 bg-green-50 p-5 rounded-lg animate-fade-in transition-all duration-200">
           <h3 className="font-bold text-lg mb-4 text-green-900">
-            Tax treatment for this sale
+            Tax treatment
           </h3>
 
           <div className="space-y-3 mb-4">
@@ -484,7 +459,7 @@ export function StepTaxScenario() {
           {keyNotes.length > 0 && (
             <div className="mb-4 bg-white border border-green-200 rounded-md p-3">
               <div className="text-xs font-semibold uppercase text-green-700 mb-2">
-                Key notes for this deal
+                Key notes
               </div>
               <ul className="space-y-1.5">
                 {keyNotes.map((note, index) => (
@@ -502,7 +477,7 @@ export function StepTaxScenario() {
 
           {/* Reassurance text */}
           <div className="text-sm text-green-700 bg-white border border-green-200 px-3 py-2 rounded-md">
-            We&apos;ll handle the tax coding for this deal automatically.
+            We&apos;ll handle the tax coding automatically
           </div>
 
           {/* Advanced details accordion */}
@@ -512,7 +487,7 @@ export function StepTaxScenario() {
               onClick={() => setShowAdvanced(!showAdvanced)}
               className="flex items-center justify-between w-full text-sm font-medium text-green-800 hover:text-green-900 transition-colors"
             >
-              <span>Show detailed tax settings</span>
+              <span>Detailed settings</span>
               <svg
                 className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
                 fill="none"
