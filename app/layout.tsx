@@ -1,54 +1,68 @@
-import { ClerkProvider } from '@clerk/nextjs'
-import type { Metadata } from 'next'
-import { Inter, Playfair_Display } from 'next/font/google'
-import './globals.css'
+import { ClerkProvider } from "@clerk/nextjs";
+import type { Metadata } from "next";
+import { Inter, Playfair_Display } from "next/font/google";
+import "./globals.css";
 
 const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  weight: ['300', '400', '500', '600'],
-})
+  subsets: ["latin"],
+  variable: "--font-inter",
+  weight: ["300", "400", "500", "600"],
+});
 
 const playfair = Playfair_Display({
-  subsets: ['latin'],
-  variable: '--font-playfair',
-  weight: ['400', '500', '600', '700'],
-})
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  weight: ["400", "500", "600", "700"],
+});
 
 export const metadata: Metadata = {
-  title: 'Club 19 London | Invoice Management',
-  description: 'Luxury invoice management system for Club 19 London',
+  title: "Club 19 London | Sales Atelier",
+  description:
+    "Elegant deal creation and invoice management for Club 19 London",
   icons: {
-    icon: '/favicon.ico',
+    icon: "/favicon.ico",
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
+  const isDevelopment = process.env.NODE_ENV === "development";
+
+  // In development, skip Clerk entirely for easier local testing
+  if (isDevelopment) {
+    return (
+      <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+        <body className={inter.className}>
+          <div className="min-h-screen bg-white">{children}</div>
+        </body>
+      </html>
+    );
+  }
+
+  // In production, use Clerk authentication
   return (
     <ClerkProvider
       appearance={{
         variables: {
-          colorPrimary: '#000000',
-          colorBackground: '#ffffff',
-          colorText: '#000000',
+          colorPrimary: "#000000",
+          colorBackground: "#ffffff",
+          colorText: "#000000",
         },
         elements: {
-          formButtonPrimary: 'bg-club19-black hover:bg-club19-charcoal text-white uppercase tracking-wide',
-          card: 'border border-club19-platinum',
+          formButtonPrimary:
+            "bg-club19-black hover:bg-club19-charcoal text-white uppercase tracking-wide",
+          card: "border border-club19-platinum",
         },
       }}
     >
       <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
         <body className={inter.className}>
-          <div className="min-h-screen bg-white">
-            {children}
-          </div>
+          <div className="min-h-screen bg-white">{children}</div>
         </body>
       </html>
     </ClerkProvider>
-  )
+  );
 }

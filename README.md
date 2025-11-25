@@ -119,7 +119,7 @@ export const ALLOWED_EMAILS = [
   "oliver@converso.uk",
   "alys@sketch24ltd.com",
   // Add new emails here
-]
+];
 ```
 
 ## Tax Logic
@@ -127,18 +127,22 @@ export const ALLOWED_EMAILS = [
 The application handles complex UK VAT scenarios:
 
 ### UK Item → UK Client
+
 - **Retail Purchase**: 20% VAT (Account 425)
 - **Margin Scheme**: Zero-rated (Account 424)
 
 ### UK Item → Outside UK Client
+
 - **Retail Purchase**: Zero-rated export (Account 423)
 - **Margin Scheme**: Zero-rated export (Account 423)
 
 ### Outside UK → UK Client
+
 - Varies based on shipping options and insurance
 - Can be 20% VAT or zero-rated depending on delivery method
 
 ### Outside UK → Outside UK
+
 - Zero-rated export sales (Account 423)
 
 ## Xero Integration
@@ -146,6 +150,7 @@ The application handles complex UK VAT scenarios:
 ### Invoice Creation
 
 The app sends invoice data to Make.com webhook with:
+
 - Account code (423, 424, or 425)
 - Tax type (OUTPUT2 or ZERORATEDOUTPUT)
 - Line amount types (Inclusive/Exclusive)
@@ -156,6 +161,7 @@ The app sends invoice data to Make.com webhook with:
 ### Customer Search
 
 Real-time search of Xero contacts with:
+
 - 300ms debounce
 - Minimum 2 characters
 - Keyboard navigation (Arrow keys, Enter, Escape)
@@ -173,6 +179,7 @@ All user actions are logged via webhook:
 - `INVOICE_CREATE_FAILURE`: Invoice creation failed
 
 Each event includes:
+
 - Event type and timestamp
 - User details (email, ID, name)
 - Session ID
@@ -252,6 +259,7 @@ The app can be deployed to any platform supporting Next.js:
 ### Authentication Issues
 
 **Problem**: Users can't sign in
+
 - Verify Clerk keys are correct
 - Check Clerk dashboard for domain configuration
 - Ensure production mode is enabled in Clerk
@@ -259,6 +267,7 @@ The app can be deployed to any platform supporting Next.js:
 ### Webhook Failures
 
 **Problem**: Invoices not creating in Xero
+
 - Check Make.com webhook is active
 - Verify webhook URL in `lib/constants.ts`
 - Check Make.com scenario logs
@@ -266,6 +275,7 @@ The app can be deployed to any platform supporting Next.js:
 ### Customer Search Not Working
 
 **Problem**: No results when searching customers
+
 - Verify Xero contacts webhook URL
 - Check Make.com connection to Xero
 - Ensure minimum 2 characters entered
@@ -273,6 +283,7 @@ The app can be deployed to any platform supporting Next.js:
 ## Support
 
 For issues or questions:
+
 - Technical: oliver@converso.uk
 - Business: sophie@club19london.com
 
@@ -283,6 +294,7 @@ Proprietary - Club 19 London
 ---
 
 **Built with:**
+
 - [Next.js 14](https://nextjs.org/)
 - [Clerk Authentication](https://clerk.com/)
 - [Tailwind CSS](https://tailwindcss.com/)

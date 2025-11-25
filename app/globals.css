@@ -2,16 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap");
 
 @layer base {
   :root {
-    --background: #FFFFFF;
+    --background: #ffffff;
     --foreground: #000000;
-    --border: #E8E8E8;
+    --border: #e8e8e8;
     --club19-black: #000000;
-    --club19-platinum: #E8E8E8;
-    --club19-silver: #C0C0C0;
+    --club19-platinum: #e8e8e8;
+    --club19-silver: #c0c0c0;
     --club19-charcoal: #333333;
   }
 
@@ -21,14 +21,21 @@
 
   body {
     @apply bg-white text-club19-black;
-    font-feature-settings: "rlig" 1, "calt" 1;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+    font-family: "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', Georgia, serif;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Playfair Display", Georgia, serif;
     font-weight: 600;
     letter-spacing: 0.02em;
   }

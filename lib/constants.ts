@@ -1,4 +1,9 @@
 /**
+ * Maximum items per trade
+ */
+export const MAX_ITEMS_PER_TRADE = 10;
+
+/**
  * Authorized user emails from the prototype
  */
 export const ALLOWED_EMAILS = [
@@ -7,23 +12,23 @@ export const ALLOWED_EMAILS = [
   "maryclair@club19london.com",
   "oliver@converso.uk",
   "alys@sketch24ltd.com",
-]
+];
 
 /**
  * Check if a user email is authorized
  */
 export function isAuthorizedUser(email?: string | null): boolean {
-  if (!email) return false
-  return ALLOWED_EMAILS.includes(email.toLowerCase())
+  if (!email) return false;
+  return ALLOWED_EMAILS.includes(email.toLowerCase());
 }
 
 /**
  * Xero internal tax codes (from prototype)
  */
 export const TAX_CODES = {
-  TAX_20: "OUTPUT2",        // 20% VAT on Income
+  TAX_20: "OUTPUT2", // 20% VAT on Income
   TAX_ZERO: "ZERORATEDOUTPUT", // Zero Rated Income 0%
-} as const
+} as const;
 
 /**
  * Webhook URLs from prototype
@@ -32,7 +37,7 @@ export const WEBHOOKS = {
   AUDIT_LOG: "https://hook.eu2.make.com/YOUR_AUDIT_WEBHOOK_ID",
   XERO_INVOICE: "https://hook.eu2.make.com/YOUR_XERO_INVOICE_WEBHOOK_ID",
   XERO_CONTACTS: "https://hook.eu2.make.com/YOUR_XERO_CONTACTS_WEBHOOK_ID",
-} as const
+} as const;
 
 /**
  * Supported currencies
@@ -43,21 +48,74 @@ export const CURRENCIES = [
   { code: "EUR", symbol: "€" },
   { code: "CHF", symbol: "CHF" },
   { code: "JPY", symbol: "¥" },
-] as const
+] as const;
+
+/**
+ * Product brands for Deal Studio
+ */
+export const BRANDS = [
+  "Hermès",
+  "Chanel",
+  "Dior",
+  "Louis Vuitton",
+  "Bottega Veneta",
+  "Alaïa",
+  "Gucci",
+  "Loro Piana",
+  "The Row",
+  "Emilio Pucci",
+  "Rolex",
+  "Patek Philippe",
+  "Audemars Piguet",
+  "Cartier",
+  "Van Cleef & Arpels",
+  "Other",
+] as const;
+
+/**
+ * Product categories for Deal Studio
+ */
+export const CATEGORIES = [
+  "Bags",
+  "Watches",
+  "Shoes",
+  "RTW",
+  "Jewelry",
+  "Accessories",
+  "Other",
+] as const;
+
+/**
+ * Countries for supplier/buyer selection
+ */
+export const COUNTRIES = [
+  "UK",
+  "France",
+  "Italy",
+  "Switzerland",
+  "Germany",
+  "Spain",
+  "USA",
+  "Japan",
+  "Hong Kong",
+  "Singapore",
+  "UAE",
+  "Other",
+] as const;
 
 /**
  * Tax scenarios from the prototype logic
  */
 export type InvoiceScenario = {
-  taxLiability: string
-  note?: string
-  brandTheme: string
-  amountsAre: string
-  accountCode: string
-  taxType: string
-  taxLabel: string
-  vatReclaim: string
-}
+  taxLiability: string;
+  note?: string;
+  brandTheme: string;
+  amountsAre: string;
+  accountCode: string;
+  taxType: string;
+  taxLabel: string;
+  vatReclaim: string;
+};
 
 /**
  * Get invoice configuration based on user selections
@@ -69,9 +127,9 @@ export function getInvoiceResult(
   purchaseType?: string | null,
   shippingOption?: string | null,
   directShip?: string | null,
-  insuranceLanded?: string | null
+  insuranceLanded?: string | null,
 ): InvoiceScenario | null {
-  const { TAX_20, TAX_ZERO } = TAX_CODES
+  const { TAX_20, TAX_ZERO } = TAX_CODES;
 
   /* -----------------------------------------------
      UK Item → UK Client
@@ -116,9 +174,9 @@ export function getInvoiceResult(
         taxLabel: "Zero Rated Income 0%",
         vatReclaim: "None",
       },
-    }
+    };
 
-    return scenarios[`${clientLocation}-${purchaseType}`] || null
+    return scenarios[`${clientLocation}-${purchaseType}`] || null;
   }
 
   /* -----------------------------------------------
@@ -139,12 +197,12 @@ export function getInvoiceResult(
         taxType: TAX_20,
         taxLabel: "20% VAT on Income",
         vatReclaim: "None",
-      }
+      };
     }
 
     // Shipping allowed AND direct ship
     if (shippingOption === "yes" && directShip === "yes" && insuranceLanded) {
-      const landed = insuranceLanded === "yes"
+      const landed = insuranceLanded === "yes";
       return {
         taxLiability: landed
           ? "No liability, provide client item price plus margin plus delivery"
@@ -156,7 +214,7 @@ export function getInvoiceResult(
         taxType: landed ? TAX_ZERO : TAX_20,
         taxLabel: landed ? "Zero Rated Income 0%" : "20% VAT on Income",
         vatReclaim: "None",
-      }
+      };
     }
   }
 
@@ -173,8 +231,8 @@ export function getInvoiceResult(
       taxType: TAX_ZERO,
       taxLabel: "Zero Rated Income 0%",
       vatReclaim: "None",
-    }
+    };
   }
 
-  return null
+  return null;
 }

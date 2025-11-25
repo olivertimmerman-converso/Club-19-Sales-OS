@@ -1,14 +1,14 @@
-import { WEBHOOKS } from './constants'
-import { InvoiceScenario } from './constants'
+import { WEBHOOKS } from "./constants";
+import { InvoiceScenario } from "./constants";
 
 /**
  * Xero contact result from search
  */
 export type XeroContact = {
-  Name: string
-  ContactID?: string
-  EmailAddress?: string
-}
+  Name: string;
+  ContactID?: string;
+  EmailAddress?: string;
+};
 
 /**
  * Fetch Xero contacts via Make webhook
@@ -17,18 +17,18 @@ export type XeroContact = {
 export async function fetchXeroContacts(query: string): Promise<XeroContact[]> {
   try {
     const response = await fetch(WEBHOOKS.XERO_CONTACTS, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ query }),
-    })
+    });
 
-    const data = await response.json()
-    return data.contacts || []
+    const data = await response.json();
+    return data.contacts || [];
   } catch (err) {
-    console.error('Contact search error:', err)
-    return []
+    console.error("Contact search error:", err);
+    return [];
   }
 }
 
@@ -36,32 +36,32 @@ export async function fetchXeroContacts(query: string): Promise<XeroContact[]> {
  * Invoice data payload for Xero
  */
 export type XeroInvoicePayload = {
-  accountCode: string
-  taxType: string
-  taxLabel: string
-  brandTheme: string
-  amountsAre: string
-  lineAmountTypes: string
-  taxLiability: string
-  vatReclaim: string
-  customerName: string
-  itemDescription: string
-  price: number
-  currency: string
-  dueDate: string
-  timestamp: string
-}
+  accountCode: string;
+  taxType: string;
+  taxLabel: string;
+  brandTheme: string;
+  amountsAre: string;
+  lineAmountTypes: string;
+  taxLiability: string;
+  vatReclaim: string;
+  customerName: string;
+  itemDescription: string;
+  price: number;
+  currency: string;
+  dueDate: string;
+  timestamp: string;
+};
 
 /**
  * Map UI values to Xero's LineAmountTypes API values
  */
 const LINE_AMOUNT_TYPE_MAP: Record<string, string> = {
-  Inclusive: 'Inclusive',
-  Exclusive: 'Exclusive',
-  'No tax': 'NoTax',
-  NoTax: 'NoTax',
-  None: 'NoTax',
-}
+  Inclusive: "Inclusive",
+  Exclusive: "Exclusive",
+  "No tax": "NoTax",
+  NoTax: "NoTax",
+  None: "NoTax",
+};
 
 /**
  * Send invoice to Xero via Make webhook
@@ -73,7 +73,7 @@ export async function sendInvoiceToXero(
   itemDescription: string,
   price: string,
   currency: string,
-  dueDate: string
+  dueDate: string,
 ): Promise<void> {
   const invoiceData: XeroInvoicePayload = {
     accountCode: result.accountCode,
@@ -93,17 +93,17 @@ export async function sendInvoiceToXero(
     currency,
     dueDate,
     timestamp: new Date().toISOString(),
-  }
+  };
 
   const response = await fetch(WEBHOOKS.XERO_INVOICE, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify(invoiceData),
-  })
+  });
 
   if (!response.ok) {
-    throw new Error('Xero creation failed')
+    throw new Error("Xero creation failed");
   }
 }
