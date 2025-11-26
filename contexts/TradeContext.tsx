@@ -16,6 +16,7 @@ import { v4 as uuidv4 } from "uuid";
 
 type TradeContextType = {
   state: WizardState;
+  navigationDirection: "forward" | "back";
 
   // Step navigation
   goToStep: (step: WizardStep) => void;
@@ -85,12 +86,17 @@ const initialState: WizardState = {
 
 export function TradeProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<WizardState>(initialState);
+  const [navigationDirection, setNavigationDirection] = useState<"forward" | "back">("forward");
 
   const goToStep = useCallback((step: WizardStep) => {
-    setState((prev) => ({ ...prev, currentStep: step }));
+    setState((prev) => {
+      setNavigationDirection(step > prev.currentStep ? "forward" : "back");
+      return { ...prev, currentStep: step };
+    });
   }, []);
 
   const nextStep = useCallback(() => {
+    setNavigationDirection("forward");
     setState((prev) => {
       const nextStep = Math.min(2, prev.currentStep + 1) as WizardStep;
       return { ...prev, currentStep: nextStep };
@@ -98,6 +104,7 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const prevStep = useCallback(() => {
+    setNavigationDirection("back");
     setState((prev) => {
       const prevStep = Math.max(0, prev.currentStep - 1) as WizardStep;
       return { ...prev, currentStep: prevStep };
@@ -239,6 +246,7 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
 
   const value: TradeContextType = {
     state,
+    navigationDirection,
     goToStep,
     nextStep,
     prevStep,
