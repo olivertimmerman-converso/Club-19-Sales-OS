@@ -8,10 +8,10 @@ import { StepItemsAndMargin } from "@/components/trade/StepItemsAndMargin";
 import { StepBuyerAndReview } from "@/components/trade/StepBuyerAndReview";
 
 function WizardContent() {
-  const { state } = useTrade();
+  const { state, resetKey } = useTrade();
 
   return (
-    <div className="w-full">
+    <div className="w-full" key={resetKey}>
       {/* Step 0: Deal & Logistics */}
       <div className={state.currentStep === 0 ? "block w-full" : "hidden w-full"}>
         <StepDealLogistics />

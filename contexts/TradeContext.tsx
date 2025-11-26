@@ -17,6 +17,7 @@ import { v4 as uuidv4 } from "uuid";
 type TradeContextType = {
   state: WizardState;
   navigationDirection: "forward" | "back";
+  resetKey: number; // Used to force remount of step components on full reset
 
   // Step navigation
   goToStep: (step: WizardStep) => void;
@@ -63,7 +64,8 @@ type TradeContextType = {
 
 const TradeContext = createContext<TradeContextType | undefined>(undefined);
 
-const initialState: WizardState = {
+// Helper to create fresh initial state with current date
+const createInitialState = (): WizardState => ({
   currentStep: 0,
   taxScenario: null,
   currentSupplier: null,
@@ -82,11 +84,12 @@ const initialState: WizardState = {
   estimatedImportExportGBP: null,
   isSubmitting: false,
   error: null,
-};
+});
 
 export function TradeProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<WizardState>(initialState);
+  const [state, setState] = useState<WizardState>(createInitialState);
   const [navigationDirection, setNavigationDirection] = useState<"forward" | "back">("forward");
+  const [resetKey, setResetKey] = useState(0);
 
   const goToStep = useCallback((step: WizardStep) => {
     setState((prev) => {
@@ -241,12 +244,15 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const resetWizard = useCallback(() => {
-    setState(initialState);
+    setState(createInitialState());
+    setNavigationDirection("forward");
+    setResetKey((prev) => prev + 1); // Force remount of all step components
   }, []);
 
   const value: TradeContextType = {
     state,
     navigationDirection,
+    resetKey,
     goToStep,
     nextStep,
     prevStep,
