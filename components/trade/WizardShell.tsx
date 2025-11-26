@@ -14,7 +14,8 @@ type WizardShellProps = {
 };
 
 export function WizardShell({ children }: WizardShellProps) {
-  const { state, canGoNext, canGoPrev, nextStep, prevStep, goToStep, canGoToStep } = useTrade();
+  const { state, canGoNext, canGoPrev, nextStep, prevStep, goToStep, canGoToStep, resetWizard } = useTrade();
+  const [showResetConfirm, setShowResetConfirm] = React.useState(false);
 
   // Scroll to top on step change
   useEffect(() => {
@@ -23,13 +24,25 @@ export function WizardShell({ children }: WizardShellProps) {
     }
   }, [state.currentStep]);
 
+  const handleConfirmReset = () => {
+    resetWizard();
+    goToStep(0);
+    setShowResetConfirm(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
       <div className="mx-auto w-full max-w-3xl">
         {/* Header */}
         <div className="mb-6 sm:mb-8 lg:mb-10">
           <div className="flex items-center justify-between gap-4">
-            <Club19Logo />
+            <button
+              type="button"
+              onClick={() => setShowResetConfirm(true)}
+              className="cursor-pointer transition-opacity hover:opacity-80"
+            >
+              <Club19Logo />
+            </button>
             <div className="flex flex-col items-end text-right">
               <h1 className="font-serif text-base font-light leading-tight tracking-wide text-gray-900 sm:text-lg lg:text-xl">
                 Sales Atelier
@@ -219,6 +232,36 @@ export function WizardShell({ children }: WizardShellProps) {
                 <p className="text-sm font-medium text-black">
                   Creating invoice and logging deal...
                 </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Reset Confirmation Modal */}
+        {showResetConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Start a new deal?
+              </h3>
+              <p className="text-sm text-gray-600 mb-6">
+                This will clear all progress and return you to the beginning.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmReset}
+                  className="flex-1 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
+                >
+                  Start new deal
+                </button>
               </div>
             </div>
           </div>
