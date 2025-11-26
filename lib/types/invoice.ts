@@ -156,7 +156,7 @@ export type MakeResponse = {
 // WIZARD STATE
 // ============================================================================
 
-export type WizardStep = 0 | 1 | 2 | 3; // Tax -> Supplier -> Items -> Buyer -> Review
+export type WizardStep = 0 | 1 | 2; // Deal & Logistics -> Items & Pricing -> Buyer & Review
 
 export type WizardState = {
   currentStep: WizardStep;

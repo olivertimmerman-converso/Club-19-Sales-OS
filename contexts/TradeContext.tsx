@@ -91,7 +91,7 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
 
   const nextStep = useCallback(() => {
     setState((prev) => {
-      const nextStep = Math.min(3, prev.currentStep + 1) as WizardStep;
+      const nextStep = Math.min(2, prev.currentStep + 1) as WizardStep;
       return { ...prev, currentStep: nextStep };
     });
   }, []);
@@ -105,14 +105,12 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
 
   const canGoNext = (() => {
     switch (state.currentStep) {
-      case 0: // Tax scenario
-        return state.taxScenario !== null;
-      case 1: // Supplier & Items
+      case 0: // Deal & Logistics (tax scenario + supplier)
+        return state.taxScenario !== null && state.currentSupplier !== null;
+      case 1: // Items & Pricing
         return state.items.length > 0;
-      case 2: // Buyer
-        return state.buyer !== null && !!state.buyer.name;
-      case 3: // Review
-        return false; // No next from review
+      case 2: // Buyer & Review
+        return false; // No next from final step
       default:
         return false;
     }

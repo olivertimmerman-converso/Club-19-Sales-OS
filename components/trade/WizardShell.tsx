@@ -4,9 +4,9 @@ import React, { useEffect } from "react";
 import { useTrade } from "@/contexts/TradeContext";
 import { Club19Logo } from "./Club19Logo";
 
-const STEP_LABELS = ["Tax Scenario", "Supplier & Items", "Buyer", "Review"];
+const STEP_LABELS = ["Deal & Logistics", "Items & Pricing", "Buyer & Review"];
 
-const STEP_LABELS_SHORT = ["Tax", "Supplier", "Buyer", "Review"];
+const STEP_LABELS_SHORT = ["Deal", "Items", "Review"];
 
 type WizardShellProps = {
   children: React.ReactNode;

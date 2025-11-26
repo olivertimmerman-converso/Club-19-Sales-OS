@@ -3,10 +3,9 @@
 import React from "react";
 import { TradeProvider, useTrade } from "@/contexts/TradeContext";
 import { WizardShell } from "@/components/trade/WizardShell";
-import { StepTaxScenario } from "@/components/trade/StepTaxScenario";
-import { StepSupplierItems } from "@/components/trade/StepSupplierItems";
-import { StepBuyer } from "@/components/trade/StepBuyer";
-import { StepReview } from "@/components/trade/StepReview";
+import { StepDealLogistics } from "@/components/trade/StepDealLogistics";
+import { StepItemsAndMargin } from "@/components/trade/StepItemsAndMargin";
+import { StepBuyerAndReview } from "@/components/trade/StepBuyerAndReview";
 
 function WizardContent() {
   const { state } = useTrade();
@@ -14,15 +13,13 @@ function WizardContent() {
   // Render current step
   switch (state.currentStep) {
     case 0:
-      return <StepTaxScenario />;
+      return <StepDealLogistics />;
     case 1:
-      return <StepSupplierItems />;
+      return <StepItemsAndMargin />;
     case 2:
-      return <StepBuyer />;
-    case 3:
-      return <StepReview />;
+      return <StepBuyerAndReview />;
     default:
-      return <div>Unknown step</div>;
+      return <StepDealLogistics />;
   }
 }
 
