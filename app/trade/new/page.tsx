@@ -28,7 +28,7 @@ function WizardContent() {
   };
 
   return (
-    <div className="relative w-full min-h-[600px]">
+    <div className="relative w-full min-h-[520px] py-2 sm:min-h-[600px] sm:py-4 md:min-h-[650px] lg:min-h-[700px]">
       {/* Step 0: Deal & Logistics */}
       <div className={getStepClasses(0)}>
         <StepDealLogistics />
