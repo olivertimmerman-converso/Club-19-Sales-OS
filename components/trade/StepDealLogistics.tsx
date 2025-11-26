@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useTrade } from "@/contexts/TradeContext";
-import { getInvoiceResult, InvoiceScenario, COUNTRIES } from "@/lib/constants";
+import { getInvoiceResult, InvoiceScenario } from "@/lib/constants";
 import { PaymentMethod, TaxRegime } from "@/lib/types/invoice";
+import { CountrySelect } from "@/components/common/CountrySelect";
 
 // Random success messages - pick one when scenario is first set
 const SUCCESS_MESSAGES = [
@@ -22,11 +23,11 @@ export function StepDealLogistics() {
 
   // Supplier & Purchase Info state
   const [supplierName, setSupplierName] = useState("");
-  const [supplierCountry, setSupplierCountry] = useState("UK");
+  const [supplierCountry, setSupplierCountry] = useState("United Kingdom");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
     PaymentMethod.CARD,
   );
-  const [deliveryCountryLocal, setDeliveryCountryLocal] = useState("UK");
+  const [deliveryCountryLocal, setDeliveryCountryLocal] = useState("United Kingdom");
 
   // Tax wizard state (from original InvoiceFlow.tsx)
   const [itemLocation, setItemLocation] = useState<string | null>(null);
@@ -247,40 +248,24 @@ export function StepDealLogistics() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Supplier Country *
-            </label>
-            <select
-              value={supplierCountry}
-              onChange={(e) => setSupplierCountry(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {COUNTRIES.map((country) => (
-                <option key={country} value={country}>
-                  {country}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CountrySelect
+            label="Supplier Country"
+            value={supplierCountry}
+            onChange={setSupplierCountry}
+            placeholder="Select supplier country"
+            helperText="Where the supplier is based"
+            required
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Delivery Country *
-            </label>
-            <select
-              value={deliveryCountryLocal}
-              onChange={(e) => setDeliveryCountryLocal(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {COUNTRIES.map((country) => (
-                <option key={country} value={country}>
-                  {country}
-                </option>
-              ))}
-            </select>
-          </div>
+          <CountrySelect
+            label="Delivery Country"
+            value={deliveryCountryLocal}
+            onChange={setDeliveryCountryLocal}
+            placeholder="Select delivery country"
+            helperText="Where the item will ultimately be delivered"
+            required
+          />
         </div>
 
         <div>
