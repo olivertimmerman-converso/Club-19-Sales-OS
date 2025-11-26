@@ -367,7 +367,7 @@ export function StepDealLogistics() {
             value={supplierName}
             onChange={(e) => setSupplierName(e.target.value)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="e.g. Bags By Appointment, or Harrods"
+            placeholder="e.g. Bags By Appointment or Harrods"
             required
           />
         </div>
