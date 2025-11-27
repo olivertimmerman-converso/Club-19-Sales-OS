@@ -79,7 +79,7 @@ const createInitialState = (): WizardState => ({
   currentItem: null,
   currentSupplier: null,
   currentPaymentMethod: PaymentMethod.CARD,
-  deliveryCountry: "UK", // Default to UK
+  deliveryCountry: "United Kingdom", // Default to UK (use full name for consistency)
   itemLocation: null,
   clientLocation: null,
   purchaseType: null,
