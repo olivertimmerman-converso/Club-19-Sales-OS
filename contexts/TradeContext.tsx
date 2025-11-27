@@ -113,7 +113,7 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
   const nextStep = useCallback(() => {
     setNavigationDirection("forward");
     setState((prev) => {
-      const nextStep = Math.min(2, prev.currentStep + 1) as WizardStep;
+      const nextStep = Math.min(4, prev.currentStep + 1) as WizardStep;
       return { ...prev, currentStep: nextStep };
     });
   }, []);
