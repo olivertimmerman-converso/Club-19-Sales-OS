@@ -29,20 +29,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const isDevelopment = process.env.NODE_ENV === "development";
-
-  // In development, skip Clerk entirely for easier local testing
-  if (isDevelopment) {
-    return (
-      <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
-        <body className={inter.className}>
-          <div className="min-h-screen bg-white">{children}</div>
-        </body>
-      </html>
-    );
-  }
-
-  // In production, use Clerk authentication
   return (
     <ClerkProvider
       appearance={{

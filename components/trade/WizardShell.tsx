@@ -4,6 +4,7 @@ import React, { useEffect } from "react";
 import { useTrade } from "@/contexts/TradeContext";
 import { Club19Logo } from "./Club19Logo";
 import { WizardStep } from "@/lib/types/invoice";
+import { UserButton } from "@clerk/nextjs";
 
 const STEP_LABELS = ["Item Details", "Pricing", "Supplier & Buyer", "Logistics & Tax", "Review & Create"];
 
@@ -43,13 +44,23 @@ export function WizardShell({ children }: WizardShellProps) {
             >
               <Club19Logo />
             </button>
-            <div className="flex flex-col items-end text-right">
-              <h1 className="font-serif text-base font-light leading-tight tracking-wide text-gray-900 sm:text-lg lg:text-xl">
-                Sales Atelier
-              </h1>
-              <p className="mt-0.5 text-[11px] font-light text-gray-500 sm:mt-1 sm:text-xs">
-                Precision deal creation
-              </p>
+            <div className="flex items-center gap-4">
+              <div className="flex flex-col items-end text-right">
+                <h1 className="font-serif text-base font-light leading-tight tracking-wide text-gray-900 sm:text-lg lg:text-xl">
+                  Sales Atelier
+                </h1>
+                <p className="mt-0.5 text-[11px] font-light text-gray-500 sm:mt-1 sm:text-xs">
+                  Precision deal creation
+                </p>
+              </div>
+              <UserButton
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    avatarBox: "w-9 h-9 sm:w-10 sm:h-10",
+                  },
+                }}
+              />
             </div>
           </div>
           <div className="mt-4 h-px bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 sm:mt-5 lg:mt-6"></div>
