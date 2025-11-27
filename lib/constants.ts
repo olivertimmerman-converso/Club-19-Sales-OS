@@ -311,7 +311,7 @@ export type InvoiceScenario = {
 
 /**
  * Get invoice configuration based on user selections
- * This is the exact logic from the prototype
+ * Updated to match Alys' VAT schedule and Oliver's business rules
  */
 export function getInvoiceResult(
   itemLocation: string | null,
@@ -325,94 +325,97 @@ export function getInvoiceResult(
   /* -----------------------------------------------
      UK Item → UK Client
   ----------------------------------------------- */
-  if (itemLocation === "uk" && clientLocation && purchaseType) {
-    const scenarios: Record<string, InvoiceScenario> = {
-      "uk-retail": {
-        taxLiability:
-          "Full price of item including VAT on first line\n+ Service Fee on second line",
+  if (itemLocation === "uk" && clientLocation === "uk" && purchaseType) {
+    if (purchaseType === "retail") {
+      return {
+        taxLiability: "VAT on item + service fee added to invoice",
         brandTheme: "CN 20% VAT",
         amountsAre: "Inclusive",
         accountCode: "425",
         taxType: TAX_20,
         taxLabel: "20% VAT on Income",
-        vatReclaim: "Business reclaims VAT from original purchase",
-      },
-      "uk-margin": {
-        taxLiability: "Item is purchased on UK margin rule",
+        vatReclaim: "Reclaimable",
+      };
+    }
+    if (purchaseType === "margin") {
+      return {
+        taxLiability: "UK margin scheme",
         brandTheme: "CN Margin Scheme",
         amountsAre: "Inclusive",
         accountCode: "424",
         taxType: TAX_ZERO,
         taxLabel: "Zero Rated Income 0%",
         vatReclaim: "None",
-      },
-      "outside-retail": {
-        taxLiability:
-          "Full price of item including VAT on first line\n+ Service Fee on second line",
+      };
+    }
+  }
+
+  /* -----------------------------------------------
+     UK Item → Outside UK Client (Export sale)
+  ----------------------------------------------- */
+  if (itemLocation === "uk" && clientLocation === "outside" && purchaseType) {
+    if (purchaseType === "retail") {
+      return {
+        taxLiability: "Export sale - VAT reclaimable from UK purchase",
         brandTheme: "CN Export Sales",
         amountsAre: "Exclusive",
         accountCode: "423",
         taxType: TAX_ZERO,
         taxLabel: "Zero Rated Income 0%",
-        vatReclaim: "Business reclaims VAT from original purchase",
-      },
-      "outside-margin": {
-        taxLiability: "Item is purchased on UK margin rule",
+        vatReclaim: "Reclaimable",
+      };
+    }
+    if (purchaseType === "margin") {
+      return {
+        taxLiability: "Export sale - UK margin scheme (no VAT reclaim)",
         brandTheme: "CN Export Sales",
         amountsAre: "Exclusive",
         accountCode: "423",
         taxType: TAX_ZERO,
         taxLabel: "Zero Rated Income 0%",
         vatReclaim: "None",
-      },
-    };
-
-    return scenarios[`${clientLocation}-${purchaseType}`] || null;
+      };
+    }
   }
 
   /* -----------------------------------------------
-     Item Outside → UK Client
+     Outside UK Item → UK Client (Import Required)
   ----------------------------------------------- */
   if (itemLocation === "outside" && clientLocation === "uk") {
-    // Item does not ship direct (comes via Club 19)
-    if (directShip === "no" || directShip === null) {
+    // Landed delivery - supplier handles all import taxes
+    if (directShip === "yes" && insuranceLanded === "yes") {
       return {
-        taxLiability: "Full VAT needs adding to Cost and Sale Price",
-        note: "Item needs to come to UK",
-        brandTheme: "CN 20% VAT",
+        taxLiability: "Supplier handles import duties/taxes (landed delivery)",
+        brandTheme: "CN Export Sales",
         amountsAre: "Inclusive",
-        accountCode: "425",
-        taxType: TAX_20,
-        taxLabel: "20% VAT on Income",
+        accountCode: "423",
+        taxType: TAX_ZERO,
+        taxLabel: "Zero Rated Income 0%",
         vatReclaim: "None",
+        note: "No import VAT cost - supplier handled taxes",
       };
     }
 
-    // Supplier ships direct to UK client
-    if (directShip === "yes" && insuranceLanded) {
-      const landed = insuranceLanded === "yes";
-      return {
-        taxLiability: landed
-          ? "No liability, provide client item price plus margin plus delivery"
-          : "Full VAT needs adding to Cost and Sale Price",
-        note: landed ? undefined : "Item needs to come to UK",
-        brandTheme: landed ? "CN Export Sales" : "CN 20% VAT",
-        amountsAre: "Inclusive",
-        accountCode: landed ? "423" : "425",
-        taxType: landed ? TAX_ZERO : TAX_20,
-        taxLabel: landed ? "Zero Rated Income 0%" : "20% VAT on Income",
-        vatReclaim: "None",
-      };
-    }
+    // Item comes to UK (import VAT applies as non-reclaimable cost)
+    // This covers: directShip=no OR (directShip=yes AND insuranceLanded=no)
+    return {
+      taxLiability: "Import VAT = 20% of buy price (non-reclaimable business cost)",
+      note: "Item enters UK - import VAT applies",
+      brandTheme: "CN 20% VAT",
+      amountsAre: "Inclusive",
+      accountCode: "425",
+      taxType: TAX_20,
+      taxLabel: "20% VAT on Income",
+      vatReclaim: "None",
+    };
   }
 
   /* -----------------------------------------------
-     Outside → Outside (export)
+     Outside UK Item → Outside UK Client (Export)
   ----------------------------------------------- */
   if (itemLocation === "outside" && clientLocation === "outside") {
     return {
-      taxLiability:
-        "No liability, provide client item price plus margin plus delivery",
+      taxLiability: "Export sale - no UK import VAT",
       brandTheme: "CN Export Sales",
       amountsAre: "Inclusive",
       accountCode: "423",

@@ -104,10 +104,11 @@ export function StepReview() {
   // Calculate commissionable margin
   const commissionableMarginGBP = useMemo(() => {
     const importExportCost = state.estimatedImportExportGBP ?? 0;
+    const importVATCost = state.importVAT ?? 0;
     return parseFloat(
-      (grossMarginGBP - impliedCosts.total - importExportCost).toFixed(2)
+      (grossMarginGBP - impliedCosts.total - importExportCost - importVATCost).toFixed(2)
     );
-  }, [grossMarginGBP, impliedCosts, state.estimatedImportExportGBP]);
+  }, [grossMarginGBP, impliedCosts, state.estimatedImportExportGBP, state.importVAT]);
 
   // Handle invoice creation
   const handleCreateInvoice = async () => {
@@ -368,6 +369,14 @@ export function StepReview() {
             <span className="text-purple-700">Implied shipping:</span>
             <span className="font-medium text-purple-900">−£{impliedCosts.shipping.toFixed(2)}</span>
           </div>
+          {state.importVAT !== null && state.importVAT > 0 && (
+            <div className="flex justify-between">
+              <span className="text-purple-700">Import VAT (non-reclaimable):</span>
+              <span className="font-medium text-purple-900">
+                −£{state.importVAT.toFixed(2)}
+              </span>
+            </div>
+          )}
           {impliedCosts.cardFees > 0 && (
             <div className="flex justify-between">
               <span className="text-purple-700">Card processing fees:</span>

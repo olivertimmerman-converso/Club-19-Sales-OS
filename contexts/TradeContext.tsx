@@ -61,6 +61,7 @@ type TradeContextType = {
   // Implied costs
   setImpliedCosts: (costs: ImpliedCosts) => void;
   setEstimatedImportExportGBP: (amount: number | null) => void;
+  setImportVAT: (amount: number | null) => void;
 
   // Submission
   setSubmitting: (submitting: boolean) => void;
@@ -94,6 +95,7 @@ const createInitialState = (): WizardState => ({
   notes: "",
   impliedCosts: null,
   estimatedImportExportGBP: null,
+  importVAT: null,
   isSubmitting: false,
   error: null,
 });
@@ -299,6 +301,10 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, estimatedImportExportGBP: amount }));
   }, []);
 
+  const setImportVAT = useCallback((amount: number | null) => {
+    setState((prev) => ({ ...prev, importVAT: amount }));
+  }, []);
+
   const setSubmitting = useCallback((submitting: boolean) => {
     setState((prev) => ({ ...prev, isSubmitting: submitting }));
   }, []);
@@ -342,6 +348,7 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setNotes,
     setImpliedCosts,
     setEstimatedImportExportGBP,
+    setImportVAT,
     setSubmitting,
     setError,
     resetWizard,

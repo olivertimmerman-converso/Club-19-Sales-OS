@@ -209,6 +209,7 @@ export type WizardState = {
   // Costs & margins (Step 2 - Review)
   impliedCosts: ImpliedCosts | null;
   estimatedImportExportGBP: number | null;
+  importVAT: number | null; // Import VAT cost (20% of buy price when item enters UK)
 
   // UI state
   isSubmitting: boolean;
