@@ -161,8 +161,9 @@ export function StepReview() {
   };
 
   const handleConfirmReset = () => {
-    setShowResetConfirm(false);
     resetWizard();
+    goToStep(0);
+    setShowResetConfirm(false);
   };
 
   return (
