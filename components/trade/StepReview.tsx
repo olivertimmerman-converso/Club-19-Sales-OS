@@ -130,6 +130,7 @@ export function StepReview() {
         dueDate: state.dueDate,
         notes: state.notes || undefined,
         estimatedImportExportGBP: state.estimatedImportExportGBP,
+        importVAT: state.importVAT,
       });
 
       // Send to API

@@ -101,12 +101,10 @@ export function calculateImpliedCosts(params: {
   // Calculate card fees if payment method is CARD
   let cardFees = 0;
   if (paymentMethod === PaymentMethod.CARD) {
-    // Sum GBP sell amounts
+    // Sum GBP sell amounts (v2 is GBP-only)
     let totalSellGBP = 0;
     for (const item of items) {
-      if (item.sellCurrency === "GBP") {
-        totalSellGBP += item.sellPrice * item.quantity;
-      }
+      totalSellGBP += item.sellPrice * item.quantity;
     }
 
     // Apply card fee formula

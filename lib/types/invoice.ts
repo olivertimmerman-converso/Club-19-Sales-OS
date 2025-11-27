@@ -82,12 +82,6 @@ export type Buyer = {
 
   // Optional fields
   xeroContactId?: string; // From customer search
-
-  // Legacy fields (no longer used in UI, kept for backwards compatibility)
-  email?: string;
-  phone?: string;
-  country?: string;
-  tag?: string;
 };
 
 // ============================================================================
@@ -124,7 +118,8 @@ export type Trade = {
   impliedCosts: ImpliedCosts;
   grossMarginGBP?: number; // Sum of all items' gross margins
   estimatedImportExportGBP?: number | null; // Estimated import/export taxes in GBP (optional)
-  commissionableMarginGBP?: number; // grossMarginGBP - impliedCosts.total - estimatedImportExportGBP
+  importVAT?: number | null; // Import VAT cost (20% of buy price when item enters UK) - internal only
+  commissionableMarginGBP?: number; // grossMarginGBP - impliedCosts.total - estimatedImportExportGBP - importVAT
 
   // Xero integration (populated after Make.com response)
   invoiceNumber?: string;
@@ -257,8 +252,4 @@ export function isValidTradeItem(item: Partial<TradeItem>): item is TradeItem {
   );
 }
 
-export function requiresFxRate(
-  item: Pick<TradeItem, "buyCurrency" | "sellCurrency">,
-): boolean {
-  return item.buyCurrency !== item.sellCurrency;
-}
+// NOTE: requiresFxRate() removed - FX logic deprecated in favor of GBP-only v2
