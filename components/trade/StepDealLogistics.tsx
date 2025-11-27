@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useTrade } from "@/contexts/TradeContext";
-import { getInvoiceResult, InvoiceScenario } from "@/lib/constants";
+import { getInvoiceResult } from "@/lib/constants";
 import { PaymentMethod, TaxRegime } from "@/lib/types/invoice";
 import { CountrySelect } from "@/components/common/CountrySelect";
 import {
@@ -17,61 +17,28 @@ const SUCCESS_MESSAGES = [
   "Tax settings saved for this deal.",
 ];
 
-// Brand options
-const BRAND_OPTIONS = [
-  "Hermès",
-  "Chanel",
-  "Louis Vuitton",
-  "Dior",
-  "Goyard",
-  "Cartier",
-  "Rolex",
-  "Saint Laurent",
-  "Celine",
-  "Balenciaga",
-  "Other",
-];
-
-// Category options
-const CATEGORY_OPTIONS = [
-  "Handbag",
-  "SLG",
-  "Shoes",
-  "Accessories",
-  "Jewelry",
-  "Ready-to-Wear",
-  "Watch",
-  "Other",
-];
-
-// Separator component (simple border replacement for shadcn/ui Separator)
-function Separator() {
-  return <div className="border-t border-gray-200 my-6" />;
-}
-
 export function StepDealLogistics() {
   const {
     setTaxScenario,
     setCurrentSupplier,
     setCurrentPaymentMethod,
     setDeliveryCountry,
+    setItemLocation: setItemLocationContext,
+    setClientLocation: setClientLocationContext,
+    setPurchaseType: setPurchaseTypeContext,
+    setDirectShip: setDirectShipContext,
+    setLandedDelivery: setLandedDeliveryContext,
   } = useTrade();
 
   // ============================================================================
-  // SECTION A: ITEM DETAILS STATE
+  // SUPPLIER & LOGISTICS STATE
   // ============================================================================
-  const [brand, setBrand] = useState("");
-  const [brandOther, setBrandOther] = useState(""); // For "Other" option
-  const [category, setCategory] = useState("");
-  const [categoryOther, setCategoryOther] = useState(""); // For "Other" option
-  const [description, setDescription] = useState("");
-  const [quantity, setQuantity] = useState<number>(1);
-  const [buyPrice, setBuyPrice] = useState<string>("");
-  const [sellPrice, setSellPrice] = useState<string>("");
+  const [supplierName, setSupplierName] = useState("");
+  const [supplierCountry, setSupplierCountry] = useState("United Kingdom");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">(
+    "",
+  );
 
-  // ============================================================================
-  // SECTION B: LOGISTICS STATE
-  // ============================================================================
   const [deliveryCountryLocal, setDeliveryCountryLocal] = useState("United Kingdom");
   const [itemLocation, setItemLocation] = useState<string | null>(null);
   const [clientLocation, setClientLocation] = useState<string | null>(null);
@@ -84,120 +51,16 @@ export function StepDealLogistics() {
   const [clientLocationTouched, setClientLocationTouched] = useState(false);
 
   // ============================================================================
-  // SECTION C: SUPPLIER STATE
-  // ============================================================================
-  const [supplierName, setSupplierName] = useState("");
-  const [supplierCountry, setSupplierCountry] = useState("United Kingdom");
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">(
-    "",
-  );
-
-  // ============================================================================
   // UI STATE
   // ============================================================================
   const [hasShownSuccess, setHasShownSuccess] = useState(false);
   const [successMessage] = useState(
     () => SUCCESS_MESSAGES[Math.floor(Math.random() * SUCCESS_MESSAGES.length)],
   );
-  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Estimated import/export duties (for tax-aware suggestions)
-  const [estimatedDutiesGBP, setEstimatedDutiesGBP] = useState<number>(0);
-
-  // Gross margin placeholder (will be computed from items in Step 1, placeholder for now)
+  // Estimated import/export duties (for tax-aware suggestions, placeholder for now)
+  const [estimatedDutiesGBP] = useState<number>(0);
   const [grossMarginGBP] = useState<number>(1000); // Default placeholder
-
-  // ============================================================================
-  // PROGRESSIVE REVEAL LOGIC
-  // ============================================================================
-
-  // Section A is always visible
-
-  // Section B (Logistics) reveals when item details are complete
-  const showLogisticsSection = useMemo(() => {
-    // Get effective brand (use brandOther if brand is "Other")
-    const effectiveBrand = brand === "Other" ? brandOther.trim() : brand.trim();
-    // Get effective category (use categoryOther if category is "Other")
-    const effectiveCategory = category === "Other" ? categoryOther.trim() : category.trim();
-
-    return !!(
-      effectiveBrand &&
-      effectiveCategory &&
-      description.trim() &&
-      buyPrice && parseFloat(buyPrice) > 0 &&
-      sellPrice && parseFloat(sellPrice) > 0
-    );
-  }, [brand, brandOther, category, categoryOther, description, buyPrice, sellPrice]);
-
-  // Section C (Supplier) reveals when logistics is complete
-  const showSupplierSection = useMemo(() => {
-    if (!showLogisticsSection) return false;
-
-    // Logistics is complete when we have a valid tax result
-    return !!(
-      itemLocation &&
-      clientLocation &&
-      (itemLocation === "outside" || purchaseType) && // UK items need purchaseType
-      directShip &&
-      // Only require insuranceLanded if not UK→UK and directShip is answered
-      (
-        (supplierCountry === "United Kingdom" && deliveryCountryLocal === "United Kingdom") ||
-        directShip === "no" ||
-        insuranceLanded !== null
-      )
-    );
-  }, [
-    showLogisticsSection,
-    itemLocation,
-    clientLocation,
-    purchaseType,
-    directShip,
-    insuranceLanded,
-    supplierCountry,
-    deliveryCountryLocal,
-  ]);
-
-  // ============================================================================
-  // FIELD CLEARING LOGIC
-  // ============================================================================
-
-  // Clear logistics fields when section hides
-  useEffect(() => {
-    if (!showLogisticsSection) {
-      setItemLocation(null);
-      setClientLocation(null);
-      setPurchaseType(null);
-      setDirectShip(null);
-      setInsuranceLanded(null);
-      setItemLocationTouched(false);
-      setClientLocationTouched(false);
-    }
-  }, [showLogisticsSection]);
-
-  // Clear supplier fields when section hides
-  useEffect(() => {
-    if (!showSupplierSection) {
-      setSupplierName("");
-      setPaymentMethod("");
-      // Don't clear supplierCountry as it's needed for logistics auto-sync
-    }
-  }, [showSupplierSection]);
-
-  // Reset logistics and tax scenario when brand or category changes
-  // This ensures tax calculations are re-done with the new product context
-  useEffect(() => {
-    // Only reset if we already have logistics filled in
-    if (itemLocation || clientLocation || purchaseType || directShip || insuranceLanded) {
-      setItemLocation(null);
-      setClientLocation(null);
-      setPurchaseType(null);
-      setDirectShip(null);
-      setInsuranceLanded(null);
-      setItemLocationTouched(false);
-      setClientLocationTouched(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [brand, category]); // Only watch brand and category, not the "Other" fields or logistics state
 
   // ============================================================================
   // TAX CALCULATION
@@ -291,14 +154,11 @@ export function StepDealLogistics() {
 
   // Auto-sync Q1 and Q2 from supplier/delivery countries (unless manually touched)
   useEffect(() => {
-    let shouldUpdate = false;
-
     // Auto-sync Q1 (itemLocation) from supplierCountry
     if (!itemLocationTouched && supplierCountry) {
       const derivedItemLocation = supplierCountry === "United Kingdom" ? "uk" : "outside";
       if (itemLocation !== derivedItemLocation) {
         setItemLocation(derivedItemLocation);
-        shouldUpdate = true;
       }
     }
 
@@ -307,7 +167,6 @@ export function StepDealLogistics() {
       const derivedClientLocation = deliveryCountryLocal === "United Kingdom" ? "uk" : "outside";
       if (clientLocation !== derivedClientLocation) {
         setClientLocation(derivedClientLocation);
-        shouldUpdate = true;
       }
     }
   }, [
@@ -318,6 +177,27 @@ export function StepDealLogistics() {
     itemLocation,
     clientLocation,
   ]);
+
+  // Sync logistics data to context
+  useEffect(() => {
+    setItemLocationContext(itemLocation);
+  }, [itemLocation, setItemLocationContext]);
+
+  useEffect(() => {
+    setClientLocationContext(clientLocation);
+  }, [clientLocation, setClientLocationContext]);
+
+  useEffect(() => {
+    setPurchaseTypeContext(purchaseType);
+  }, [purchaseType, setPurchaseTypeContext]);
+
+  useEffect(() => {
+    setDirectShipContext(directShip);
+  }, [directShip, setDirectShipContext]);
+
+  useEffect(() => {
+    setLandedDeliveryContext(insuranceLanded);
+  }, [insuranceLanded, setLandedDeliveryContext]);
 
   // ============================================================================
   // DISPLAY HELPERS
@@ -502,493 +382,278 @@ export function StepDealLogistics() {
           Deal & Logistics
         </h2>
         <p className="text-sm text-gray-600">
-          Tell us about the item, logistics, and supplier
+          Supplier details and logistics information
         </p>
       </div>
 
       {/* ========================================================================
-          SECTION A: ITEM DETAILS (Always visible)
+          SUPPLIER & PURCHASE INFO
           ======================================================================== */}
       <div className="border-2 border-blue-400 bg-blue-50 p-4 rounded-lg space-y-4">
-        <h3 className="font-semibold text-blue-900">Item Details</h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Brand *
-            </label>
-            <select
-              value={brand}
-              onChange={(e) => {
-                setBrand(e.target.value);
-                if (e.target.value !== "Other") {
-                  setBrandOther(""); // Clear "Other" field if switching away
-                }
-              }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              required
-            >
-              <option value="">Select brand...</option>
-              {BRAND_OPTIONS.map((brandOption) => (
-                <option key={brandOption} value={brandOption}>
-                  {brandOption}
-                </option>
-              ))}
-            </select>
-            {brand === "Other" && (
-              <input
-                type="text"
-                value={brandOther}
-                onChange={(e) => setBrandOther(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2"
-                placeholder="Specify brand..."
-                required
-              />
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category *
-            </label>
-            <select
-              value={category}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                if (e.target.value !== "Other") {
-                  setCategoryOther(""); // Clear "Other" field if switching away
-                }
-              }}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              required
-            >
-              <option value="">Select category...</option>
-              {CATEGORY_OPTIONS.map((categoryOption) => (
-                <option key={categoryOption} value={categoryOption}>
-                  {categoryOption}
-                </option>
-              ))}
-            </select>
-            {category === "Other" && (
-              <input
-                type="text"
-                value={categoryOther}
-                onChange={(e) => setCategoryOther(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 mt-2"
-                placeholder="Specify category..."
-                required
-              />
-            )}
-          </div>
-        </div>
+        <h3 className="font-semibold text-blue-900">Supplier & Purchase Info</h3>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description *
+            Supplier Name *
           </label>
           <input
             type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={supplierName}
+            onChange={(e) => setSupplierName(e.target.value)}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="e.g. Birkin 30 Togo Gold GHW"
+            placeholder="e.g. Bags By Appointment or Harrods"
             required
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Quantity *
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={quantity}
-              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CountrySelect
+            label="Supplier Country"
+            value={supplierCountry}
+            onChange={setSupplierCountry}
+            placeholder="Select supplier country"
+            helperText="Where the supplier is based"
+            required
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Buy Price (GBP) *
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={buyPrice}
-              onChange={(e) => setBuyPrice(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="0.00"
-              required
-            />
-          </div>
+          <CountrySelect
+            label="Delivery Country"
+            value={deliveryCountryLocal}
+            onChange={setDeliveryCountryLocal}
+            placeholder="Select delivery country"
+            helperText="Where the item will ultimately be delivered"
+            required
+          />
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Sell Price (GBP) *
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={sellPrice}
-              onChange={(e) => setSellPrice(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="0.00"
-              required
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Payment Method *
+          </label>
+          <select
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            required
+          >
+            <option value="">Select payment method...</option>
+            <option value={PaymentMethod.CARD}>Card</option>
+            <option value={PaymentMethod.BANK_TRANSFER}>Bank Transfer</option>
+          </select>
         </div>
       </div>
 
       {/* ========================================================================
-          SECTION B: LOGISTICS & TAX TREATMENT (Revealed when item details complete)
+          TAX & LOGISTICS QUESTIONS
           ======================================================================== */}
-      {showLogisticsSection && (
+      {/* Q1: Where is the item? */}
+      <div className="space-y-3">
+        <div>
+          <h3 className="font-semibold text-gray-900">1. Where is the item?</h3>
+          <p className="text-xs text-gray-500 mt-1">
+            Pre-filled from supplier country. Change this if the item is stored somewhere else.
+          </p>
+        </div>
+        <button
+          type="button"
+          className={`w-full p-3 border rounded-md text-left transition-colors ${
+            itemLocation === "uk"
+              ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+              : "border-gray-300 hover:border-gray-400 text-gray-700"
+          }`}
+          onClick={() => {
+            setItemLocation("uk");
+            setItemLocationTouched(true);
+            setClientLocation(null);
+            setPurchaseType(null);
+            setDirectShip(null);
+            setInsuranceLanded(null);
+          }}
+        >
+          In the UK
+        </button>
+        <button
+          type="button"
+          className={`w-full p-3 border rounded-md text-left transition-colors ${
+            itemLocation === "outside"
+              ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+              : "border-gray-300 hover:border-gray-400 text-gray-700"
+          }`}
+          onClick={() => {
+            setItemLocation("outside");
+            setItemLocationTouched(true);
+            setClientLocation(null);
+            setPurchaseType(null);
+            setDirectShip(null);
+            setInsuranceLanded(null);
+          }}
+        >
+          Outside UK
+        </button>
+      </div>
+
+      {/* Q2: Where is the delivery address? */}
+      {itemLocation && (
+        <div className="space-y-3 animate-fade-in">
+          <div>
+            <h3 className="font-semibold text-gray-900">
+              2. Delivery address?
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Pre-filled from delivery country. Change the delivery country above if this is wrong.
+            </p>
+          </div>
+          <button
+            type="button"
+            className={`w-full p-3 border rounded-md text-left transition-colors ${
+              clientLocation === "uk"
+                ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+                : "border-gray-300 hover:border-gray-400 text-gray-700"
+            }`}
+            onClick={() => {
+              setClientLocation("uk");
+              setClientLocationTouched(true);
+              setPurchaseType(null);
+              setDirectShip(null);
+              setInsuranceLanded(null);
+            }}
+          >
+            UK delivery
+          </button>
+          <button
+            type="button"
+            className={`w-full p-3 border rounded-md text-left transition-colors ${
+              clientLocation === "outside"
+                ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+                : "border-gray-300 hover:border-gray-400 text-gray-700"
+            }`}
+            onClick={() => {
+              setClientLocation("outside");
+              setClientLocationTouched(true);
+              setPurchaseType(null);
+              setDirectShip(null);
+              setInsuranceLanded(null);
+            }}
+          >
+            Outside UK
+          </button>
+        </div>
+      )}
+
+      {/* Q3: UK purchase type (only for UK items) */}
+      {itemLocation === "uk" && clientLocation && (
+        <div className="space-y-3 animate-fade-in">
+          <h3 className="font-semibold text-gray-900">
+            3. How is the item purchased?
+          </h3>
+          <button
+            type="button"
+            onClick={() => setPurchaseType("retail")}
+            className={`w-full p-3 border rounded-md text-left transition-colors ${
+              purchaseType === "retail"
+                ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+                : "border-gray-300 hover:border-gray-400 text-gray-700"
+            }`}
+          >
+            From retail store
+          </button>
+          <button
+            type="button"
+            onClick={() => setPurchaseType("margin")}
+            className={`w-full p-3 border rounded-md text-left transition-colors ${
+              purchaseType === "margin"
+                ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+                : "border-gray-300 hover:border-gray-400 text-gray-700"
+            }`}
+          >
+            On UK margin rule
+          </button>
+        </div>
+      )}
+
+      {/* Shipping & logistics group - show after Q1-Q3 are answered */}
+      {shouldShowShippingQuestions && (
         <>
-          <Separator />
-          <div className="border-2 border-green-400 bg-green-50 p-4 rounded-lg space-y-4 animate-fade-in">
-            <h3 className="font-semibold text-green-900">Logistics & Tax Treatment</h3>
+          <div className="border-t pt-6 animate-fade-in">
+            <h3 className="text-sm font-semibold text-gray-800 mb-3">
+              Shipping & logistics
+            </h3>
+          </div>
 
+          {/* Q4: Supplier direct ship */}
+          <div className="space-y-3 animate-fade-in">
             <div>
-              <CountrySelect
-                label="Delivery Country"
-                value={deliveryCountryLocal}
-                onChange={setDeliveryCountryLocal}
-                placeholder="Select delivery country"
-                helperText="Where the item will ultimately be delivered"
-                required
-              />
+              <h3 className="font-semibold text-gray-900">
+                {itemLocation === "uk" ? "4" : "3"}. Supplier ships direct?
+              </h3>
             </div>
-
-            {/* Q1: Where is the item? */}
-            <div className="space-y-3">
-              <div>
-                <h4 className="font-semibold text-gray-900">1. Where is the item currently located?</h4>
-                <p className="text-xs text-gray-500 mt-1">
-                  This will be auto-filled based on supplier country in the next section.
-                </p>
-              </div>
-              <button
-                type="button"
-                className={`w-full p-3 border rounded-md text-left transition-colors ${
-                  itemLocation === "uk"
-                    ? "border-green-600 bg-green-100 text-green-900 font-medium"
-                    : "border-gray-300 hover:border-gray-400 text-gray-700"
-                }`}
-                onClick={() => {
-                  setItemLocation("uk");
-                  setItemLocationTouched(true);
-                  setClientLocation(null);
-                  setPurchaseType(null);
-                  setDirectShip(null);
-                  setInsuranceLanded(null);
-                }}
-              >
-                In the UK
-              </button>
-              <button
-                type="button"
-                className={`w-full p-3 border rounded-md text-left transition-colors ${
-                  itemLocation === "outside"
-                    ? "border-green-600 bg-green-100 text-green-900 font-medium"
-                    : "border-gray-300 hover:border-gray-400 text-gray-700"
-                }`}
-                onClick={() => {
-                  setItemLocation("outside");
-                  setItemLocationTouched(true);
-                  setClientLocation(null);
-                  setPurchaseType(null);
-                  setDirectShip(null);
-                  setInsuranceLanded(null);
-                }}
-              >
-                Outside UK
-              </button>
-            </div>
-
-            {/* Q2: Where is the delivery address? */}
-            {itemLocation && (
-              <div className="space-y-3 animate-fade-in">
-                <div>
-                  <h4 className="font-semibold text-gray-900">
-                    2. Delivery address?
-                  </h4>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Pre-filled from delivery country above.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className={`w-full p-3 border rounded-md text-left transition-colors ${
-                    clientLocation === "uk"
-                      ? "border-green-600 bg-green-100 text-green-900 font-medium"
-                      : "border-gray-300 hover:border-gray-400 text-gray-700"
-                  }`}
-                  onClick={() => {
-                    setClientLocation("uk");
-                    setClientLocationTouched(true);
-                    setPurchaseType(null);
-                    setDirectShip(null);
-                    setInsuranceLanded(null);
-                  }}
-                >
-                  UK delivery
-                </button>
-                <button
-                  type="button"
-                  className={`w-full p-3 border rounded-md text-left transition-colors ${
-                    clientLocation === "outside"
-                      ? "border-green-600 bg-green-100 text-green-900 font-medium"
-                      : "border-gray-300 hover:border-gray-400 text-gray-700"
-                  }`}
-                  onClick={() => {
-                    setClientLocation("outside");
-                    setClientLocationTouched(true);
-                    setPurchaseType(null);
-                    setDirectShip(null);
-                    setInsuranceLanded(null);
-                  }}
-                >
-                  Outside UK
-                </button>
-              </div>
-            )}
-
-            {/* Q3: UK purchase type (only for UK items) */}
-            {itemLocation === "uk" && clientLocation && (
-              <div className="space-y-3 animate-fade-in">
-                <h4 className="font-semibold text-gray-900">
-                  3. How is the item purchased?
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => setPurchaseType("retail")}
-                  className={`w-full p-3 border rounded-md text-left transition-colors ${
-                    purchaseType === "retail"
-                      ? "border-green-600 bg-green-100 text-green-900 font-medium"
-                      : "border-gray-300 hover:border-gray-400 text-gray-700"
-                  }`}
-                >
-                  From retail store
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPurchaseType("margin")}
-                  className={`w-full p-3 border rounded-md text-left transition-colors ${
-                    purchaseType === "margin"
-                      ? "border-green-600 bg-green-100 text-green-900 font-medium"
-                      : "border-gray-300 hover:border-gray-400 text-gray-700"
-                  }`}
-                >
-                  On UK margin rule
-                </button>
-              </div>
-            )}
-
-            {/* Shipping & logistics group - show after Q1-Q3 are answered */}
-            {shouldShowShippingQuestions && (
-              <>
-                {/* Q4: Supplier direct ship */}
-                <div className="space-y-3 animate-fade-in">
-                  <div>
-                    <h4 className="font-semibold text-gray-900">
-                      {itemLocation === "uk" ? "4" : "3"}. Supplier ships direct?
-                    </h4>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDirectShip("no");
-                      setInsuranceLanded(null);
-                    }}
-                    className={`w-full p-3 border rounded-md text-left transition-colors ${
-                      directShip === "no"
-                        ? "border-green-600 bg-green-100 text-green-900 font-medium"
-                        : "border-gray-300 hover:border-gray-400 text-gray-700"
-                    }`}
-                  >
-                    No, via us
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDirectShip("yes");
-                      setInsuranceLanded(null);
-                    }}
-                    className={`w-full p-3 border rounded-md text-left transition-colors ${
-                      directShip === "yes"
-                        ? "border-green-600 bg-green-100 text-green-900 font-medium"
-                        : "border-gray-300 hover:border-gray-400 text-gray-700"
-                    }`}
-                  >
-                    Yes, direct to client
-                  </button>
-                </div>
-
-                {/* Q5: Landed delivery */}
-                {directShip && shouldShowShippingQuestions &&
-                 !(supplierCountry === "United Kingdom" && deliveryCountryLocal === "United Kingdom") && (
-                  <div className="space-y-3 animate-fade-in">
-                    <div>
-                      <h4 className="font-semibold text-gray-900">
-                        {itemLocation === "uk" ? "5" : "4"}. Landed delivery?
-                      </h4>
-                      <p className="text-xs text-gray-500 mt-1">
-                        &ldquo;Landed&rdquo; means duties, customs & insurance are included in the sale price.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setInsuranceLanded("no")}
-                      className={`w-full p-3 border rounded-md text-left transition-colors ${
-                        insuranceLanded === "no"
-                          ? "border-green-600 bg-green-100 text-green-900 font-medium"
-                          : "border-gray-300 hover:border-gray-400 text-gray-700"
-                      }`}
-                    >
-                      No
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInsuranceLanded("yes")}
-                      className={`w-full p-3 border rounded-md text-left transition-colors ${
-                        insuranceLanded === "yes"
-                          ? "border-green-600 bg-green-100 text-green-900 font-medium"
-                          : "border-gray-300 hover:border-gray-400 text-gray-700"
-                      }`}
-                    >
-                      Yes
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* Tax scenario display (read-only) */}
-            {result && (
-              <div className="border-t-4 border-green-600 bg-white p-5 rounded-lg animate-fade-in transition-all duration-200 mt-4">
-                <h4 className="font-bold text-lg mb-4 text-green-900">
-                  Tax treatment (automated)
-                </h4>
-
-                <div className="space-y-3 mb-4">
-                  {/* Sale type */}
-                  <div className="flex justify-between items-start">
-                    <span className="text-sm font-medium text-green-800">
-                      Sale type:
-                    </span>
-                    <span className="text-sm text-green-900 font-semibold text-right">
-                      {saleTypeLabel}
-                    </span>
-                  </div>
-
-                  {/* VAT on purchase */}
-                  <div className="flex justify-between items-start">
-                    <span className="text-sm font-medium text-green-800">
-                      VAT on purchase:
-                    </span>
-                    <span className="text-sm text-green-900 font-semibold">
-                      {vatReclaimStatus}
-                    </span>
-                  </div>
-
-                  {/* Delivery path */}
-                  <div className="flex justify-between items-start">
-                    <span className="text-sm font-medium text-green-800">
-                      Delivery path:
-                    </span>
-                    <span className="text-sm text-green-900 font-semibold text-right">
-                      {deliveryPath}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Key notes */}
-                {keyNotes.length > 0 && (
-                  <div className="mb-4 bg-green-50 border border-green-200 rounded-md p-3">
-                    <div className="text-xs font-semibold uppercase text-green-700 mb-2">
-                      Key notes
-                    </div>
-                    <ul className="space-y-1.5">
-                      {keyNotes.map((note, index) => (
-                        <li
-                          key={index}
-                          className="text-sm text-gray-800 flex items-start"
-                        >
-                          <span className="mr-2 text-green-600">•</span>
-                          <span className="flex-1">{note}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Reassurance text */}
-                <div className="text-sm text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-md">
-                  We&apos;ll handle the tax coding automatically
-                </div>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setDirectShip("no");
+                setInsuranceLanded(null);
+              }}
+              className={`w-full p-3 border rounded-md text-left transition-colors ${
+                directShip === "no"
+                  ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+                  : "border-gray-300 hover:border-gray-400 text-gray-700"
+              }`}
+            >
+              No, via us
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDirectShip("yes");
+                setInsuranceLanded(null);
+              }}
+              className={`w-full p-3 border rounded-md text-left transition-colors ${
+                directShip === "yes"
+                  ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+                  : "border-gray-300 hover:border-gray-400 text-gray-700"
+              }`}
+            >
+              Yes, direct to client
+            </button>
           </div>
         </>
       )}
 
-      {/* ========================================================================
-          SECTION C: SUPPLIER DETAILS (Revealed when logistics complete)
-          ======================================================================== */}
-      {showSupplierSection && (
-        <>
-          <Separator />
-          <div className="border-2 border-purple-400 bg-purple-50 p-4 rounded-lg space-y-4 animate-fade-in">
-            <h3 className="font-semibold text-purple-900">Supplier Details</h3>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Supplier Name *
-              </label>
-              <input
-                type="text"
-                value={supplierName}
-                onChange={(e) => setSupplierName(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="e.g. Bags By Appointment or Harrods"
-                required
-              />
-            </div>
-
-            <div>
-              <CountrySelect
-                label="Supplier Country"
-                value={supplierCountry}
-                onChange={setSupplierCountry}
-                placeholder="Select supplier country"
-                helperText="Where the supplier is based"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Payment Method *
-              </label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                required
-              >
-                <option value="">Select payment method...</option>
-                <option value={PaymentMethod.CARD}>Card</option>
-                <option value={PaymentMethod.BANK_TRANSFER}>Bank Transfer</option>
-              </select>
-            </div>
+      {/* Q5: Landed delivery */}
+      {directShip && shouldShowShippingQuestions &&
+       !(supplierCountry === "United Kingdom" && deliveryCountryLocal === "United Kingdom") && (
+        <div className="space-y-3 animate-fade-in">
+          <div>
+            <h3 className="font-semibold text-gray-900">
+              {itemLocation === "uk" ? "5" : "4"}. Landed delivery?
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              &ldquo;Landed&rdquo; means duties, customs & insurance are included in the sale price.
+            </p>
           </div>
-        </>
+          <button
+            type="button"
+            onClick={() => setInsuranceLanded("no")}
+            className={`w-full p-3 border rounded-md text-left transition-colors ${
+              insuranceLanded === "no"
+                ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+                : "border-gray-300 hover:border-gray-400 text-gray-700"
+            }`}
+          >
+            No
+          </button>
+          <button
+            type="button"
+            onClick={() => setInsuranceLanded("yes")}
+            className={`w-full p-3 border rounded-md text-left transition-colors ${
+              insuranceLanded === "yes"
+                ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+                : "border-gray-300 hover:border-gray-400 text-gray-700"
+            }`}
+          >
+            Yes
+          </button>
+        </div>
       )}
 
       {/* High-tax warning banner */}
@@ -1029,6 +694,72 @@ export function StepDealLogistics() {
             </div>
           </div>
         )}
+
+      {/* Summary Card */}
+      {result && (
+        <div className="border-t-4 border-green-600 bg-green-50 p-5 rounded-lg animate-fade-in transition-all duration-200">
+          <h3 className="font-bold text-lg mb-4 text-green-900">
+            Tax treatment
+          </h3>
+
+          <div className="space-y-3 mb-4">
+            {/* Sale type */}
+            <div className="flex justify-between items-start">
+              <span className="text-sm font-medium text-green-800">
+                Sale type:
+              </span>
+              <span className="text-sm text-green-900 font-semibold text-right">
+                {saleTypeLabel}
+              </span>
+            </div>
+
+            {/* VAT on purchase */}
+            <div className="flex justify-between items-start">
+              <span className="text-sm font-medium text-green-800">
+                VAT on purchase:
+              </span>
+              <span className="text-sm text-green-900 font-semibold">
+                {vatReclaimStatus}
+              </span>
+            </div>
+
+            {/* Delivery path */}
+            <div className="flex justify-between items-start">
+              <span className="text-sm font-medium text-green-800">
+                Delivery path:
+              </span>
+              <span className="text-sm text-green-900 font-semibold text-right">
+                {deliveryPath}
+              </span>
+            </div>
+          </div>
+
+          {/* Key notes */}
+          {keyNotes.length > 0 && (
+            <div className="mb-4 bg-white border border-green-200 rounded-md p-3">
+              <div className="text-xs font-semibold uppercase text-green-700 mb-2">
+                Key notes
+              </div>
+              <ul className="space-y-1.5">
+                {keyNotes.map((note, index) => (
+                  <li
+                    key={index}
+                    className="text-sm text-gray-800 flex items-start"
+                  >
+                    <span className="mr-2 text-green-600">•</span>
+                    <span className="flex-1">{note}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Reassurance text */}
+          <div className="text-sm text-green-700 bg-white border border-green-200 px-3 py-2 rounded-md">
+            We&apos;ll handle the tax coding automatically
+          </div>
+        </div>
+      )}
 
       {/* Success feedback */}
       {result && hasShownSuccess && (

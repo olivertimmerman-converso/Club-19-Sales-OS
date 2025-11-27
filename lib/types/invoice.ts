@@ -180,6 +180,13 @@ export type WizardState = {
   currentFxRate: number | null;
   deliveryCountry: string; // Where items will be delivered (for shipping cost estimation)
 
+  // Logistics data (Step 0)
+  itemLocation: string | null; // "uk" | "outside"
+  clientLocation: string | null; // "uk" | "outside"
+  purchaseType: string | null; // "retail" | "margin"
+  directShip: string | null; // "yes" | "no"
+  landedDelivery: string | null; // "yes" | "no"
+
   // Items (Step 1)
   items: TradeItem[];
   editingItemId: string | null; // ID of item being edited, or 'new'

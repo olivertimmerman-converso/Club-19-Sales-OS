@@ -223,6 +223,71 @@ export function StepItemsAndMargin() {
     setMode("different-supplier");
   };
 
+  // Item Context Summary Component
+  const ItemContextSummary = () => {
+    if (!state.currentSupplier || !state.taxScenario) {
+      return null;
+    }
+
+    return (
+      <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm">
+        <p className="font-medium text-gray-900 mb-2">Deal Context</p>
+        <ul className="space-y-1 text-gray-700">
+          <li>
+            <strong>Supplier:</strong> {state.currentSupplier.name} ({state.currentSupplier.country})
+          </li>
+          <li>
+            <strong>Payment Method:</strong>{" "}
+            {state.currentPaymentMethod === "CARD" ? "Card" : "Bank Transfer"}
+          </li>
+          <li>
+            <strong>Delivery Country:</strong> {state.deliveryCountry}
+          </li>
+          {state.itemLocation && (
+            <li>
+              <strong>Item Location:</strong>{" "}
+              {state.itemLocation === "uk" ? "In the UK" : "Outside the UK"}
+            </li>
+          )}
+          {state.clientLocation && (
+            <li>
+              <strong>Client Location:</strong>{" "}
+              {state.clientLocation === "uk" ? "UK delivery" : "Outside UK"}
+            </li>
+          )}
+          {state.purchaseType && (
+            <li>
+              <strong>Purchase Type:</strong>{" "}
+              {state.purchaseType === "retail" ? "Retail" : "Margin Scheme"}
+            </li>
+          )}
+          {state.directShip && (
+            <li>
+              <strong>Direct Ship:</strong> {state.directShip === "yes" ? "Yes" : "No"}
+            </li>
+          )}
+          {state.landedDelivery && (
+            <li>
+              <strong>Landed Delivery:</strong>{" "}
+              {state.landedDelivery === "yes" ? "Yes" : "No"}
+            </li>
+          )}
+          <li className="pt-2 border-t border-gray-300">
+            <strong>Tax Treatment:</strong>
+          </li>
+          <li className="ml-4">
+            <span className="text-xs text-gray-600">Sale Type:</span>{" "}
+            {state.taxScenario.taxLabel}
+          </li>
+          <li className="ml-4">
+            <span className="text-xs text-gray-600">VAT on Purchase:</span>{" "}
+            {state.taxScenario.vatReclaim}
+          </li>
+        </ul>
+      </div>
+    );
+  };
+
   if (mode === "list" && state.items.length > 0) {
     return (
       <div className="space-y-6">
@@ -234,6 +299,9 @@ export function StepItemsAndMargin() {
             Add line items and review internal economics
           </p>
         </div>
+
+        {/* Item Context Summary */}
+        <ItemContextSummary />
 
         {/* Items List */}
         <div className="space-y-3">
@@ -444,6 +512,9 @@ export function StepItemsAndMargin() {
             : "Adding another item from the same supplier."}
         </p>
       </div>
+
+      {/* Item Context Summary */}
+      <ItemContextSummary />
 
       <form
         onSubmit={(e) => {

@@ -37,6 +37,13 @@ type TradeContextType = {
   setCurrentFxRate: (rate: number | null) => void;
   setDeliveryCountry: (country: string) => void;
 
+  // Logistics data
+  setItemLocation: (location: string | null) => void;
+  setClientLocation: (location: string | null) => void;
+  setPurchaseType: (type: string | null) => void;
+  setDirectShip: (directShip: string | null) => void;
+  setLandedDelivery: (landed: string | null) => void;
+
   // Items
   addItem: (item: TradeItem) => void;
   updateItem: (itemId: string, item: Partial<TradeItem>) => void;
@@ -73,6 +80,11 @@ const createInitialState = (): WizardState => ({
   currentBuyCurrency: "GBP",
   currentFxRate: null,
   deliveryCountry: "UK", // Default to UK
+  itemLocation: null,
+  clientLocation: null,
+  purchaseType: null,
+  directShip: null,
+  landedDelivery: null,
   items: [],
   editingItemId: null,
   buyer: null,
@@ -184,6 +196,26 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, deliveryCountry: country }));
   }, []);
 
+  const setItemLocation = useCallback((location: string | null) => {
+    setState((prev) => ({ ...prev, itemLocation: location }));
+  }, []);
+
+  const setClientLocation = useCallback((location: string | null) => {
+    setState((prev) => ({ ...prev, clientLocation: location }));
+  }, []);
+
+  const setPurchaseType = useCallback((type: string | null) => {
+    setState((prev) => ({ ...prev, purchaseType: type }));
+  }, []);
+
+  const setDirectShip = useCallback((directShip: string | null) => {
+    setState((prev) => ({ ...prev, directShip: directShip }));
+  }, []);
+
+  const setLandedDelivery = useCallback((landed: string | null) => {
+    setState((prev) => ({ ...prev, landedDelivery: landed }));
+  }, []);
+
   const addItem = useCallback((item: TradeItem) => {
     setState((prev) => ({
       ...prev,
@@ -265,6 +297,11 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setCurrentBuyCurrency,
     setCurrentFxRate,
     setDeliveryCountry,
+    setItemLocation,
+    setClientLocation,
+    setPurchaseType,
+    setDirectShip,
+    setLandedDelivery,
     addItem,
     updateItem,
     removeItem,
