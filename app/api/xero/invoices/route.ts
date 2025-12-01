@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getValidTokens } from "@/lib/xero-auth";
 import { createXeroInvoice } from "@/lib/xero";
+import { getBrandingThemeId } from "@/lib/xero-branding-themes";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -156,11 +157,47 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Create invoice in Xero
+    // 5. Resolve branding theme name to GUID (if provided)
+    let resolvedBrandingThemeId: string | undefined = payload.brandingThemeId;
+
+    if (payload.brandingThemeId) {
+      try {
+        console.log(`[XERO INVOICE] Resolving branding theme: "${payload.brandingThemeId}"`);
+
+        // Check if it's already a GUID (contains dashes) or a name
+        const isGuid = payload.brandingThemeId.includes("-");
+
+        if (!isGuid) {
+          // It's a name, need to resolve to GUID
+          console.log(`[XERO INVOICE] Branding theme appears to be a name, fetching GUID...`);
+          resolvedBrandingThemeId = await getBrandingThemeId(userId, payload.brandingThemeId);
+
+          if (resolvedBrandingThemeId) {
+            console.log(`[XERO INVOICE] ✓ Resolved "${payload.brandingThemeId}" → ${resolvedBrandingThemeId}`);
+          } else {
+            console.warn(`[XERO INVOICE] ⚠️ Branding theme "${payload.brandingThemeId}" not found, will omit from invoice`);
+            resolvedBrandingThemeId = undefined;
+          }
+        } else {
+          console.log(`[XERO INVOICE] ✓ Branding theme is already a GUID: ${payload.brandingThemeId}`);
+        }
+      } catch (error: any) {
+        console.warn(`[XERO INVOICE] ⚠️ Failed to resolve branding theme, will omit: ${error.message}`);
+        resolvedBrandingThemeId = undefined;
+      }
+    }
+
+    // Update payload with resolved GUID
+    const resolvedPayload = {
+      ...payload,
+      brandingThemeId: resolvedBrandingThemeId,
+    };
+
+    // 6. Create invoice in Xero
     console.log("[XERO INVOICE] Creating invoice in Xero...");
     let invoice;
     try {
-      invoice = await createXeroInvoice(tenantId, accessToken, payload);
+      invoice = await createXeroInvoice(tenantId, accessToken, resolvedPayload);
       console.log(`[XERO INVOICE] ✓ Invoice created successfully`);
       console.log(`[XERO INVOICE] Invoice ID: ${invoice.InvoiceID}`);
       console.log(`[XERO INVOICE] Invoice Number: ${invoice.InvoiceNumber}`);
