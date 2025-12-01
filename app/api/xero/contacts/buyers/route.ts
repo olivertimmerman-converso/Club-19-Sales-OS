@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getValidTokens } from "@/lib/xero-auth";
+import { getAllXeroContacts } from "@/lib/xero-contacts-cache";
+import { searchBuyers } from "@/lib/search";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /**
- * Xero Contact from API
- */
-interface XeroContact {
-  ContactID: string;
-  Name: string;
-  EmailAddress?: string;
-  IsCustomer: boolean;
-  IsSupplier: boolean;
-}
-
-/**
- * Normalized contact response
+ * Normalized contact response for UI
  */
 interface NormalizedContact {
   contactId: string;
@@ -29,22 +19,29 @@ interface NormalizedContact {
 
 /**
  * GET /api/xero/contacts/buyers
- * Search Xero contacts that are BUYERS/CUSTOMERS only
- * Query param: ?query=searchterm
  *
- * Filter: IsCustomer==true OR Sales.DefaultLineAmountType!=""
+ * Make-Style Fuzzy Search for Buyer/Customer Contacts
+ *
+ * This endpoint:
+ * 1. Fetches ALL Xero contacts (cached for 10 min)
+ * 2. Performs local multi-field fuzzy search
+ * 3. Classifies contacts as buyers using intelligent rules
+ * 4. Returns top 15 ranked results
+ *
+ * NO Xero API filtering - all matching happens locally.
+ * This matches and exceeds Make.com search quality.
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  console.log("[XERO BUYERS] === API Route Started ===");
+  console.log("[XERO BUYER SEARCH] === API Route Started ===");
 
   try {
     // 1. Authenticate user
     const { userId } = await auth();
-    console.log(`[XERO BUYERS] User ID: ${userId || "NOT AUTHENTICATED"}`);
+    console.log(`[XERO BUYER SEARCH] User ID: ${userId || "NOT AUTHENTICATED"}`);
 
     if (!userId) {
-      console.error("[XERO BUYERS] ❌ Unauthorized request");
+      console.error("[XERO BUYER SEARCH] ❌ Unauthorized request");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -54,76 +51,28 @@ export async function GET(request: NextRequest) {
     // 2. Get search query
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("query");
-    console.log(`[XERO BUYERS] Query parameter: "${query}"`);
+    console.log(`[XERO BUYER SEARCH] Query parameter: "${query}"`);
 
     if (!query || query.length < 2) {
-      console.log(`[XERO BUYERS] Query too short (${query?.length || 0} chars), returning empty`);
+      console.log(`[XERO BUYER SEARCH] Query too short (${query?.length || 0} chars), returning empty`);
       return NextResponse.json({ contacts: [] });
     }
 
-    console.log(`[XERO BUYERS] Searching for: "${query}" (user: ${userId})`);
+    console.log(`[XERO BUYER SEARCH] Searching for: "${query}" (user: ${userId})`);
 
-    // 3. Get valid Xero OAuth tokens (auto-refreshes if needed)
-    let accessToken: string;
-    let tenantId: string;
-
+    // 3. Get all contacts from cache (or fetch if needed)
+    let allContacts;
     try {
-      console.log("[XERO BUYERS] Fetching valid tokens...");
-      const tokens = await getValidTokens(userId);
-      accessToken = tokens.accessToken;
-      tenantId = tokens.tenantId;
-      console.log(`[XERO BUYERS] ✓ Valid tokens obtained for tenant: ${tenantId}`);
+      allContacts = await getAllXeroContacts(userId);
+      console.log(`[XERO BUYER SEARCH] Loaded ${allContacts.length} total contacts from cache`);
     } catch (error: any) {
-      console.error("[XERO BUYERS] ❌ Failed to get Xero tokens:", error.message);
-      return NextResponse.json(
-        {
-          error: "Xero not connected",
-          message: error.message,
-          action: "connect_xero",
-        },
-        { status: 401 }
-      );
-    }
+      console.error("[XERO BUYER SEARCH] ❌ Failed to fetch contacts:", error.message);
 
-    // 4. Build Xero API URL with BUYERS filter - DUAL MODE SEARCH
-    // Sanitize query for safe use in Xero filter
-    const sanitizedQuery = query.replace(/"/g, '\\"').replace(/\\/g, '\\\\');
-    const nameFilter = `Name.Contains("${sanitizedQuery}")`;
-
-    // FIRST ATTEMPT: Try IsCustomer==true filter
-    let whereClause = `${nameFilter} AND IsCustomer==true`;
-    let encodedWhere = encodeURIComponent(whereClause);
-    let xeroUrl = `https://api.xero.com/api.xro/2.0/Contacts?where=${encodedWhere}`;
-
-    console.log(`[XERO BUYERS] First attempt with filter: ${whereClause}`);
-
-    // 5. Call Xero API (first attempt)
-    console.log("[XERO BUYERS] Calling Xero API (IsCustomer filter)...");
-    let response = await fetch(xeroUrl, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Xero-tenant-id": tenantId,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
-
-    console.log(`[XERO BUYERS] First attempt response status: ${response.status}`);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[XERO BUYERS] ❌ Xero API error:", {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
-      });
-
-      // Token might be invalid - suggest reconnecting
-      if (response.status === 401 || response.status === 403) {
+      // Check if it's an auth error
+      if (error.message.includes("Xero") || error.message.includes("token")) {
         return NextResponse.json(
           {
-            error: "Xero authentication failed",
+            error: "Xero not connected",
             message: "Please reconnect your Xero account",
             action: "reconnect_xero",
           },
@@ -132,85 +81,46 @@ export async function GET(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: "Xero API error", details: errorText },
-        { status: response.status }
+        { error: "Failed to fetch contacts", details: error.message },
+        { status: 500 }
       );
     }
 
-    let data = await response.json();
-    let contacts: NormalizedContact[] = (data.Contacts || []).map((contact: XeroContact) => ({
-      contactId: contact.ContactID,
-      name: contact.Name,
-      email: contact.EmailAddress || undefined,
-      isCustomer: contact.IsCustomer,
-      isSupplier: contact.IsSupplier,
-    }));
+    // 4. Perform Make-style fuzzy search with buyer classification
+    const searchStartTime = Date.now();
+    const results = searchBuyers(query, allContacts, 15);
+    const searchDuration = Date.now() - searchStartTime;
 
-    console.log(`[XERO BUYERS] First attempt found ${contacts.length} contacts`);
+    console.log(`[XERO BUYER SEARCH] Fuzzy search completed in ${searchDuration}ms`);
+    console.log(`[XERO BUYER SEARCH] Results after fuzzy matching: ${results.length}`);
 
-    // FALLBACK: If zero results, try without IsCustomer filter
-    if (contacts.length === 0) {
-      console.log("[XERO BUYERS] Zero results, trying fallback without IsCustomer filter...");
-      whereClause = nameFilter;
-      encodedWhere = encodeURIComponent(whereClause);
-      xeroUrl = `https://api.xero.com/api.xro/2.0/Contacts?where=${encodedWhere}`;
-
-      console.log(`[XERO BUYERS] Fallback filter: ${whereClause}`);
-
-      response = await fetch(xeroUrl, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Xero-tenant-id": tenantId,
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      });
-
-      console.log(`[XERO BUYERS] Fallback response status: ${response.status}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[XERO BUYERS] ❌ Fallback Xero API error:", {
-          status: response.status,
-          error: errorText,
-        });
-
-        if (response.status === 401 || response.status === 403) {
-          return NextResponse.json(
-            {
-              error: "Xero authentication failed",
-              message: "Please reconnect your Xero account",
-              action: "reconnect_xero",
-            },
-            { status: 401 }
-          );
-        }
-
-        return NextResponse.json(
-          { error: "Xero API error", details: errorText },
-          { status: response.status }
+    // 5. Log detailed match information
+    if (results.length > 0) {
+      console.log(`[XERO BUYER SEARCH] Top matches:`);
+      results.slice(0, 5).forEach((result, idx) => {
+        console.log(
+          `  ${idx + 1}. "${result.contact.name}" (score: ${result.score}, field: ${result.matchedField})`
         );
-      }
-
-      data = await response.json();
-      contacts = (data.Contacts || []).map((contact: XeroContact) => ({
-        contactId: contact.ContactID,
-        name: contact.Name,
-        email: contact.EmailAddress || undefined,
-        isCustomer: contact.IsCustomer,
-        isSupplier: contact.IsSupplier,
-      }));
-
-      console.log(`[XERO BUYERS] Fallback found ${contacts.length} contacts`);
+      });
+    } else {
+      console.log(`[XERO BUYER SEARCH] No buyer matches found for query: "${query}"`);
     }
 
-    const duration = Date.now() - startTime;
-    console.log(`[XERO BUYERS] ✓✓✓ Returning ${contacts.length} buyer contacts in ${duration}ms`);
+    // 6. Convert to UI format
+    const contacts: NormalizedContact[] = results.map((result) => ({
+      contactId: result.contact.contactId,
+      name: result.contact.name,
+      email: result.contact.email,
+      isCustomer: result.contact.isCustomer,
+      isSupplier: result.contact.isSupplier,
+    }));
+
+    const totalDuration = Date.now() - startTime;
+    console.log(`[XERO BUYER SEARCH] ✓✓✓ Returning ${contacts.length} buyer contacts in ${totalDuration}ms`);
 
     return NextResponse.json({ contacts });
   } catch (error: any) {
-    console.error("[XERO BUYERS] ❌ Fatal error:", error);
+    console.error("[XERO BUYER SEARCH] ❌ Fatal error:", error);
     return NextResponse.json(
       { error: "Internal server error", details: error.message },
       { status: 500 }
