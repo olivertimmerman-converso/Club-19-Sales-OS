@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useTrade } from "@/contexts/TradeContext";
-import { fetchXeroContacts, XeroContact } from "@/lib/xero";
+import { fetchXeroBuyers, fetchXeroSuppliers, NormalizedContact } from "@/lib/xero";
 import { PaymentMethod, TaxRegime } from "@/lib/types/invoice";
 import { COUNTRIES, POPULAR_COUNTRIES } from "@/lib/constants";
 
@@ -48,16 +48,26 @@ export function StepSupplierBuyer() {
     state.currentPaymentMethod || PaymentMethod.CARD
   );
 
+  // === SUPPLIER XERO SEARCH STATE ===
+  const [supplierXeroContactId, setSupplierXeroContactId] = useState("");
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+  const [supplierDropdownResults, setSupplierDropdownResults] = useState<NormalizedContact[]>([]);
+  const [supplierSelectedIndex, setSupplierSelectedIndex] = useState(-1);
+  const [isSupplierSearchActive, setIsSupplierSearchActive] = useState(false);
+  const supplierDebounceTimer = useRef<NodeJS.Timeout | null>(null);
+
   // === BUYER STATE (Xero search) ===
   const [buyerName, setBuyerName] = useState(state.buyer?.name || "");
   const [xeroContactId, setXeroContactId] = useState(state.buyer?.xeroContactId || "");
-  const [loadingCustomers, setLoadingCustomers] = useState(false);
-  const [dropdownResults, setDropdownResults] = useState<XeroContact[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [loadingBuyers, setLoadingBuyers] = useState(false);
+  const [buyerDropdownResults, setBuyerDropdownResults] = useState<NormalizedContact[]>([]);
+  const [buyerSelectedIndex, setBuyerSelectedIndex] = useState(-1);
+  const [isBuyerSearchActive, setIsBuyerSearchActive] = useState(false);
+  const buyerDebounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // === SHARED XERO STATE ===
   const [xeroError, setXeroError] = useState<string | null>(null);
   const [showXeroSuccess, setShowXeroSuccess] = useState(false);
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   // === DELIVERY COUNTRY STATE ===
   const [deliveryCountry, setDeliveryCountryState] = useState(
@@ -135,45 +145,86 @@ export function StepSupplierBuyer() {
     setCurrentPaymentMethod(paymentMethod);
   }, [paymentMethod, setCurrentPaymentMethod]);
 
-  // === BUYER HANDLERS (Xero integration) ===
-  const handleCustomerInput = async (value: string) => {
-    setBuyerName(value);
-    setSelectedIndex(-1);
-    setIsSearchActive(true);
-    setXeroContactId(""); // Clear xeroContactId when typing
+  // === SUPPLIER HANDLERS (Xero integration) ===
+  const handleSupplierInput = async (value: string) => {
+    setSupplierName(value);
+    setSupplierSelectedIndex(-1);
+    setIsSupplierSearchActive(true);
+    setSupplierXeroContactId(""); // Clear xeroContactId when typing
 
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    if (supplierDebounceTimer.current) clearTimeout(supplierDebounceTimer.current);
 
     if (value.length >= 2) {
-      debounceTimer.current = setTimeout(async () => {
-        setLoadingCustomers(true);
+      supplierDebounceTimer.current = setTimeout(async () => {
+        setLoadingSuppliers(true);
         try {
-          const results = await fetchXeroContacts(value);
-          setDropdownResults(results);
+          const results = await fetchXeroSuppliers(value);
+          setSupplierDropdownResults(results);
           setXeroError(null); // Clear error on successful search
         } catch (error: any) {
-          console.error("Xero contact search failed:", error);
-          setDropdownResults([]);
+          console.error("[SUPPLIER SEARCH] Xero supplier search failed:", error);
+          setSupplierDropdownResults([]);
           // Only show error if it's a connection issue
           if (error.message && error.message.includes("Xero not connected")) {
             setXeroError(error.message);
           }
         } finally {
-          setLoadingCustomers(false);
+          setLoadingSuppliers(false);
         }
       }, 300);
     } else {
-      setDropdownResults([]);
-      setIsSearchActive(false);
+      setSupplierDropdownResults([]);
+      setIsSupplierSearchActive(false);
     }
   };
 
-  const selectCustomer = (contact: XeroContact) => {
-    setBuyerName(contact.Name);
-    setXeroContactId(contact.ContactID || "");
-    setDropdownResults([]);
-    setSelectedIndex(-1);
-    setIsSearchActive(false);
+  const selectSupplier = (contact: NormalizedContact) => {
+    setSupplierName(contact.name);
+    setSupplierXeroContactId(contact.contactId);
+    setSupplierDropdownResults([]);
+    setSupplierSelectedIndex(-1);
+    setIsSupplierSearchActive(false);
+  };
+
+  // === BUYER HANDLERS (Xero integration) ===
+  const handleBuyerInput = async (value: string) => {
+    setBuyerName(value);
+    setBuyerSelectedIndex(-1);
+    setIsBuyerSearchActive(true);
+    setXeroContactId(""); // Clear xeroContactId when typing
+
+    if (buyerDebounceTimer.current) clearTimeout(buyerDebounceTimer.current);
+
+    if (value.length >= 2) {
+      buyerDebounceTimer.current = setTimeout(async () => {
+        setLoadingBuyers(true);
+        try {
+          const results = await fetchXeroBuyers(value);
+          setBuyerDropdownResults(results);
+          setXeroError(null); // Clear error on successful search
+        } catch (error: any) {
+          console.error("[BUYER SEARCH] Xero buyer search failed:", error);
+          setBuyerDropdownResults([]);
+          // Only show error if it's a connection issue
+          if (error.message && error.message.includes("Xero not connected")) {
+            setXeroError(error.message);
+          }
+        } finally {
+          setLoadingBuyers(false);
+        }
+      }, 300);
+    } else {
+      setBuyerDropdownResults([]);
+      setIsBuyerSearchActive(false);
+    }
+  };
+
+  const selectBuyer = (contact: NormalizedContact) => {
+    setBuyerName(contact.name);
+    setXeroContactId(contact.contactId);
+    setBuyerDropdownResults([]);
+    setBuyerSelectedIndex(-1);
+    setIsBuyerSearchActive(false);
   };
 
   // Initiate Xero OAuth connection
@@ -260,20 +311,62 @@ export function StepSupplierBuyer() {
       <div className="border-t-4 border-purple-600 bg-purple-50 p-4 rounded-lg space-y-4">
         <h3 className="font-semibold text-gray-900">Supplier (Buy Side)</h3>
 
-        {/* Supplier Name */}
-        <div>
+        {/* Supplier Name with Xero Search */}
+        <div className="relative">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Supplier Name <span className="text-red-600">*</span>
           </label>
           <input
             type="text"
             value={supplierName}
-            onChange={(e) => setSupplierName(e.target.value)}
-            placeholder="e.g. Bags By Appointment or Harrods"
+            onChange={(e) => handleSupplierInput(e.target.value)}
+            placeholder="Search Xero suppliers..."
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
+          <p className="text-xs text-gray-600 mt-1">
+            Search for existing Xero supplier or enter new name
+          </p>
+
+          {/* Xero Supplier Search Dropdown */}
+          {isSupplierSearchActive && supplierDropdownResults.length > 0 && (
+            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+              {loadingSuppliers ? (
+                <div className="px-3 py-2 text-sm text-gray-500">
+                  Searching Xero suppliers...
+                </div>
+              ) : (
+                supplierDropdownResults.map((contact, idx) => (
+                  <div
+                    key={contact.contactId || idx}
+                    onClick={() => selectSupplier(contact)}
+                    className={`px-3 py-2 cursor-pointer hover:bg-purple-100 ${
+                      idx === supplierSelectedIndex ? "bg-purple-100" : ""
+                    }`}
+                  >
+                    <div className="text-sm font-medium text-gray-900">
+                      {contact.name}
+                    </div>
+                    {contact.email && (
+                      <div className="text-xs text-gray-500">
+                        {contact.email}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Show selected supplier confirmation */}
+        {supplierXeroContactId && (
+          <div className="bg-green-50 border border-green-200 rounded-md p-3">
+            <p className="text-xs text-green-800">
+              ✓ Xero supplier selected: <strong>{supplierName}</strong>
+            </p>
+          </div>
+        )}
 
         {/* Supplier Country */}
         <div>
@@ -348,37 +441,37 @@ export function StepSupplierBuyer() {
           <input
             type="text"
             value={buyerName}
-            onChange={(e) => handleCustomerInput(e.target.value)}
-            placeholder="Search Xero contacts..."
+            onChange={(e) => handleBuyerInput(e.target.value)}
+            placeholder="Search Xero buyers..."
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             required
           />
           <p className="text-xs text-gray-600 mt-1">
-            Search for existing Xero contact or enter new name
+            Search for existing Xero customer or enter new name
           </p>
 
-          {/* Xero Search Dropdown */}
-          {isSearchActive && dropdownResults.length > 0 && (
+          {/* Xero Buyer Search Dropdown */}
+          {isBuyerSearchActive && buyerDropdownResults.length > 0 && (
             <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-              {loadingCustomers ? (
+              {loadingBuyers ? (
                 <div className="px-3 py-2 text-sm text-gray-500">
-                  Searching Xero contacts...
+                  Searching Xero buyers...
                 </div>
               ) : (
-                dropdownResults.map((contact, idx) => (
+                buyerDropdownResults.map((contact, idx) => (
                   <div
-                    key={contact.ContactID || idx}
-                    onClick={() => selectCustomer(contact)}
+                    key={contact.contactId || idx}
+                    onClick={() => selectBuyer(contact)}
                     className={`px-3 py-2 cursor-pointer hover:bg-purple-100 ${
-                      idx === selectedIndex ? "bg-purple-100" : ""
+                      idx === buyerSelectedIndex ? "bg-purple-100" : ""
                     }`}
                   >
                     <div className="text-sm font-medium text-gray-900">
-                      {contact.Name}
+                      {contact.name}
                     </div>
-                    {contact.EmailAddress && (
+                    {contact.email && (
                       <div className="text-xs text-gray-500">
-                        {contact.EmailAddress}
+                        {contact.email}
                       </div>
                     )}
                   </div>

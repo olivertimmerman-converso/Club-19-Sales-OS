@@ -11,8 +11,88 @@ export type XeroContact = {
 };
 
 /**
- * Fetch Xero contacts via Next.js API route
+ * Normalized contact from new API endpoints
+ */
+export type NormalizedContact = {
+  contactId: string;
+  name: string;
+  email?: string;
+  isCustomer: boolean;
+  isSupplier: boolean;
+};
+
+/**
+ * Fetch Xero BUYER contacts (customers only)
+ * @param query Search term (minimum 2 characters)
+ * @returns List of customer contacts
+ */
+export async function fetchXeroBuyers(query: string): Promise<NormalizedContact[]> {
+  try {
+    const response = await fetch(`/api/xero/contacts/buyers?query=${encodeURIComponent(query)}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("[XERO BUYERS] API error:", response.status, errorData);
+
+      // Re-throw connection errors so UI can show reconnect banner
+      if (errorData.action === "connect_xero" || errorData.action === "reconnect_xero") {
+        throw new Error(errorData.message || "Xero not connected");
+      }
+
+      return [];
+    }
+
+    const data = await response.json();
+    return data.contacts || [];
+  } catch (err) {
+    console.error("[XERO BUYERS] Search error:", err);
+    throw err; // Re-throw to allow UI to handle connection errors
+  }
+}
+
+/**
+ * Fetch Xero SUPPLIER contacts (suppliers only)
+ * @param query Search term (minimum 2 characters)
+ * @returns List of supplier contacts
+ */
+export async function fetchXeroSuppliers(query: string): Promise<NormalizedContact[]> {
+  try {
+    const response = await fetch(`/api/xero/contacts/suppliers?query=${encodeURIComponent(query)}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("[XERO SUPPLIERS] API error:", response.status, errorData);
+
+      // Re-throw connection errors so UI can show reconnect banner
+      if (errorData.action === "connect_xero" || errorData.action === "reconnect_xero") {
+        throw new Error(errorData.message || "Xero not connected");
+      }
+
+      return [];
+    }
+
+    const data = await response.json();
+    return data.contacts || [];
+  } catch (err) {
+    console.error("[XERO SUPPLIERS] Search error:", err);
+    throw err; // Re-throw to allow UI to handle connection errors
+  }
+}
+
+/**
+ * Fetch Xero contacts via Next.js API route (LEGACY - General search)
  * Calls Xero API directly (not via Make webhook)
+ * @deprecated Use fetchXeroBuyers() or fetchXeroSuppliers() for better filtering
  */
 export async function fetchXeroContacts(query: string): Promise<XeroContact[]> {
   try {
