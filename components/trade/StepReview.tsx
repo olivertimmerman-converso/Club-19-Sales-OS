@@ -110,10 +110,15 @@ export function StepReview() {
     );
   }, [grossMarginGBP, impliedCosts, state.estimatedImportExportGBP, state.importVAT]);
 
-  // Handle invoice creation
+  // Handle invoice creation via native Xero API
   const handleCreateInvoice = async () => {
     if (!state.buyer || !state.taxScenario || state.items.length === 0) {
       setError("Missing required data. Please complete all steps.");
+      return;
+    }
+
+    if (!state.buyer.xeroContactId) {
+      setError("Buyer must be selected from Xero. Please go back and select a Xero contact.");
       return;
     }
 
@@ -121,43 +126,63 @@ export function StepReview() {
     setError(null);
 
     try {
-      // Build trade payload
-      const trade = buildTradePayload({
-        buyer: state.buyer,
-        items: state.items,
-        paymentMethod: state.currentPaymentMethod,
-        deliveryCountry: state.deliveryCountry,
-        dueDate: state.dueDate,
-        notes: state.notes || undefined,
-        estimatedImportExportGBP: state.estimatedImportExportGBP,
-        importVAT: state.importVAT,
-      });
+      // Prepare invoice description from items
+      const itemDescriptions = state.items
+        .map((item) => `${item.brand} · ${item.category} - ${item.description} (Qty: ${item.quantity})`)
+        .join("\n");
 
-      // Send to API
-      const response = await fetch("/api/trade/create", {
+      // Get tax scenario from first item (all items should have same tax scenario)
+      const firstItem = state.items[0];
+
+      // Create invoice payload for native Xero API
+      const invoicePayload = {
+        buyerContactId: state.buyer.xeroContactId,
+        description: itemDescriptions,
+        finalPrice: totalSellGBP, // Single line item with total sell price
+        accountCode: firstItem.accountCode,
+        taxType: firstItem.taxType,
+        brandingThemeId: firstItem.brandTheme || undefined,
+        currency: "GBP",
+        lineAmountType: firstItem.lineAmountTypes,
+      };
+
+      console.log("[INVOICE CREATE] Sending to Xero API:", invoicePayload);
+
+      // Call native Xero API
+      const response = await fetch("/api/xero/invoices", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(trade),
+        body: JSON.stringify(invoicePayload),
       });
 
       const data = await response.json();
 
-      if (!response.ok || data.status === "error") {
-        throw new Error(data.message || "Invoice creation failed");
+      if (!response.ok) {
+        // Handle Xero connection errors
+        if (data.action === "connect_xero" || data.action === "reconnect_xero") {
+          throw new Error(data.message || "Please connect your Xero account");
+        }
+        throw new Error(data.message || data.error || "Invoice creation failed");
       }
 
-      // Success!
-      setSuccessData({
-        invoiceNumber: data.invoiceNumber || "N/A",
-        invoiceUrl: data.invoiceUrl || "",
-        commissionableMarginGBP: data.commissionableMarginGBP || commissionableMarginGBP,
+      console.log("[INVOICE CREATE] Success:", data);
+
+      // Redirect to success page with invoice details
+      const successUrl = new URLSearchParams({
+        invoiceId: data.invoiceId,
+        invoiceNumber: data.invoiceNumber,
+        contact: data.contactName || state.buyer.name,
+        amount: data.total.toString(),
+        currency: "GBP",
+        url: data.invoiceUrl,
       });
+
+      window.location.href = `/trade/success?${successUrl.toString()}`;
     } catch (err) {
       const message = err instanceof Error ? err.message : "An unexpected error occurred";
       setError(message);
-    } finally {
       setSubmitting(false);
     }
   };

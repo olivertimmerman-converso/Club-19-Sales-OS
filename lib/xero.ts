@@ -148,8 +148,149 @@ const LINE_AMOUNT_TYPE_MAP: Record<string, string> = {
 };
 
 /**
- * Send invoice to Xero via Make webhook
- * Exact implementation from prototype
+ * Xero Invoice from API Response
+ */
+interface XeroInvoice {
+  InvoiceID: string;
+  InvoiceNumber: string;
+  Type: string;
+  Contact: {
+    ContactID: string;
+    Name: string;
+  };
+  DateString?: string;
+  DueDateString?: string;
+  Status: string;
+  LineAmountTypes: string;
+  LineItems: Array<{
+    Description: string;
+    Quantity: number;
+    UnitAmount: number;
+    AccountCode: string;
+    TaxType: string;
+    TaxAmount: number;
+    LineAmount: number;
+  }>;
+  SubTotal: number;
+  TotalTax: number;
+  Total: number;
+  AmountDue: number;
+  CurrencyCode: string;
+  BrandingThemeID?: string;
+}
+
+interface XeroInvoiceResponse {
+  Invoices: XeroInvoice[];
+}
+
+/**
+ * Invoice creation payload
+ */
+interface CreateInvoicePayload {
+  buyerContactId: string;
+  description: string;
+  finalPrice: number;
+  accountCode: string;
+  taxType: string;
+  brandingThemeId?: string;
+  currency: string;
+  lineAmountType: string;
+}
+
+/**
+ * Create invoice directly in Xero using native API
+ *
+ * Features:
+ * - Auto-generated invoice numbers (Xero handles this)
+ * - Single line item representing final client price
+ * - Returns complete invoice object
+ *
+ * @param tenantId - Xero tenant/organization ID
+ * @param accessToken - Valid OAuth access token
+ * @param payload - Invoice creation payload
+ * @returns Complete invoice object from Xero
+ * @throws Error with structured message on failure
+ */
+export async function createXeroInvoice(
+  tenantId: string,
+  accessToken: string,
+  payload: CreateInvoicePayload
+): Promise<XeroInvoice> {
+  console.log("[XERO API] Creating invoice with payload:", {
+    contactId: payload.buyerContactId,
+    amount: payload.finalPrice,
+    currency: payload.currency,
+    accountCode: payload.accountCode,
+    taxType: payload.taxType,
+  });
+
+  // Build Xero invoice payload
+  // IMPORTANT: Do NOT include InvoiceNumber - Xero auto-generates it
+  const xeroPayload = {
+    Type: "ACCREC", // Accounts Receivable (sales invoice)
+    Contact: {
+      ContactID: payload.buyerContactId,
+    },
+    LineAmountTypes: payload.lineAmountType, // "Inclusive" | "Exclusive" | "NoTax"
+    LineItems: [
+      {
+        Description: payload.description,
+        Quantity: 1,
+        UnitAmount: payload.finalPrice,
+        AccountCode: payload.accountCode,
+        TaxType: payload.taxType, // e.g., "OUTPUT2" (20% VAT), "ZERORATEDOUTPUT" (0%)
+      },
+    ],
+    CurrencyCode: payload.currency,
+    ...(payload.brandingThemeId && { BrandingThemeID: payload.brandingThemeId }),
+  };
+
+  console.log("[XERO API] Payload sent to Xero:", JSON.stringify(xeroPayload, null, 2));
+
+  // Call Xero API
+  const xeroUrl = "https://api.xero.com/api.xro/2.0/Invoices";
+  const response = await fetch(xeroUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Xero-tenant-id": tenantId,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(xeroPayload),
+  });
+
+  console.log(`[XERO API] Response status: ${response.status}`);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("[XERO API] ❌ Xero API error:", {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorText,
+    });
+
+    const error: any = new Error(`Xero API error: ${response.status} - ${response.statusText}`);
+    error.details = errorText;
+    throw error;
+  }
+
+  const data: XeroInvoiceResponse = await response.json();
+  console.log("[XERO API] Response received:", JSON.stringify(data, null, 2));
+
+  if (!data.Invoices || data.Invoices.length === 0) {
+    throw new Error("No invoice returned from Xero API");
+  }
+
+  const invoice = data.Invoices[0];
+  console.log(`[XERO API] ✓ Invoice created: ${invoice.InvoiceNumber} (ID: ${invoice.InvoiceID})`);
+
+  return invoice;
+}
+
+/**
+ * Send invoice to Xero via Make webhook (LEGACY)
+ * @deprecated Use createXeroInvoice() for direct API integration
  */
 export async function sendInvoiceToXero(
   result: InvoiceScenario,
