@@ -37,7 +37,6 @@ const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/o4z51g88wep546r1bkx7wo7ck224
  *   supplierName: "Harrods",
  *   saleAmount: 15000,
  *   directCosts: 12000,
- *   brandTheme: ["CN 20% VAT"],
  *   currency: "GBP",
  * });
  * ```
@@ -111,7 +110,6 @@ export async function syncSaleToMake(payload: SalePayload): Promise<void> {
  *   saleAmount: 15000,
  *   buyPrice: 12000,
  *   cardFees: 300,
- *   brandTheme: "CN 20% VAT",
  *   notes: "Luxury handbag deal",
  * });
  * ```
@@ -126,7 +124,6 @@ export function buildSalePayload(params: {
   buyPrice: number; // Supplier cost
   cardFees?: number; // Card processing fees
   shippingCost?: number; // Shipping cost
-  brandTheme: string; // Xero branding theme name
   notes?: string;
   introducerName?: string; // Optional introducer
 }): SalePayload {
@@ -144,7 +141,6 @@ export function buildSalePayload(params: {
     saleAmount: params.saleAmount,
     saleAmountExVat: undefined, // Let Airtable calculate if needed
     directCosts: directCosts,
-    brandTheme: [params.brandTheme], // Array of theme names
     commissionBand: undefined, // Let Airtable calculate
     currency: "GBP",
     notes: params.notes,

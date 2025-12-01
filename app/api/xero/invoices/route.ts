@@ -269,7 +269,6 @@ export async function POST(request: NextRequest) {
       buyPrice: payload.buyPrice ?? 0,
       cardFees: payload.cardFees ?? 0,
       shippingCost: payload.shippingCost ?? 0,
-      brandTheme: payload.brandingThemeId || "Standard",
       notes: payload.notes || "",
     });
 

@@ -17,7 +17,6 @@ export interface SalePayload {
   saleAmountExVat?: number; // Optional – app can compute or omit
   directCosts: number; // Supplier cost + card fees etc
 
-  brandTheme: string[]; // array of theme names or IDs
   commissionBand?: string; // optional – Airtable can calculate
 
   currency: string; // "GBP"
