@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getAllXeroContacts } from "@/lib/xero-contacts-cache";
+import { getSupplierContacts } from "@/lib/xero-contacts-cache";
 import { searchSuppliers } from "@/lib/search";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+// Request-level search cache (2-minute TTL)
+const searchCache = new Map<string, { results: any[], timestamp: number }>();
+const SEARCH_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
 
 /**
  * Normalized contact response for UI
@@ -59,18 +63,28 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get("query");
     console.log(`[XERO SUPPLIER SEARCH] Query parameter: "${query}"`);
 
-    if (!query || query.length < 2) {
+    if (!query || query.length < 3) {
       console.log(`[XERO SUPPLIER SEARCH] Query too short (${query?.length || 0} chars), returning empty`);
       return NextResponse.json({ contacts: [] });
     }
 
     console.log(`[XERO SUPPLIER SEARCH] Searching for: "${query}" (user: ${userId})`);
 
-    // 3. Get all contacts from cache (or fetch if needed)
-    let allContacts;
+    // 2.5. Check search cache first
+    const cacheKey = `${userId}:${query.toLowerCase()}`;
+    const cached = searchCache.get(cacheKey);
+
+    if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
+      const age = Math.round((Date.now() - cached.timestamp) / 1000);
+      console.log(`[XERO SUPPLIER SEARCH] ✓ Cache HIT (${age}s old), returning ${cached.results.length} cached results`);
+      return NextResponse.json({ contacts: cached.results });
+    }
+
+    // 3. Get supplier contacts from cache (or fetch if needed)
+    let supplierContacts;
     try {
-      allContacts = await getAllXeroContacts(userId);
-      console.log(`[XERO SUPPLIER SEARCH] Loaded ${allContacts.length} cached contacts (pre-classified)`);
+      supplierContacts = await getSupplierContacts(userId);
+      console.log(`[XERO SUPPLIER SEARCH] Loaded ${supplierContacts.length} supplier contacts (pre-filtered)`);
     } catch (error: any) {
       console.error("[XERO SUPPLIER SEARCH] ❌ Failed to fetch contacts:", error.message);
 
@@ -95,11 +109,9 @@ export async function GET(request: NextRequest) {
     // 4. Perform fast simplified supplier search with STRICT classification
     const searchStartTime = Date.now();
 
-    // Count supplier subset for logging
-    const supplierSubset = allContacts.filter((c) => c.isSupplier);
-    console.log(`[XERO SUPPLIER SEARCH] Supplier subset: ${supplierSubset.length} contacts (pre-classified)`);
+    console.log(`[XERO SUPPLIER SEARCH] Searching ${supplierContacts.length} pre-filtered suppliers`);
 
-    const results = searchSuppliers(query, allContacts, 15);
+    const results = searchSuppliers(query, supplierContacts, 15);
     const searchDuration = Date.now() - searchStartTime;
 
     console.log(`[XERO SUPPLIER SEARCH] Simple match scoring applied (exact/starts/contains)`);
@@ -127,6 +139,13 @@ export async function GET(request: NextRequest) {
       isCustomer: result.contact.isCustomer,
       isSupplier: result.contact.isSupplier,
     }));
+
+    // 6.5. Write to search cache
+    searchCache.set(cacheKey, {
+      results: contacts,
+      timestamp: Date.now()
+    });
+    console.log(`[XERO SUPPLIER SEARCH] ✓ Cached ${contacts.length} results for "${query}"`);
 
     const totalDuration = Date.now() - startTime;
     console.log(`[XERO SUPPLIER SEARCH] ✓✓✓ Returning ${contacts.length} supplier contacts in ${totalDuration}ms`);

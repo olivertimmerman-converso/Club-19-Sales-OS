@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useTrade } from "@/contexts/TradeContext";
 import { fetchXeroBuyers, fetchXeroSuppliers, NormalizedContact } from "@/lib/xero";
 import { PaymentMethod, TaxRegime } from "@/lib/types/invoice";
@@ -148,6 +148,57 @@ export function StepSupplierBuyer() {
     setCurrentPaymentMethod(paymentMethod);
   }, [paymentMethod, setCurrentPaymentMethod]);
 
+  // === DEBOUNCED SUPPLIER SEARCH ===
+  // Memoized debounced search function for better performance
+  const debouncedSupplierSearch = useMemo(
+    () => {
+      return (query: string) => {
+        if (supplierDebounceTimer.current) {
+          clearTimeout(supplierDebounceTimer.current);
+        }
+
+        supplierDebounceTimer.current = setTimeout(async () => {
+          // Cancel previous request
+          if (supplierAbortController.current) {
+            supplierAbortController.current.abort();
+          }
+
+          supplierAbortController.current = new AbortController();
+          setLoadingSuppliers(true);
+
+          try {
+            const results = await fetchXeroSuppliers(query);
+            setSupplierDropdownResults(results);
+            setXeroError(null);
+
+            // Show "no results" message if empty (strict mode - suppliers only)
+            if (results.length === 0) {
+              setSupplierNoResults(true);
+              console.log(`[SUPPLIER SEARCH] No suppliers found for "${query}" (strict mode)`);
+            }
+          } catch (error: any) {
+            // Ignore AbortError - it just means we cancelled the request
+            if (error.name === 'AbortError') {
+              console.log('[SUPPLIER SEARCH] Request cancelled');
+              return;
+            }
+
+            console.error("[SUPPLIER SEARCH] Xero supplier search failed:", error);
+            setSupplierDropdownResults([]);
+            setSupplierNoResults(false);
+            // Only show error if it's a connection issue
+            if (error.message && error.message.includes("Xero not connected")) {
+              setXeroError(error.message);
+            }
+          } finally {
+            setLoadingSuppliers(false);
+          }
+        }, 300); // 300ms debounce
+      };
+    },
+    [] // Empty deps - stable function across renders
+  );
+
   // === SUPPLIER HANDLERS (Xero integration) ===
   const handleSupplierInput = async (value: string) => {
     setSupplierName(value);
@@ -156,47 +207,14 @@ export function StepSupplierBuyer() {
     setSupplierXeroContactId(""); // Clear xeroContactId when typing
     setSupplierNoResults(false); // Reset no results flag
 
-    if (supplierDebounceTimer.current) clearTimeout(supplierDebounceTimer.current);
-
-    if (value.length >= 2) {
-      supplierDebounceTimer.current = setTimeout(async () => {
-        // Cancel previous request
-        if (supplierAbortController.current) {
-          supplierAbortController.current.abort();
-        }
-
-        supplierAbortController.current = new AbortController();
-        setLoadingSuppliers(true);
-
-        try {
-          const results = await fetchXeroSuppliers(value);
-          setSupplierDropdownResults(results);
-          setXeroError(null); // Clear error on successful search
-
-          // Show "no results" message if empty (strict mode - suppliers only)
-          if (results.length === 0) {
-            setSupplierNoResults(true);
-            console.log(`[SUPPLIER SEARCH] No suppliers found for "${value}" (strict mode)`);
-          }
-        } catch (error: any) {
-          // Ignore AbortError - it just means we cancelled the request
-          if (error.name === 'AbortError') {
-            console.log('[SUPPLIER SEARCH] Request cancelled');
-            return;
-          }
-
-          console.error("[SUPPLIER SEARCH] Xero supplier search failed:", error);
-          setSupplierDropdownResults([]);
-          setSupplierNoResults(false);
-          // Only show error if it's a connection issue
-          if (error.message && error.message.includes("Xero not connected")) {
-            setXeroError(error.message);
-          }
-        } finally {
-          setLoadingSuppliers(false);
-        }
-      }, 300);
+    // Use debounced search if query length >= 3 (raised from 2)
+    if (value.length >= 3) {
+      debouncedSupplierSearch(value);
     } else {
+      // Clear results if query too short
+      if (supplierDebounceTimer.current) {
+        clearTimeout(supplierDebounceTimer.current);
+      }
       setSupplierDropdownResults([]);
       setIsSupplierSearchActive(false);
       setSupplierNoResults(false);
@@ -394,8 +412,8 @@ export function StepSupplierBuyer() {
             Search for existing Xero supplier or enter new name
           </p>
 
-          {/* "Searching suppliers..." message */}
-          {loadingSuppliers && isSupplierSearchActive && (
+          {/* Skeleton Loader Dropdown (shown while loading) */}
+          {loadingSuppliers && isSupplierSearchActive && supplierName.length >= 3 && (
             <div className="mt-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-md">
               <p className="text-sm text-purple-700 flex items-center gap-2">
                 <svg

@@ -45,6 +45,7 @@ interface CacheEntry {
 
 // In-memory cache: userId -> CacheEntry
 const contactsCache = new Map<string, CacheEntry>();
+const supplierCache = new Map<string, CacheEntry>(); // Supplier-only cache
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 // Periodic cache cleanup to prevent memory leaks
@@ -53,11 +54,21 @@ setInterval(() => {
   const now = Date.now();
   let removedCount = 0;
 
+  // Clean up all contacts cache
   for (const [userId, entry] of contactsCache.entries()) {
     if (now - entry.fetchedAt > CACHE_TTL_MS) {
       contactsCache.delete(userId);
       removedCount++;
-      console.log(`[XERO CACHE CLEANUP] Removed expired cache for user: ${userId}`);
+      console.log(`[XERO CACHE CLEANUP] Removed expired contacts cache for user: ${userId}`);
+    }
+  }
+
+  // Clean up supplier-only cache
+  for (const [userId, entry] of supplierCache.entries()) {
+    if (now - entry.fetchedAt > CACHE_TTL_MS) {
+      supplierCache.delete(userId);
+      removedCount++;
+      console.log(`[XERO CACHE CLEANUP] Removed expired supplier cache for user: ${userId}`);
     }
   }
 
@@ -215,6 +226,48 @@ export async function getAllXeroContacts(userId: string): Promise<ExtendedContac
 }
 
 /**
+ * Get supplier-only Xero contacts (cached)
+ *
+ * PERFORMANCE OPTIMIZATION: Returns pre-filtered supplier contacts only.
+ * This avoids filtering all contacts on every supplier search request.
+ *
+ * Returns cached suppliers if available and fresh (< 10 minutes old).
+ * Otherwise, fetches all contacts and filters to suppliers only.
+ *
+ * @param userId - Clerk user ID for authentication
+ * @returns Array of supplier contacts only (isSupplier === true)
+ */
+export async function getSupplierContacts(userId: string): Promise<ExtendedContact[]> {
+  const now = Date.now();
+
+  // Check supplier cache first
+  const cached = supplierCache.get(userId);
+  if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
+    const age = Math.round((now - cached.fetchedAt) / 1000);
+    console.log(`[XERO SUPPLIER CACHE] ✓ Using cached suppliers (${cached.contacts.length} suppliers, ${age}s old)`);
+    return cached.contacts;
+  }
+
+  // Cache miss or expired - fetch all contacts and filter to suppliers
+  console.log("[XERO SUPPLIER CACHE] Cache miss or expired, fetching and filtering suppliers...");
+  const allContacts = await getAllXeroContacts(userId);
+
+  // Filter to suppliers only (uses pre-computed isSupplier flag)
+  const suppliers = allContacts.filter((contact) => contact.isSupplier);
+
+  console.log(`[XERO SUPPLIER CACHE] Filtered ${suppliers.length} suppliers from ${allContacts.length} total contacts`);
+
+  // Store in supplier cache
+  supplierCache.set(userId, {
+    contacts: suppliers,
+    fetchedAt: now,
+    userId,
+  });
+
+  return suppliers;
+}
+
+/**
  * Clear cache for a specific user (useful for testing or manual refresh)
  */
 export function clearContactsCache(userId: string): void {
@@ -227,5 +280,6 @@ export function clearContactsCache(userId: string): void {
  */
 export function clearAllContactsCaches(): void {
   contactsCache.clear();
-  console.log("[XERO CACHE] Cleared all caches");
+  supplierCache.clear();
+  console.log("[XERO CACHE] Cleared all caches (contacts + suppliers)");
 }
