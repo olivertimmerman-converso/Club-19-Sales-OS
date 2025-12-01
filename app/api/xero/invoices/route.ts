@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getValidTokens } from "@/lib/xero-auth";
 import { createXeroInvoice } from "@/lib/xero";
 import { getBrandingThemeId } from "@/lib/xero-branding-themes";
+import { syncSaleToMake, buildSalePayload } from "@/lib/make-sync";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,6 +20,12 @@ interface CreateInvoicePayload {
   brandingThemeId?: string;
   currency: string;
   lineAmountType: string; // "Inclusive" | "Exclusive" | "NoTax"
+  // Additional fields for Make.com sync
+  supplierName?: string;
+  buyPrice?: number;
+  cardFees?: number;
+  shippingCost?: number;
+  notes?: string;
 }
 
 /**
@@ -227,7 +234,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Build response for frontend
+    // 7. Build response for frontend
     const response: InvoiceResponse = {
       invoiceId: invoice.InvoiceID,
       invoiceNumber: invoice.InvoiceNumber,
@@ -240,6 +247,38 @@ export async function POST(request: NextRequest) {
     const duration = Date.now() - startTime;
     console.log(`[XERO INVOICE] ✓✓✓ Invoice creation completed in ${duration}ms`);
     console.log(`[XERO INVOICE] Response:`, response);
+
+    // 8. Sync sale to Make.com/Airtable (non-blocking)
+    // Get user details for shopper name
+    let shopperName = "Unknown";
+    try {
+      const user = await clerkClient().users.getUser(userId);
+      shopperName = user.fullName || user.firstName || user.emailAddresses[0]?.emailAddress || "Unknown";
+    } catch (error) {
+      console.warn("[XERO INVOICE] Could not fetch user details for shopper name:", error);
+    }
+
+    // Build and send sale payload (don't await - let it run in background)
+    if (payload.supplierName && payload.buyPrice !== undefined) {
+      const salePayload = buildSalePayload({
+        invoiceNumber: invoice.InvoiceNumber,
+        invoiceDate: new Date(),
+        shopperName: shopperName,
+        buyerName: response.contactName,
+        supplierName: payload.supplierName,
+        saleAmount: response.total,
+        buyPrice: payload.buyPrice,
+        cardFees: payload.cardFees,
+        shippingCost: payload.shippingCost,
+        brandTheme: payload.brandingThemeId || "Standard",
+        notes: payload.notes,
+      });
+
+      // Sync to Make.com (await to ensure delivery before response)
+      await syncSaleToMake(salePayload);
+    } else {
+      console.log("[XERO INVOICE] Skipping Make.com sync - missing supplier/buyPrice data");
+    }
 
     return NextResponse.json(response);
   } catch (error: any) {
