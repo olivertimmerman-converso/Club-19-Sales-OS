@@ -28,7 +28,7 @@ const isLegacyProtectedRoute = createRouteMatcher([
 ]);
 
 // Access denied page
-const ACCESS_DENIED = "/access-denied";
+const ACCESS_DENIED = "/unauthorised";
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
   const { userId, sessionClaims } = await auth();
@@ -84,8 +84,8 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     return NextResponse.redirect(new URL(homepage, req.url));
   }
 
-  // Allow access to access-denied and unauthorised pages
-  if (pathname === ACCESS_DENIED || pathname === "/unauthorised") {
+  // Allow access to unauthorised page (use constant for consistency)
+  if (pathname === ACCESS_DENIED) {
     return NextResponse.next();
   }
 
@@ -94,7 +94,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
 
   if (isStaffRoute && !canAccess(pathname, role)) {
     console.error(`[MIDDLEWARE] ❌ Access denied: ${role} tried to access ${pathname}`);
-    return NextResponse.redirect(new URL("/unauthorised", req.url));
+    return NextResponse.redirect(new URL(ACCESS_DENIED, req.url));
   }
 
   return NextResponse.next();

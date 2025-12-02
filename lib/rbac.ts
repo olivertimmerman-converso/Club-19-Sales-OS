@@ -34,6 +34,8 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
       '/staff/admin/sales',
       '/staff/admin/analytics',
       '/staff/admin/errors',
+      '/staff/shopper/dashboard',
+      '/staff/shopper/sales',
     ],
     homepage: '/staff/admin/dashboard',
     label: 'Administrator',

@@ -13,6 +13,12 @@ interface ClerkSessionClaims {
   name?: string;
   publicMetadata?: {
     role?: UserRole;
+    xero?: {
+      accessToken?: string;
+      refreshToken?: string;
+      tenantId?: string;
+      expiresAt?: number;
+    };
   };
 }
 
@@ -50,11 +56,13 @@ export async function getCurrentUser() {
 
   const claims = sessionClaims as ClerkSessionClaims;
   const role = claims.publicMetadata?.role || 'shopper';
+  const xero = claims.publicMetadata?.xero;
 
   return {
     userId,
     email: claims.email,
     name: claims.name,
     role,
+    xero,
   };
 }
