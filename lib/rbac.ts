@@ -82,9 +82,10 @@ export function canAccess(route: string, role: UserRole): boolean {
   if (exactMatch) return true;
 
   // Check if route is a sub-route of an allowed route
-  const prefixMatch = config.allowedRoutes.some((allowed) =>
-    route.startsWith(allowed + '/')
-  );
+  // IMPORTANT: Exclude '/staff' from prefix matching to prevent access to all staff routes
+  const prefixMatch = config.allowedRoutes
+    .filter((allowed) => allowed !== '/staff')
+    .some((allowed) => route.startsWith(allowed + '/'));
   if (prefixMatch) return true;
 
   // Check read-only routes
