@@ -11,13 +11,13 @@ import { UserRole } from './rbac';
 interface ClerkSessionClaims {
   email?: string;
   name?: string;
-  metadata?: {
+  publicMetadata?: {
     role?: UserRole;
   };
 }
 
 /**
- * Get the current user's role from Clerk metadata
+ * Get the current user's role from Clerk publicMetadata
  */
 export async function getUserRole(): Promise<UserRole | null> {
   const { userId, sessionClaims } = await auth();
@@ -28,7 +28,7 @@ export async function getUserRole(): Promise<UserRole | null> {
 
   // Read role from Clerk publicMetadata
   const claims = sessionClaims as ClerkSessionClaims;
-  const role = claims.metadata?.role;
+  const role = claims.publicMetadata?.role;
 
   if (!role) {
     // Default to 'shopper' if no role is set
@@ -49,7 +49,7 @@ export async function getCurrentUser() {
   }
 
   const claims = sessionClaims as ClerkSessionClaims;
-  const role = claims.metadata?.role || 'shopper';
+  const role = claims.publicMetadata?.role || 'shopper';
 
   return {
     userId,

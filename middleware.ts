@@ -52,13 +52,18 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     return NextResponse.redirect(signInUrl);
   }
 
-  // Get user role from Clerk metadata
-  interface ClerkMetadata {
-    metadata?: {
+  // Get user role from Clerk publicMetadata (Edge Runtime compatible)
+  interface ClerkSessionClaims {
+    publicMetadata?: {
       role?: UserRole;
     };
   }
-  const role = ((sessionClaims as ClerkMetadata)?.metadata?.role) || "shopper";
+  const role = ((sessionClaims as ClerkSessionClaims)?.publicMetadata?.role) || "shopper";
+
+  // Debug logging for role extraction
+  if (pathname.startsWith("/staff")) {
+    console.log(`[MIDDLEWARE] 🔍 User ${userId} accessing ${pathname} with role: ${role}`);
+  }
 
   // Protect admin-only API routes
   const isAdminAPIRoute =
@@ -79,8 +84,8 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     return NextResponse.redirect(new URL(homepage, req.url));
   }
 
-  // Allow access to access-denied page
-  if (pathname === ACCESS_DENIED) {
+  // Allow access to access-denied and unauthorised pages
+  if (pathname === ACCESS_DENIED || pathname === "/unauthorised") {
     return NextResponse.next();
   }
 
@@ -88,7 +93,8 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   const isStaffRoute = pathname.startsWith("/staff");
 
   if (isStaffRoute && !canAccess(pathname, role)) {
-    return NextResponse.redirect(new URL(ACCESS_DENIED, req.url));
+    console.error(`[MIDDLEWARE] ❌ Access denied: ${role} tried to access ${pathname}`);
+    return NextResponse.redirect(new URL("/unauthorised", req.url));
   }
 
   return NextResponse.next();

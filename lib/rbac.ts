@@ -19,12 +19,17 @@ export interface RoleConfig {
 
 export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
   shopper: {
-    allowedRoutes: ['/staff/shopper/dashboard', '/staff/shopper/sales'],
+    allowedRoutes: [
+      '/staff',
+      '/staff/shopper/dashboard',
+      '/staff/shopper/sales',
+    ],
     homepage: '/staff/shopper/dashboard',
     label: 'Shopper',
   },
   admin: {
     allowedRoutes: [
+      '/staff',
       '/staff/admin/dashboard',
       '/staff/admin/sales',
       '/staff/admin/analytics',
@@ -35,6 +40,7 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
   },
   finance: {
     allowedRoutes: [
+      '/staff',
       '/staff/finance/dashboard',
       '/staff/finance/commissions',
       '/staff/finance/overdue',
@@ -45,6 +51,7 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
   },
   superadmin: {
     allowedRoutes: [
+      '/staff',
       '/staff/shopper/dashboard',
       '/staff/shopper/sales',
       '/staff/admin/dashboard',
