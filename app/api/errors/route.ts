@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getXataClient } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
 import { getUserRole } from "@/lib/auth";
+import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -33,6 +34,12 @@ function xata() {
 
 export async function GET(req: NextRequest) {
   console.log("[ERRORS API] GET request received");
+
+  // STEP 0: Rate limiting
+  const rateLimitResponse = withRateLimit(req, RATE_LIMITS.errors);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
 
   try {
     // STEP 1: Check authentication and authorization

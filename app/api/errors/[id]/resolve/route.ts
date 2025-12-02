@@ -12,6 +12,7 @@ import { resolveError, clearSaleErrorFlag } from "@/lib/error-tools";
 import { getXataClient } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
 import { getUserRole } from "@/lib/auth";
+import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -45,6 +46,12 @@ export async function POST(
   const errorId = params.id;
 
   console.log(`[ERROR RESOLUTION API] POST request for error ${errorId}`);
+
+  // STEP 0: Rate limiting
+  const rateLimitResponse = withRateLimit(req, RATE_LIMITS.errors);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
 
   try {
     // STEP 1: Check authentication and authorization

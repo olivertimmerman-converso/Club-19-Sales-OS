@@ -17,6 +17,7 @@ import { getXataClient } from "@/src/xata";
 import { updateSalePaymentStatusFromXero } from "@/lib/xata-sales";
 import { getValidTokens } from "@/lib/xero-auth";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY } from "@/lib/error-types";
+import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -39,6 +40,12 @@ function xata() {
 
 export async function GET(req: NextRequest) {
   console.log("[XERO SYNC] Starting payment sync cron job");
+
+  // STEP 0: Rate limiting
+  const rateLimitResponse = withRateLimit(req, RATE_LIMITS.xeroSync);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
 
   try {
     // STEP 1: Fetch all invoiced sales (not paid yet)

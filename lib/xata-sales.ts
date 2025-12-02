@@ -18,6 +18,13 @@ import { calculateCommission } from "./commission-engine";
 import { transitionSaleStatus } from "./deal-lifecycle";
 import { validateSaleInput, formatValidationErrors } from "./validation";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY } from "./error-types";
+import {
+  sanitizeString,
+  sanitizeNotes,
+  sanitizeContactName,
+  sanitizeOptional,
+} from "./sanitize";
+import { calculateSaleEconomics as calculateEconomics } from "./economics";
 
 // ============================================================================
 // CLIENT SINGLETON
@@ -172,33 +179,24 @@ export interface SaleEconomicsResult {
   commissionable_margin: number;
 }
 
+// Deprecated: Use calculateEconomics from lib/economics.ts instead
+// Kept for backwards compatibility
 export function calculateSaleEconomics(
   fields: SaleEconomicsInput
 ): SaleEconomicsResult {
-  const VAT_RATE = 0.2; // 20% UK VAT
-
-  // Sale amount ex VAT = sale amount inc VAT / 1.2
-  const sale_amount_ex_vat = fields.sale_amount_inc_vat / (1 + VAT_RATE);
-
-  // Direct costs = card fees + shipping cost
-  const direct_costs = fields.card_fees + fields.shipping_cost;
-
-  // Implied shipping = shipping cost component from sale price
-  // Assuming shipping is a percentage of sale price or flat fee
-  const implied_shipping = fields.shipping_cost;
-
-  // Gross margin = sale amount ex VAT - buy price - direct costs
-  const gross_margin = sale_amount_ex_vat - fields.buy_price - direct_costs;
-
-  // Commissionable margin = gross margin (can be adjusted with additional logic)
-  const commissionable_margin = gross_margin;
+  const economics = calculateEconomics({
+    sale_amount_inc_vat: fields.sale_amount_inc_vat,
+    buy_price: fields.buy_price,
+    card_fees: fields.card_fees,
+    shipping_cost: fields.shipping_cost,
+  });
 
   return {
-    sale_amount_ex_vat,
-    direct_costs,
-    implied_shipping,
-    gross_margin,
-    commissionable_margin,
+    sale_amount_ex_vat: economics.sale_amount_ex_vat,
+    direct_costs: economics.card_fees + economics.shipping_cost,
+    implied_shipping: economics.shipping_cost,
+    gross_margin: economics.gross_margin,
+    commissionable_margin: economics.commissionable_margin,
   };
 }
 
@@ -255,47 +253,72 @@ export interface CreateSalePayload {
 export async function createSaleFromAppPayload(
   payload: CreateSalePayload
 ): Promise<SalesRecord> {
-  // A) RESOLVE RELATIONAL TABLES
+  // A) SANITIZE ALL USER INPUT
+  console.log("[XATA SALES] Sanitizing input...");
+
+  const sanitizedPayload: CreateSalePayload = {
+    ...payload,
+    // Required fields
+    sale_reference: sanitizeString(payload.sale_reference),
+    shopperName: sanitizeContactName(payload.shopperName),
+    buyerName: sanitizeContactName(payload.buyerName),
+    supplierName: sanitizeContactName(payload.supplierName),
+
+    // Optional string fields
+    brand: sanitizeOptional(payload.brand) || undefined,
+    category: sanitizeOptional(payload.category) || undefined,
+    item_title: sanitizeOptional(payload.item_title) || undefined,
+    internal_notes: payload.internal_notes ? sanitizeNotes(payload.internal_notes) : undefined,
+    introducerName: payload.introducerName ? sanitizeContactName(payload.introducerName) : undefined,
+    admin_override_notes: payload.admin_override_notes ? sanitizeNotes(payload.admin_override_notes) : undefined,
+
+    // Email fields (basic sanitization)
+    shopperEmail: sanitizeOptional(payload.shopperEmail) || undefined,
+    buyerEmail: sanitizeOptional(payload.buyerEmail) || undefined,
+    supplierEmail: sanitizeOptional(payload.supplierEmail) || undefined,
+  };
+
+  // B) RESOLVE RELATIONAL TABLES
   console.log("[XATA SALES] Resolving relationships...");
 
-  const shopper = await getOrCreateShopperByName(payload.shopperName);
+  const shopper = await getOrCreateShopperByName(sanitizedPayload.shopperName);
   console.log(`[XATA SALES] ✓ Shopper: ${shopper.name} (${shopper.id})`);
 
   const buyer = await getOrCreateBuyer(
-    payload.buyerName,
-    payload.buyerEmail,
-    payload.buyerXeroId
+    sanitizedPayload.buyerName,
+    sanitizedPayload.buyerEmail,
+    sanitizedPayload.buyerXeroId
   );
   console.log(`[XATA SALES] ✓ Buyer: ${buyer.name} (${buyer.id})`);
 
   const supplier = await getOrCreateSupplier(
-    payload.supplierName,
-    payload.supplierEmail,
-    payload.supplierXeroId
+    sanitizedPayload.supplierName,
+    sanitizedPayload.supplierEmail,
+    sanitizedPayload.supplierXeroId
   );
   console.log(`[XATA SALES] ✓ Supplier: ${supplier.name} (${supplier.id})`);
 
   let introducer: IntroducersRecord | null = null;
-  if (payload.introducerName) {
+  if (sanitizedPayload.introducerName) {
     introducer = await getOrCreateIntroducer(
-      payload.introducerName,
-      payload.introducerCommission
+      sanitizedPayload.introducerName,
+      sanitizedPayload.introducerCommission
     );
     console.log(`[XATA SALES] ✓ Introducer: ${introducer.name} (${introducer.id})`);
   }
 
   // VALIDATION) RUN VALIDATION CHECKS
   console.log("[XATA SALES] Running validation checks...");
-  const validation = validateSaleInput(payload);
+  const validation = validateSaleInput(sanitizedPayload);
 
   // B) COMPUTE ECONOMICS
   console.log("[XATA SALES] Computing economics...");
 
   const economics = calculateSaleEconomics({
-    sale_amount_inc_vat: payload.sale_amount_inc_vat,
-    buy_price: payload.buy_price,
-    card_fees: payload.card_fees || 0,
-    shipping_cost: payload.shipping_cost || 0,
+    sale_amount_inc_vat: sanitizedPayload.sale_amount_inc_vat,
+    buy_price: sanitizedPayload.buy_price,
+    card_fees: sanitizedPayload.card_fees || 0,
+    shipping_cost: sanitizedPayload.shipping_cost || 0,
   });
 
   console.log(`[XATA SALES] ✓ Gross margin: ${economics.gross_margin.toFixed(2)}`);
@@ -324,8 +347,8 @@ export async function createSaleFromAppPayload(
     commission_band: commissionBand && commissionBand.commission_percent != null ? {
       commission_percent: commissionBand.commission_percent,
     } : null,
-    admin_override_commission_percent: payload.admin_override_commission_percent ?? null,
-    admin_override_notes: payload.admin_override_notes ?? null,
+    admin_override_commission_percent: sanitizedPayload.admin_override_commission_percent ?? null,
+    admin_override_notes: sanitizedPayload.admin_override_notes ?? null,
   });
 
   console.log(
@@ -353,8 +376,8 @@ export async function createSaleFromAppPayload(
 
   const sale = await xata().db.Sales.create({
     // Core identifiers
-    sale_reference: payload.sale_reference,
-    sale_date: payload.sale_date,
+    sale_reference: sanitizedPayload.sale_reference,
+    sale_date: sanitizedPayload.sale_date,
 
     // Relationships
     shopper: shopper.id,
@@ -364,17 +387,17 @@ export async function createSaleFromAppPayload(
     commission_band: commissionBand?.id,
 
     // Item metadata
-    brand: payload.brand || "",
-    category: payload.category || "",
-    item_title: payload.item_title || "",
-    quantity: payload.quantity || 1,
+    brand: sanitizedPayload.brand || "",
+    category: sanitizedPayload.category || "",
+    item_title: sanitizedPayload.item_title || "",
+    quantity: sanitizedPayload.quantity || 1,
 
     // Financial fields
-    sale_amount_inc_vat: payload.sale_amount_inc_vat,
+    sale_amount_inc_vat: sanitizedPayload.sale_amount_inc_vat,
     sale_amount_ex_vat: economics.sale_amount_ex_vat,
-    buy_price: payload.buy_price,
-    card_fees: payload.card_fees || 0,
-    shipping_cost: payload.shipping_cost || 0,
+    buy_price: sanitizedPayload.buy_price,
+    card_fees: sanitizedPayload.card_fees || 0,
+    shipping_cost: sanitizedPayload.shipping_cost || 0,
     direct_costs: economics.direct_costs,
 
     // Economics
@@ -398,13 +421,13 @@ export async function createSaleFromAppPayload(
     error_message: hasCommissionErrors ? commissionResult.errors : undefined,
 
     // Xero metadata
-    currency: payload.currency || "GBP",
-    branding_theme: payload.branding_theme || "",
-    xero_invoice_number: payload.xero_invoice_number || "",
-    xero_invoice_id: payload.xero_invoice_id || "",
-    xero_invoice_url: payload.xero_invoice_url || "",
-    invoice_status: payload.invoice_status || "DRAFT",
-    invoice_paid_date: payload.invoice_paid_date,
+    currency: sanitizedPayload.currency || "GBP",
+    branding_theme: sanitizedPayload.branding_theme || "",
+    xero_invoice_number: sanitizedPayload.xero_invoice_number || "",
+    xero_invoice_id: sanitizedPayload.xero_invoice_id || "",
+    xero_invoice_url: sanitizedPayload.xero_invoice_url || "",
+    invoice_status: sanitizedPayload.invoice_status || "DRAFT",
+    invoice_paid_date: sanitizedPayload.invoice_paid_date,
 
     // Commission tracking (defaults)
     commission_locked: false,
@@ -413,7 +436,7 @@ export async function createSaleFromAppPayload(
     commission_paid_date: undefined,
 
     // Notes
-    internal_notes: payload.internal_notes || "",
+    internal_notes: sanitizedPayload.internal_notes || "",
   });
 
   console.log(`[XATA SALES] ✅ Sale created: ${sale.id}`);
@@ -432,9 +455,9 @@ export async function createSaleFromAppPayload(
           saleId: sale.id,
           commissionErrors: commissionResult.errors,
           payload: {
-            sale_reference: payload.sale_reference,
-            brand: payload.brand,
-            category: payload.category,
+            sale_reference: sanitizedPayload.sale_reference,
+            brand: sanitizedPayload.brand,
+            category: sanitizedPayload.category,
           },
         },
         triggered_by: ERROR_TRIGGERED_BY.COMMISSION_ENGINE,
@@ -474,11 +497,11 @@ export async function createSaleFromAppPayload(
           validationErrors: validation.errors,
           validationWarnings: validation.warnings,
           payload: {
-            sale_reference: payload.sale_reference,
-            brand: payload.brand,
-            category: payload.category,
-            buyerName: payload.buyerName,
-            supplierName: payload.supplierName,
+            sale_reference: sanitizedPayload.sale_reference,
+            brand: sanitizedPayload.brand,
+            category: sanitizedPayload.category,
+            buyerName: sanitizedPayload.buyerName,
+            supplierName: sanitizedPayload.supplierName,
           },
         },
         triggered_by: ERROR_TRIGGERED_BY.VALIDATION,

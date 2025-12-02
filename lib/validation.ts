@@ -8,6 +8,7 @@
  */
 
 import type { CreateSalePayload } from "./xata-sales";
+import { calculateExVat } from "./economics";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -125,8 +126,7 @@ export function validateSaleInput(input: CreateSalePayload): ValidationResult {
   // =========================================================================
 
   // Calculate sale_amount_ex_vat for validation
-  // Using standard UK VAT rate of 20% (1.2 multiplier)
-  const saleAmountExVat = input.sale_amount_inc_vat / 1.2;
+  const saleAmountExVat = calculateExVat(input.sale_amount_inc_vat);
 
   // Check if selling price is below purchase price (potential loss)
   if (

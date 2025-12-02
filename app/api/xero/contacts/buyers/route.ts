@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getAllXeroContacts } from "@/lib/xero-contacts-cache";
 import { searchBuyers } from "@/lib/search";
+import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,6 +35,12 @@ interface NormalizedContact {
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   console.log("[XERO BUYER SEARCH] === API Route Started ===");
+
+  // 0. Rate limiting
+  const rateLimitResponse = withRateLimit(request, RATE_LIMITS.contacts);
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
 
   try {
     // 1. Authenticate user
