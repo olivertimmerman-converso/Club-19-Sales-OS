@@ -1,0 +1,47 @@
+{
+  "tables": [
+    {
+      "name": "legacy_suppliers",
+      "columns": [
+        {"name": "supplier_clean", "type": "string"},
+        {"name": "raw_variants", "type": "multiple"},
+        {"name": "requires_review", "type": "bool"},
+        {"name": "reason", "type": "text"},
+        {"name": "first_seen", "type": "datetime"},
+        {"name": "last_seen", "type": "datetime"},
+        {"name": "trade_count", "type": "int"}
+      ]
+    },
+    {
+      "name": "legacy_clients",
+      "columns": [
+        {"name": "client_clean", "type": "string"},
+        {"name": "raw_variants", "type": "multiple"},
+        {"name": "client_status", "type": "string"},
+        {"name": "first_seen", "type": "datetime"},
+        {"name": "last_seen", "type": "datetime"},
+        {"name": "trade_count", "type": "int"},
+        {"name": "requires_review", "type": "bool"}
+      ]
+    },
+    {
+      "name": "legacy_trades",
+      "columns": [
+        {"name": "invoice_number", "type": "string"},
+        {"name": "trade_date", "type": "datetime"},
+        {"name": "raw_client", "type": "string"},
+        {"name": "raw_supplier", "type": "string"},
+        {"name": "client_id", "type": "link", "link": {"table": "legacy_clients"}},
+        {"name": "supplier_id", "type": "link", "link": {"table": "legacy_suppliers"}},
+        {"name": "item", "type": "text"},
+        {"name": "brand", "type": "string"},
+        {"name": "category", "type": "string"},
+        {"name": "buy_price", "type": "float"},
+        {"name": "sell_price", "type": "float"},
+        {"name": "margin", "type": "float"},
+        {"name": "source", "type": "string"},
+        {"name": "raw_row", "type": "json"}
+      ]
+    }
+  ]
+}
