@@ -10,9 +10,8 @@
 
 import { xata } from "@/lib/xata-sales";
 
-// Flag to check if legacy tables exist
-// TODO: Remove this after legacy tables are created in Xata
-const LEGACY_TABLES_EXIST = false;
+// Legacy tables are now active in Xata
+const LEGACY_TABLES_EXIST = true;
 
 export interface LegacySummary {
   totalSales: number;
@@ -97,16 +96,13 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
     const filter = shopper ? { source: shopper } : {};
 
     // Get all trades
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const trades: any[] = await xata().db.legacy_trades
       .filter(filter)
       .select(["sell_price", "margin", "trade_date"])
       .getAll();
 
     // Get unique counts
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const clients: any[] = await xata().db.legacy_clients.getAll();
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const suppliers: any[] = await xata().db.legacy_suppliers.getAll();
 
     const totalSales = trades.reduce((sum: number, t: any) => sum + (t.sell_price || 0), 0);
@@ -154,7 +150,6 @@ export async function getLegacyMonthlySales(shopper?: "Hope" | "MC"): Promise<Mo
   try {
     const filter = shopper ? { source: shopper } : {};
 
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const trades: any[] = await xata().db.legacy_trades
       .filter(filter)
       .select(["trade_date", "sell_price", "margin"])
@@ -198,7 +193,6 @@ export async function getLegacyByCategory(shopper?: "Hope" | "MC"): Promise<Cate
   try {
     const filter = shopper ? { source: shopper } : {};
 
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const trades: any[] = await xata().db.legacy_trades
       .filter(filter)
       .select(["category", "sell_price", "margin"])
@@ -241,7 +235,6 @@ export async function getLegacyBySupplier(shopper?: "Hope" | "MC"): Promise<Supp
   try {
     const filter = shopper ? { source: shopper } : {};
 
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const trades: any[] = await xata().db.legacy_trades
       .filter(filter)
       .select(["raw_supplier", "sell_price", "margin"])
@@ -284,7 +277,6 @@ export async function getTopLegacyClients(shopper?: "Hope" | "MC"): Promise<Clie
   try {
     const filter = shopper ? { source: shopper } : {};
 
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const trades: any[] = await xata().db.legacy_trades
       .filter(filter)
       .select(["raw_client", "sell_price", "margin"])
@@ -338,7 +330,6 @@ export async function getRecentLegacyTrades(
   try{
     const filter = shopper ? { source: shopper } : {};
 
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const result: any = await xata().db.legacy_trades
       .filter(filter)
       .select([
@@ -394,21 +385,18 @@ export async function getReviewFlags(): Promise<ReviewFlags> {
 
   try {
     // Get clients requiring review
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const clients: any[] = await xata().db.legacy_clients
       .filter({ requires_review: true })
       .select(["client_clean"])
       .getAll();
 
     // Get suppliers requiring review
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const suppliers: any[] = await xata().db.legacy_suppliers
       .filter({ requires_review: true })
       .select(["supplier_clean", "reason"])
       .getAll();
 
     // Count trades without dates
-    // @ts-expect-error - Legacy tables don't exist in schema yet
     const tradesWithoutDates: any[] = await xata().db.legacy_trades
       .filter({ trade_date: null })
       .select(["id"])
