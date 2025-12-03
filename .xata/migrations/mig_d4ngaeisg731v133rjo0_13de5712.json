@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngaeisg731v133rjo0",
+  "parentID": "mig_d4ngacqsg731v133rjn0",
+  "checksum": "1:13de5712b0c667aed54d4c6336b203a100c4ae434fd23aae3a429acde55eae22",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "email",
+          "type": "text"
+        },
+        "table": "Shoppers"
+      }
+    }
+  ]
+}

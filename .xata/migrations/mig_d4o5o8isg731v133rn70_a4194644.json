@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o5o8isg731v133rn70",
+  "parentID": "mig_d4o5o5k7jlmouego5l2g",
+  "checksum": "1:a41946444d7c80f784ec621c96acd731f478b8124aa4b3fd9e1b0d75fd005934",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "first_seen",
+          "type": "datetime"
+        },
+        "table": "legacy_suppliers"
+      }
+    }
+  ]
+}

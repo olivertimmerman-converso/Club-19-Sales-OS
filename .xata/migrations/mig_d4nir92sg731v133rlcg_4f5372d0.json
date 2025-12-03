@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nir92sg731v133rlcg",
+  "parentID": "mig_d4nhshq4lks28pk5f21g",
+  "checksum": "1:4f5372d0d302d72e0b5651fb65e2a36cbdb89e2153d5aa3f7b4853e853b319c7",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "buyer_type",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

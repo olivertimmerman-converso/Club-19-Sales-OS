@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngdqqsg731v133rkc0",
+  "parentID": "mig_d4ngdmqsg731v133rkb0",
+  "checksum": "1:5a47e74e19df32aa1a385970afc3be222a1273361676e0822c5d57a16096e13b",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "currency",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

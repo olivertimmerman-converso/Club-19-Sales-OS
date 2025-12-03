@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngecasg731v133rkk0",
+  "parentID": "mig_d4nge92sg731v133rkj0",
+  "checksum": "1:8166bbd0af00ce029666063fa9fc555274a936570a9711bd7966b9467986c94b",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "commission_paid",
+          "type": "bool"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

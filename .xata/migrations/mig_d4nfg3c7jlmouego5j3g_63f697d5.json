@@ -1,0 +1,12 @@
+{
+  "id": "mig_d4nfg3c7jlmouego5j3g",
+  "parentID": "mig_d4nffvk7jlmouego5j20",
+  "checksum": "1:63f697d573a05b3aa3e204696395fd9a95d361afd6e58a0a4d263c961714a081",
+  "operations": [
+    {
+      "addTable": {
+        "table": "CommissionBands"
+      }
+    }
+  ]
+}

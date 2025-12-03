@@ -1,0 +1,19 @@
+{
+  "id": "mig_d4ngcnqsg731v133rk40",
+  "parentID": "mig_d4ngckasg731v133rk30",
+  "checksum": "1:61152d7f8f89edbbd2fbfecce23c34beeff2351b9fadaf3f62bb10df77b5b677",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "introducer",
+          "type": "link",
+          "link": {
+            "table": "Introducers"
+          }
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

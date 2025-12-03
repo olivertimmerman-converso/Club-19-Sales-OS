@@ -1,0 +1,13 @@
+{
+  "id": "mig_d4ngj7i4lks28pk5f1og",
+  "parentID": "mig_d4ngj5i4lks28pk5f1ng",
+  "checksum": "1:3c94a95c27b25f77cbe9b174713fa1de568d49984e156fc9ee70c82d8c68935b",
+  "operations": [
+    {
+      "removeColumn": {
+        "column": "card_fees",
+        "table": "Sales"
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngd3i4lks28pk5f1ig",
+  "parentID": "mig_d4ngd124lks28pk5f1hg",
+  "checksum": "1:f6e7e1e0cbdcc825f5ea9adfa1e3492b7a92cff139e1f07e02358162476ba3eb",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "quantity",
+          "type": "int"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

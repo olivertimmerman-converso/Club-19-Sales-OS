@@ -131,6 +131,83 @@ const tables = [
       { name: "error_group", type: "text" },
     ],
   },
+  {
+    name: "legacy_suppliers",
+    columns: [
+      { name: "supplier_clean", type: "text" },
+      { name: "raw_variants", type: "multiple" },
+      { name: "requires_review", type: "bool" },
+      { name: "reason", type: "text" },
+      { name: "first_seen", type: "datetime" },
+      { name: "last_seen", type: "datetime" },
+      { name: "trade_count", type: "int" },
+    ],
+    revLinks: [
+      { column: "client_id", table: "legacy_trades" },
+      { column: "legacy_client", table: "legacy_trades" },
+    ],
+  },
+  {
+    name: "legacy_clients",
+    columns: [
+      { name: "client_clean", type: "text" },
+      { name: "raw_variants", type: "multiple" },
+      { name: "client_status", type: "text" },
+      { name: "first_seen", type: "datetime" },
+      { name: "last_seen", type: "datetime" },
+      { name: "trade_count", type: "int" },
+      { name: "requires_review", type: "bool" },
+    ],
+    revLinks: [
+      { column: "supplier_id", table: "legacy_trades" },
+      { column: "legacy_supplier", table: "legacy_trades" },
+    ],
+  },
+  {
+    name: "legacy_trades",
+    columns: [
+      { name: "shopper", type: "text" },
+      { name: "date", type: "datetime" },
+      { name: "client_clean", type: "text" },
+      { name: "supplier_clean", type: "text" },
+      { name: "client_raw", type: "text" },
+      { name: "supplier_raw", type: "text" },
+      { name: "client_status", type: "text" },
+      { name: "supplier_status", type: "text" },
+      { name: "notes", type: "text" },
+      { name: "currency", type: "text" },
+      { name: "flags", type: "multiple" },
+      { name: "requires_review", type: "bool" },
+      {
+        name: "legacy_client",
+        type: "link",
+        link: { table: "legacy_clients" },
+      },
+      {
+        name: "legacy_supplier",
+        type: "link",
+        link: { table: "legacy_suppliers" },
+      },
+      { name: "trade_date", type: "datetime" },
+      { name: "raw_client", type: "text" },
+      { name: "raw_supplier", type: "text" },
+      { name: "client_id", type: "link", link: { table: "legacy_clients" } },
+      {
+        name: "supplier_id",
+        type: "link",
+        link: { table: "legacy_suppliers" },
+      },
+      { name: "item", type: "text" },
+      { name: "brand", type: "text" },
+      { name: "category", type: "text" },
+      { name: "source", type: "text" },
+      { name: "buy_price", type: "float" },
+      { name: "sell_price", type: "float" },
+      { name: "margin", type: "float" },
+      { name: "invoice_number", type: "text" },
+      { name: "raw_row", type: "json" },
+    ],
+  },
 ] as const;
 
 export type SchemaTables = typeof tables;
@@ -157,6 +234,15 @@ export type SalesRecord = Sales & XataRecord;
 export type Errors = InferredTypes["Errors"];
 export type ErrorsRecord = Errors & XataRecord;
 
+export type legacy_suppliers = InferredTypes["legacy_suppliers"];
+export type legacy_suppliersRecord = legacy_suppliers & XataRecord;
+
+export type legacy_clients = InferredTypes["legacy_clients"];
+export type legacy_clientsRecord = legacy_clients & XataRecord;
+
+export type legacy_trades = InferredTypes["legacy_trades"];
+export type legacy_tradesRecord = legacy_trades & XataRecord;
+
 export type DatabaseSchema = {
   Shoppers: ShoppersRecord;
   Buyers: BuyersRecord;
@@ -165,6 +251,9 @@ export type DatabaseSchema = {
   CommissionBands: CommissionBandsRecord;
   Sales: SalesRecord;
   Errors: ErrorsRecord;
+  legacy_suppliers: legacy_suppliersRecord;
+  legacy_clients: legacy_clientsRecord;
+  legacy_trades: legacy_tradesRecord;
 };
 
 const DatabaseClient = buildClient();

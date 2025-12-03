@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngdiqsg731v133rk90",
+  "parentID": "mig_d4ngdfq4lks28pk5f1kg",
+  "checksum": "1:83e12c8bf58134625f4f0e832c5940c4d71041423033439141a08aa6533f9f83",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "implied_shipping",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

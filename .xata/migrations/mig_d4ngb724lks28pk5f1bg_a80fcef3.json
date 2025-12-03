@@ -1,0 +1,13 @@
+{
+  "id": "mig_d4ngb724lks28pk5f1bg",
+  "parentID": "mig_d4ngb4asg731v133rjs0",
+  "checksum": "1:a80fcef3508f58e2926c6540a8729d42347cb35b4ec32101bd9a92e030a83170",
+  "operations": [
+    {
+      "removeColumn": {
+        "column": "min_threshold",
+        "table": "CommissionBands"
+      }
+    }
+  ]
+}

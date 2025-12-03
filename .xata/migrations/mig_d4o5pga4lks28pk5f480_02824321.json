@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o5pga4lks28pk5f480",
+  "parentID": "mig_d4o5peq4lks28pk5f470",
+  "checksum": "1:02824321ab109a902cd1cad91713127946f540dd70916715d9baf7d5bf5c0f11",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "brand",
+          "type": "text"
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

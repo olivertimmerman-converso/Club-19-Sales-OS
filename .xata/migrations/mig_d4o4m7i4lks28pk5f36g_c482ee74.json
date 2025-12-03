@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o4m7i4lks28pk5f36g",
+  "parentID": "mig_d4o4m0isg731v133rmlg",
+  "checksum": "1:c482ee74a428701c1ec6fabb90c6962bf62a9d392ede2a121d10c3b46868c1b2",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "shopper",
+          "type": "text"
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

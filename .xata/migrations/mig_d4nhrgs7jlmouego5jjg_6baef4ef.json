@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nhrgs7jlmouego5jjg",
+  "parentID": "mig_d4nhrec7jlmouego5jig",
+  "checksum": "1:6baef4ef0342a68bd9ad10f78eb2631b527a61e90b296c477262d0e92f1ccb62",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "introducer_share_percent",
+          "type": "float"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

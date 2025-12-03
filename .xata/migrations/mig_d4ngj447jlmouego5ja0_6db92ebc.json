@@ -1,0 +1,13 @@
+{
+  "id": "mig_d4ngj447jlmouego5ja0",
+  "parentID": "mig_d4ngj1asg731v133rko0",
+  "checksum": "1:6db92ebcd9daeaca83574effc767ce25e6b9d93de04c41157285e0f09107cab9",
+  "operations": [
+    {
+      "removeColumn": {
+        "column": "buy_price",
+        "table": "Sales"
+      }
+    }
+  ]
+}

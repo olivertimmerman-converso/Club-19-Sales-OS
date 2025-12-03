@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nge92sg731v133rkj0",
+  "parentID": "mig_d4nge6isg731v133rki0",
+  "checksum": "1:438503e7ae730c2f1f1d428bbc56c92d0c37c7c9fc6749c20058f02a6c851bdc",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "commission_locked",
+          "type": "bool"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

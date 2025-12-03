@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngj5i4lks28pk5f1ng",
+  "parentID": "mig_d4ngj447jlmouego5ja0",
+  "checksum": "1:9ad189a771ece67b2ed28e96dbb3bd19b53b745f71c7477dc8e66d33c92b3883",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "buy_price",
+          "type": "float"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

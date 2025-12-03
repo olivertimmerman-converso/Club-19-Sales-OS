@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o4n8i4lks28pk5f3hg",
+  "parentID": "mig_d4o4n5i4lks28pk5f3gg",
+  "checksum": "1:7f6cca537f59d6500b8853da76102b718fd5350b19f9c991bfd86a85bdd20e0c",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "requires_review",
+          "type": "bool"
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

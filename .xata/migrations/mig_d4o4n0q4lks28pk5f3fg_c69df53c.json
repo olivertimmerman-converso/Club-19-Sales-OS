@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o4n0q4lks28pk5f3fg",
+  "parentID": "mig_d4o4mv24lks28pk5f3eg",
+  "checksum": "1:c69df53cbcaa5dac59f81eff5b7f16f7381dec54ea9bdf4266e6c4c8c77f1e49",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "notes",
+          "type": "text"
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

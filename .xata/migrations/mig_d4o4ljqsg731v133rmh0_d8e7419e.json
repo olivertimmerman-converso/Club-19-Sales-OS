@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o4ljqsg731v133rmh0",
+  "parentID": "mig_d4o4li2sg731v133rmg0",
+  "checksum": "1:d8e7419e2881ca14e7902963c14e38333e7c1a23a826c47295375e980b968773",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "raw_variants",
+          "type": "multiple"
+        },
+        "table": "legacy_clients"
+      }
+    }
+  ]
+}

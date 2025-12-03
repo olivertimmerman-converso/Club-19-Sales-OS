@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nfn82sg731v133rjfg",
+  "parentID": "mig_d4nfg5qsg731v133rjeg",
+  "checksum": "1:76da74392a94d1ff9faaa9b9988b3cbb249eebf8d8f598b54d29a042202675d7",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "Name",
+          "type": "text"
+        },
+        "table": "Buyers"
+      }
+    }
+  ]
+}

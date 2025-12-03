@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngdc24lks28pk5f1jg",
+  "parentID": "mig_d4ngda2sg731v133rk70",
+  "checksum": "1:7b315d621703bf0e7b8595ac119836cf5f775b8de573f33dd5ad2937772b79ac",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "card_fees",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o5orisg731v133rn90",
+  "parentID": "mig_d4o5oq24lks28pk5f3ug",
+  "checksum": "1:3dfede5d57c34c7d6eba6a4274abb910ea8f5ff63f2842506171762792f7603c",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "requires_review",
+          "type": "bool"
+        },
+        "table": "legacy_clients"
+      }
+    }
+  ]
+}

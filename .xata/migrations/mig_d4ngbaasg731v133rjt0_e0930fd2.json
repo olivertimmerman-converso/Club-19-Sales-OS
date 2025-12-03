@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngbaasg731v133rjt0",
+  "parentID": "mig_d4ngb8i4lks28pk5f1cg",
+  "checksum": "1:e0930fd23bb7fe68420ea1f0d714a1ac0c52cb9f2e470eb92b71a2d02e9fbea2",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "max_theshold",
+          "type": "text"
+        },
+        "table": "CommissionBands"
+      }
+    }
+  ]
+}

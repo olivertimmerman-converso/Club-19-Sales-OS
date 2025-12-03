@@ -1,0 +1,13 @@
+{
+  "id": "mig_d4o5tcq4lks28pk5f4l0",
+  "parentID": "mig_d4o5rv24lks28pk5f4k0",
+  "checksum": "1:0d19c284551a397e7830355289ae3280af56536fe4434a473703e9e602190207",
+  "operations": [
+    {
+      "removeColumn": {
+        "column": "raw_row",
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

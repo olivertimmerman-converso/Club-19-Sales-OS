@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngct24lks28pk5f1fg",
+  "parentID": "mig_d4ngcnqsg731v133rk40",
+  "checksum": "1:bd0e4ba8194768e3fa8f5090cf0f893c5f8cd0590eb5a03169158913222fe13c",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "brand",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

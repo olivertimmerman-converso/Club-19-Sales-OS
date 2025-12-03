@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngdkqsg731v133rka0",
+  "parentID": "mig_d4ngdiqsg731v133rk90",
+  "checksum": "1:9622aece6cc6c6364545cab845f8e4717e4806d063825bf46d850b6550315e7a",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "gross_margin",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

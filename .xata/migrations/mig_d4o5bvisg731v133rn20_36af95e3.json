@@ -1,0 +1,12 @@
+{
+  "id": "mig_d4o5bvisg731v133rn20",
+  "parentID": "mig_d4o5bvasg731v133rn10",
+  "checksum": "1:36af95e39f62fe6d30042402ff16907bafc209666ea3573244805884d035829c",
+  "operations": [
+    {
+      "removeTable": {
+        "table": "legacy_suppliers"
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "mig_d4nffs2sg731v133rjd0",
+  "parentID": "mig_d4nffp2sg731v133rjbg",
+  "checksum": "1:1359ee586370beaab3744e3b6e868a45ff15f8e6c03fa1ca36157c5f062bcda3",
+  "operations": [
+    {
+      "addTable": {
+        "table": "Suppliers"
+      }
+    }
+  ]
+}

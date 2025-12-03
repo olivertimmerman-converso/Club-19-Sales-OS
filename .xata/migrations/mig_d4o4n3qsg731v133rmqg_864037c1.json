@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o4n3qsg731v133rmqg",
+  "parentID": "mig_d4o4n0q4lks28pk5f3fg",
+  "checksum": "1:864037c1fc8e34dbb3445ba96c2ec81f4a126e1dcc572e8dacdb683993d1030c",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "currency",
+          "type": "text"
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

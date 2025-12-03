@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngde2sg731v133rk80",
+  "parentID": "mig_d4ngdc24lks28pk5f1jg",
+  "checksum": "1:230007d3ebc6fa5851c6d964b81f4e68a7cfd7a87a4e812d327fb7664eb0c5b4",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "shipping_cost",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

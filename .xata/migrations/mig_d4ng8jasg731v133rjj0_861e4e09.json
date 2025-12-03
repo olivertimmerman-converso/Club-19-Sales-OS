@@ -1,0 +1,14 @@
+{
+  "id": "mig_d4ng8jasg731v133rjj0",
+  "parentID": "mig_d4ng8gs7jlmouego5j80",
+  "checksum": "1:861e4e094773253d252cd44a0878e2ab0714d74601c3f792e4a2b378b7b8837b",
+  "operations": [
+    {
+      "renameColumn": {
+        "newName": "email",
+        "oldName": "Email",
+        "table": "Buyers"
+      }
+    }
+  ]
+}

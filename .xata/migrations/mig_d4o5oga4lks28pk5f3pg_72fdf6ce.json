@@ -1,0 +1,12 @@
+{
+  "id": "mig_d4o5oga4lks28pk5f3pg",
+  "parentID": "mig_d4o5od2sg731v133rn80",
+  "checksum": "1:72fdf6ce3742274a1673e8ca339db4b4d00925897e218a6005bda7e5aee7aab8",
+  "operations": [
+    {
+      "addTable": {
+        "table": "legacy_clients"
+      }
+    }
+  ]
+}

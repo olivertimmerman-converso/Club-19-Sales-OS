@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nhrec7jlmouego5jig",
+  "parentID": "mig_d4nhrbk7jlmouego5jh0",
+  "checksum": "1:d021b3f5c8cba4d96ee7ace3ea1b3476a4261cf9a351fb9d25c544cb17938b0b",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "commission_split_shopper",
+          "type": "float"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

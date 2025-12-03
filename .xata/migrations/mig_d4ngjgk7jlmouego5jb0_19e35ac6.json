@@ -1,0 +1,13 @@
+{
+  "id": "mig_d4ngjgk7jlmouego5jb0",
+  "parentID": "mig_d4ngjcisg731v133rkr0",
+  "checksum": "1:19e35ac661a0f4da7dbd0fcf887bd0108c14fd0b9706e54e1785ffaec04cb1ed",
+  "operations": [
+    {
+      "removeColumn": {
+        "column": "direct_costs",
+        "table": "Sales"
+      }
+    }
+  ]
+}

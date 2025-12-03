@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ng8oasg731v133rjk0",
+  "parentID": "mig_d4ng8jasg731v133rjj0",
+  "checksum": "1:fd89c0f108b4f69787ba1ac0565996aa33333d83710747364b9a0198783f3f7f",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "email",
+          "type": "text"
+        },
+        "table": "Suppliers"
+      }
+    }
+  ]
+}

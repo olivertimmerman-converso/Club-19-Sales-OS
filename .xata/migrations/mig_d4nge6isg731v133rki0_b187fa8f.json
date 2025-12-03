@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nge6isg731v133rki0",
+  "parentID": "mig_d4nge4asg731v133rkh0",
+  "checksum": "1:b187fa8faa24290510ce8978651d705a3c0a54e18b5b7d46a59a360f9a5ba2f4",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "invoice_paid_date",
+          "type": "datetime"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

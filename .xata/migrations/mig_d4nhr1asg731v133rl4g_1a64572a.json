@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nhr1asg731v133rl4g",
+  "parentID": "mig_d4ngk1asg731v133rku0",
+  "checksum": "1:1a64572a0efbfff39adc854fe4ddb4ee8d26624eb4a042fc908db23f98b24eea",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "status",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nfndisg731v133rjgg",
+  "parentID": "mig_d4nfn9q4lks28pk5f190",
+  "checksum": "1:32a3cb8219e666fdd7d98eff1b4c817daf59a704907ef202b9ca125f5c35a47c",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "xero_contact_id",
+          "type": "text"
+        },
+        "table": "Buyers"
+      }
+    }
+  ]
+}

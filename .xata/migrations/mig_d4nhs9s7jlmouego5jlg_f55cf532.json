@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nhs9s7jlmouego5jlg",
+  "parentID": "mig_d4nhs8c7jlmouego5jkg",
+  "checksum": "1:f55cf53282d58d09f6d2250872d11535fb6d6d2567a17a348e3d37f969e63543",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "source",
+          "type": "text"
+        },
+        "table": "Errors"
+      }
+    }
+  ]
+}

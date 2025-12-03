@@ -1,0 +1,12 @@
+{
+  "id": "mig_d4o4kai4lks28pk5f310",
+  "parentID": "mig_d4nir92sg731v133rlcg",
+  "checksum": "1:501478358eebc26a671b770f85a0a460d2c7c3d45de562334ac8a70d406c4aa9",
+  "operations": [
+    {
+      "addTable": {
+        "table": "legacy_suppliers"
+      }
+    }
+  ]
+}

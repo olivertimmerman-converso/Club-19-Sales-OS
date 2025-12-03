@@ -1,0 +1,12 @@
+{
+  "id": "mig_d4nffvk7jlmouego5j20",
+  "parentID": "mig_d4nffs2sg731v133rjd0",
+  "checksum": "1:ce52255608f8098d019b00ed4af9e387df40bfae839d686eb7e15ec654971468",
+  "operations": [
+    {
+      "addTable": {
+        "table": "Introducers"
+      }
+    }
+  ]
+}

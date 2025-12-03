@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ng8r2sg731v133rjl0",
+  "parentID": "mig_d4ng8oasg731v133rjk0",
+  "checksum": "1:af2f2a7532c15634e5f8753767d73918f193110c6124c9ebb0bf78fe0d8c1462",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "xero_contact_id",
+          "type": "text"
+        },
+        "table": "Suppliers"
+      }
+    }
+  ]
+}

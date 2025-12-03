@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o4l8s7jlmouego5l0g",
+  "parentID": "mig_d4o4l7c7jlmouego5kvg",
+  "checksum": "1:d1b2b9ebce621087509fbdfb8ba150dcff12508429b9e7a39a2d2cb2d4b53ea2",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "trade_count",
+          "type": "int"
+        },
+        "table": "legacy_suppliers"
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngduqsg731v133rke0",
+  "parentID": "mig_d4ngdt2sg731v133rkd0",
+  "checksum": "1:e418cc53bf67baa509093a58d388e86668ead12fb6d59c0006611412a82e5118",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "xero_invoice_number",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

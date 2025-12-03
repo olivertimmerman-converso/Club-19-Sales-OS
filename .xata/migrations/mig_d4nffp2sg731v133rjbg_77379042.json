@@ -1,0 +1,12 @@
+{
+  "id": "mig_d4nffp2sg731v133rjbg",
+  "parentID": "mig_d4nffmk7jlmouego5j0g",
+  "checksum": "1:77379042dd891077640c7d071232d2661e6f95f0da4c967fb522c437237841ab",
+  "operations": [
+    {
+      "addTable": {
+        "table": "Buyers"
+      }
+    }
+  ]
+}

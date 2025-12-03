@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nhrm2sg731v133rl6g",
+  "parentID": "mig_d4nhrka4lks28pk5f1vg",
+  "checksum": "1:b64fd2d36a97ef8187c3f4c279004624736025c25f6c4fd3c5bdd084a10c61c1",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "admin_override_notes",
+          "type": "multiple"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

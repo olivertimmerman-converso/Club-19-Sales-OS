@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngbka4lks28pk5f1eg",
+  "parentID": "mig_d4ngbgasg731v133rju0",
+  "checksum": "1:149d70c42ef6c6f8fe3775b68612e8652ea8bdee1e7f7ac7b38d8f6e06386276",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "commission_percent",
+          "type": "float"
+        },
+        "table": "CommissionBands"
+      }
+    }
+  ]
+}

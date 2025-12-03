@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nhr6s7jlmouego5jf0",
+  "parentID": "mig_d4nhr3q4lks28pk5f1sg",
+  "checksum": "1:c63150645ea55b72fe7523230a6304fb1d85f393f2881818a404b9b1e48aa891",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "error_message",
+          "type": "multiple"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

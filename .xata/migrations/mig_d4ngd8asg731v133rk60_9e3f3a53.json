@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngd8asg731v133rk60",
+  "parentID": "mig_d4ngd62sg731v133rk50",
+  "checksum": "1:9e3f3a53e63940fe6f5613c8ee89e9c8aaf30cf5f353965bbc03ff19185babe1",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "sale_amount_ex_vat",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

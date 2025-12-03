@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o4n5i4lks28pk5f3gg",
+  "parentID": "mig_d4o4n3qsg731v133rmqg",
+  "checksum": "1:0b60899adedc373d0f105312ae6de4064953240c024f63e5a41829e7e33c881e",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "flags",
+          "type": "multiple"
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

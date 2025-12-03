@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nhrnqsg731v133rl7g",
+  "parentID": "mig_d4nhrm2sg731v133rl6g",
+  "checksum": "1:038eec76ee5f57c71174737e4eff7feba7c3c13ebc89f3c50224386439727ca9",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "xero_payment_date",
+          "type": "datetime"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

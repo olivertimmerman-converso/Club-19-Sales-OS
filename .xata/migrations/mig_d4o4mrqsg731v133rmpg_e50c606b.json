@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o4mrqsg731v133rmpg",
+  "parentID": "mig_d4o4mpi4lks28pk5f3cg",
+  "checksum": "1:e50c606ba02ebfcec5450dcd9a415d86b64460ed6552f0fbe6f3d8f60c1ca221",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "supplier_raw",
+          "type": "text"
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "mig_d4nhs0q4lks28pk5f20g",
+  "parentID": "mig_d4nhrsasg731v133rl90",
+  "checksum": "1:3c7120e09005f4bc289e8c9e5b506f2119c1dff7075b56f276aa08e14c31d7cf",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "sale",
+          "type": "link",
+          "link": {
+            "table": "Sales"
+          }
+        },
+        "table": "Errors"
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngjrs7jlmouego5je0",
+  "parentID": "mig_d4ngjqi4lks28pk5f1qg",
+  "checksum": "1:5e0c3799a814e8a9b798b53a03bb02131d4bd8be77c1c758c5c89ac3dc07ac9b",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "commissionable_margin",
+          "type": "float"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

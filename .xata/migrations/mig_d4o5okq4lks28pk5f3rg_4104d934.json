@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o5okq4lks28pk5f3rg",
+  "parentID": "mig_d4o5oj47jlmouego5l3g",
+  "checksum": "1:4104d9348726bf69e56cf94e1a2826d43e25d2fa835d0c125811da4aff017102",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "client_status",
+          "type": "text"
+        },
+        "table": "legacy_clients"
+      }
+    }
+  ]
+}

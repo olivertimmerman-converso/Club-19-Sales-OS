@@ -1,0 +1,13 @@
+{
+  "id": "mig_d4ngjbasg731v133rkq0",
+  "parentID": "mig_d4ngj8qsg731v133rkp0",
+  "checksum": "1:d88eb604e789520fb9f1a4a6394d66608332599871d719fe2e5f3c1570274a2a",
+  "operations": [
+    {
+      "removeColumn": {
+        "column": "shipping_cost",
+        "table": "Sales"
+      }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "mig_d4o5p9q4lks28pk5f450",
+  "parentID": "mig_d4o5p4a4lks28pk5f440",
+  "checksum": "1:4a111200da9b3649685383d15a2d4b61354486b6492915df07e85c34468e6ef0",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "client_id",
+          "type": "link",
+          "link": {
+            "table": "legacy_clients"
+          }
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

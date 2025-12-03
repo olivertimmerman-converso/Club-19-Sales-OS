@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o4lpisg731v133rmj0",
+  "parentID": "mig_d4o4lnqsg731v133rmi0",
+  "checksum": "1:b61df3536d4ca8176ed2be1b12ed538e70191d4516573d8712cd6500089c2db7",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "last_seen",
+          "type": "datetime"
+        },
+        "table": "legacy_clients"
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "mig_d4nffmk7jlmouego5j0g",
+  "parentID": "mig_d4nfatk7jlmouego5ivg",
+  "checksum": "1:dfe7597d0d6396a08d8eedcb5f2a1a5c43ae82815f2a1f3b346f3444981e2894",
+  "operations": [
+    {
+      "renameTable": {
+        "newName": "Shoppers",
+        "oldName": "temp_init"
+      }
+    }
+  ]
+}

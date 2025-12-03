@@ -1,0 +1,12 @@
+{
+  "id": "mig_d4o4m0isg731v133rmlg",
+  "parentID": "mig_d4o4ltisg731v133rmk0",
+  "checksum": "1:0e0e3f57b45548e709fb7cfba827bd9bc00051bb8d25a47fd6aaebafaa164b83",
+  "operations": [
+    {
+      "addTable": {
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

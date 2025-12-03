@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4nhrka4lks28pk5f1vg",
+  "parentID": "mig_d4nhrgs7jlmouego5jjg",
+  "checksum": "1:5e25fe1ae713019886d241ceeb4b3fdcbad6622182782e7f8885087ab41a3424",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "admin_override_commission_percent",
+          "type": "float"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

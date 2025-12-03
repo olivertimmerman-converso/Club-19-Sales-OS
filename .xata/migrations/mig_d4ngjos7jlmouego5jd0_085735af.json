@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngjos7jlmouego5jd0",
+  "parentID": "mig_d4ngjnisg731v133rkt0",
+  "checksum": "1:085735af575ea897b76ad18b97c43ff1aba4922e0b0ed0c8fc13e45cdc8345fd",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "gross_margin",
+          "type": "float"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

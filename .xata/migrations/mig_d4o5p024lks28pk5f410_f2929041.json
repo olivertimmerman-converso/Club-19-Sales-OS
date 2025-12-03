@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o5p024lks28pk5f410",
+  "parentID": "mig_d4o5oti4lks28pk5f400",
+  "checksum": "1:f292904168aaa0a51f7954d2ffcc7ee1a69668b7eb1b32007e2be385ebb3fc0e",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "invoice_number",
+          "type": "text"
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

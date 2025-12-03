@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4ngca2sg731v133rk00",
+  "parentID": "mig_d4ngc7qsg731v133rjv0",
+  "checksum": "1:e2d2f9ca18f85b8b78c1d261e001473ddab4a81607b1f87dcf4155e76bc5409b",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "sale_date",
+          "type": "datetime"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

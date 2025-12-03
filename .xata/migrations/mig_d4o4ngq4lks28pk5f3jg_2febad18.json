@@ -1,0 +1,19 @@
+{
+  "id": "mig_d4o4ngq4lks28pk5f3jg",
+  "parentID": "mig_d4o4nd24lks28pk5f3ig",
+  "checksum": "1:2febad187a274df9053a2f03923decd6ea227cf1631887e83d6fbdc1af659998",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "legacy_supplier",
+          "type": "link",
+          "link": {
+            "table": "legacy_suppliers"
+          }
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}

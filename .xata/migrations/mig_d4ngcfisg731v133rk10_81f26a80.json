@@ -1,0 +1,19 @@
+{
+  "id": "mig_d4ngcfisg731v133rk10",
+  "parentID": "mig_d4ngca2sg731v133rk00",
+  "checksum": "1:81f26a8085ed931f45962a5903a49e7144ebc3ba9d8240a85022dea75340145a",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "shopper",
+          "type": "link",
+          "link": {
+            "table": "Shoppers"
+          }
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

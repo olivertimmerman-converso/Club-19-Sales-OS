@@ -1,0 +1,19 @@
+{
+  "id": "mig_d4ngek24lks28pk5f1lg",
+  "parentID": "mig_d4ngeh2sg731v133rkm0",
+  "checksum": "1:3c343bac7413d3ee6c01531964a67f75ddd7d591f7a6c726cc101e3fd2570885",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "commission_band",
+          "type": "link",
+          "link": {
+            "table": "CommissionBands"
+          }
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

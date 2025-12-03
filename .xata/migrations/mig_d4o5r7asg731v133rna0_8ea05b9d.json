@@ -1,0 +1,16 @@
+{
+  "id": "mig_d4o5r7asg731v133rna0",
+  "parentID": "mig_d4o5r5i4lks28pk5f4f0",
+  "checksum": "1:8ea05b9dffdfa339c8b85228b2a4a24c397b5d040ab1c9923364db84b58c8cc4",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "buy_price",
+          "type": "float"
+        },
+        "table": "legacy_trades"
+      }
+    }
+  ]
+}
