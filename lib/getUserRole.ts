@@ -23,7 +23,9 @@ export async function getUserRole(): Promise<Role> {
     }
 
     const user = await (await clerkClient()).users.getUser(userId);
-    const role = (user?.publicMetadata?.role as Role) ?? "shopper";
+    // Support both 'staffRole' and 'role' fields for production compatibility
+    const metadata = user?.publicMetadata as { role?: Role; staffRole?: Role } | undefined;
+    const role = (metadata?.staffRole || metadata?.role) ?? "shopper";
 
     return role;
   } catch (error) {

@@ -13,6 +13,7 @@ interface ClerkSessionClaims {
   name?: string;
   publicMetadata?: {
     role?: UserRole;
+    staffRole?: UserRole;  // Support production field name
     xero?: {
       accessToken?: string;
       refreshToken?: string;
@@ -33,8 +34,10 @@ export async function getUserRole(): Promise<UserRole | null> {
   }
 
   // Read role from Clerk publicMetadata
+  // Support both 'staffRole' and 'role' fields for production compatibility
   const claims = sessionClaims as ClerkSessionClaims;
-  const role = claims.publicMetadata?.role;
+  const metadata = claims.publicMetadata;
+  const role = metadata?.staffRole || metadata?.role;
 
   if (!role) {
     // Default to 'shopper' if no role is set
@@ -55,8 +58,9 @@ export async function getCurrentUser() {
   }
 
   const claims = sessionClaims as ClerkSessionClaims;
-  const role = claims.publicMetadata?.role || 'shopper';
-  const xero = claims.publicMetadata?.xero;
+  const metadata = claims.publicMetadata;
+  const role = metadata?.staffRole || metadata?.role || 'shopper';
+  const xero = metadata?.xero;
 
   return {
     userId,

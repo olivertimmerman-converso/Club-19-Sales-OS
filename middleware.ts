@@ -55,12 +55,15 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   }
 
   // Get user role from Clerk publicMetadata (Edge Runtime compatible)
+  // Support both 'role' and 'staffRole' fields for production compatibility
   interface ClerkSessionClaims {
     publicMetadata?: {
       role?: Role;
+      staffRole?: Role;
     };
   }
-  const role = ((sessionClaims as ClerkSessionClaims)?.publicMetadata?.role) || "shopper";
+  const metadata = (sessionClaims as ClerkSessionClaims)?.publicMetadata;
+  const role = (metadata?.staffRole || metadata?.role) || "shopper";
 
   // Debug logging for role extraction
   if (pathname.startsWith("/staff") || pathname.startsWith("/dashboard") || pathname.startsWith("/sales") || pathname.startsWith("/clients") || pathname.startsWith("/suppliers") || pathname.startsWith("/invoices") || pathname.startsWith("/finance") || pathname.startsWith("/admin") || pathname.startsWith("/legacy")) {

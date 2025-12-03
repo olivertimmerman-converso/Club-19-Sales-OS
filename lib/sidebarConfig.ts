@@ -59,7 +59,7 @@ export const sidebarConfig: Record<string, SidebarItem> = {
   legacy: {
     label: "Legacy Data",
     href: "/legacy",
-    roles: ["superadmin"],
+    roles: ["admin", "finance", "superadmin"],
     icon: "Archive",
   },
 };

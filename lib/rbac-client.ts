@@ -23,8 +23,9 @@ export function useUserRole(): UserRole | null {
   }
 
   // Read role from Clerk publicMetadata
-  const metadata = user.publicMetadata as { role?: UserRole };
-  const role = metadata?.role;
+  // Support both 'staffRole' and 'role' fields for production compatibility
+  const metadata = user.publicMetadata as { role?: UserRole; staffRole?: UserRole };
+  const role = metadata?.staffRole || metadata?.role;
 
   if (!role) {
     // Default to 'shopper' if no role is set
