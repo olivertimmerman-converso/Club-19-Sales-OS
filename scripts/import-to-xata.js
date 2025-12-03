@@ -65,18 +65,22 @@ function csvToJson(csvText) {
     headers.forEach((header, i) => {
       let value = values[i];
 
-      // Skip empty values (let Xata use defaults)
-      if (value === '' || value === null) {
+      // Skip empty values and raw_row (not needed for application)
+      if (value === '' || value === null || header === 'raw_row') {
         return;
       }
 
-      // Parse JSON arrays and objects
-      if (value.startsWith('[') || value.startsWith('{')) {
+      // Parse JSON arrays and objects (except raw_row which stays as string for Xata JSON type)
+      if ((value.startsWith('[') || value.startsWith('{')) && header !== 'raw_row') {
         try {
           value = JSON.parse(value.replace(/""/g, '"'));
         } catch (e) {
           // Keep as string if parse fails
         }
+      }
+      // For raw_row, just fix the double quotes but keep as string
+      else if (header === 'raw_row' && (value.startsWith('{') || value.startsWith('['))) {
+        value = value.replace(/""/g, '"');
       }
       // Parse booleans
       else if (value === 'true') value = true;
@@ -85,8 +89,8 @@ function csvToJson(csvText) {
       else if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
         value = new Date(value + 'T00:00:00.000Z').toISOString();
       }
-      // Parse numbers (except for ID fields)
-      else if (!header.includes('id') && !isNaN(value) && value !== '') {
+      // Parse numbers (except for ID fields and invoice_number)
+      else if (!header.includes('id') && header !== 'invoice_number' && !isNaN(value) && value !== '') {
         value = parseFloat(value);
       }
 

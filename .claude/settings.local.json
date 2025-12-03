@@ -19,7 +19,12 @@
       "Bash(xata schema edit:*)",
       "Bash(npx xata:*)",
       "Bash(perl -i -pe:*)",
-      "Bash(bash:*)"
+      "Bash(bash:*)",
+      "Bash(open \"https://app.xata.io/workspaces/Oliver-Timmerman-s-workspace-d3730u/dbs/Club19SalesOS\")",
+      "Bash(yes:*)",
+      "Bash(script -q /dev/null npx xata codegen:*)",
+      "Bash(git fetch:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
