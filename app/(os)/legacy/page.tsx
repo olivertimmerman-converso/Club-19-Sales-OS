@@ -33,13 +33,21 @@ export default async function LegacyDashboardPage() {
   // RBAC: Only superadmin, admin, finance
   const role = await getUserRole();
 
-  // Redirect shoppers to their personal sales view
-  if (role === "shopper") {
-    redirect("/legacy/my-sales");
-  }
+  // ---------------------------------------------
+  // TEMPORARY OVERRIDE: PAGE-LEVEL RBAC DISABLED
+  // Allows all authenticated users to view legacy dashboard
+  // during test mode (matches middleware RBAC disable)
+  // ---------------------------------------------
+  console.warn("[LEGACY PAGE] ⚠️  RBAC TEMP DISABLED - Allowing role:", role);
 
-  // Assert legacy access (will redirect to /unauthorised if denied)
-  assertLegacyAccess(role);
+  // ORIGINAL RBAC CODE (COMMENTED OUT FOR TESTING):
+  // // Redirect shoppers to their personal sales view
+  // if (role === "shopper") {
+  //   redirect("/legacy/my-sales");
+  // }
+  //
+  // // Assert legacy access (will redirect to /unauthorised if denied)
+  // assertLegacyAccess(role);
 
   // Fetch all data in parallel
   const [
