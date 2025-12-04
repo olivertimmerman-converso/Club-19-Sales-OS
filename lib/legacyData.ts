@@ -92,6 +92,9 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
   }
 
   try {
+    console.log("[XATA DEBUG] getLegacySummary called, shopper:", shopper);
+    console.log("[XATA DEBUG] Database URL:", (xata() as any).options?.databaseURL);
+
     // Build filter
     const filter = shopper ? { source: shopper } : {};
 
@@ -100,6 +103,8 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
       .filter(filter)
       .select(["sell_price", "margin", "trade_date"])
       .getAll();
+
+    console.log("[XATA DEBUG] Query returned:", trades.length, "trades");
 
     // Get unique counts
     const clients: any[] = await xata().db.legacy_clients.getAll();
