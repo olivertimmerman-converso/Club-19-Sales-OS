@@ -5,6 +5,7 @@
  */
 
 import { getUserRole } from "@/lib/getUserRole";
+import { type Role } from "@/lib/roleUtils";
 import { Sidebar } from "./Sidebar";
 import { UserButton } from "@clerk/nextjs";
 
@@ -17,7 +18,7 @@ export async function OSLayout({ children }: OSLayoutProps) {
   // TEST MODE OVERRIDE (RBAC + AUTH DISABLED)
   // In test mode, default to superadmin role and hide user button
   // ---------------------------------------------
-  let role = "shopper";
+  let role: Role = "shopper";
   let isTestMode = false;
 
   if (process.env.TEST_MODE === "true") {
