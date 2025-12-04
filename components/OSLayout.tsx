@@ -2,6 +2,7 @@
  * Club 19 Sales OS - Layout Wrapper
  *
  * Wraps OS routes with sidebar navigation
+ * Includes comprehensive error handling to prevent crashes
  */
 
 import { getUserRole } from "@/lib/getUserRole";
@@ -14,20 +15,26 @@ interface OSLayoutProps {
 }
 
 export async function OSLayout({ children }: OSLayoutProps) {
-  // ---------------------------------------------
-  // TEST MODE OVERRIDE (RBAC + AUTH DISABLED)
-  // In test mode, default to superadmin role and hide user button
-  // ---------------------------------------------
-  let role: Role = "shopper";
-  let isTestMode = false;
+  console.log("[OSLayout] 🏗️  Starting layout render");
 
-  if (process.env.TEST_MODE === "true") {
-    console.warn("[TEST MODE] OSLayout bypassing getUserRole() - returning 'superadmin'");
-    role = "superadmin";
-    isTestMode = true;
-  } else {
+  // Get user role with comprehensive error handling
+  let role: Role = "shopper";
+  let hasError = false;
+  let errorMessage = "";
+
+  try {
+    console.log("[OSLayout] 📋 Calling getUserRole()");
     role = await getUserRole();
+    console.log(`[OSLayout] ✅ Role resolved: "${role}"`);
+  } catch (error) {
+    hasError = true;
+    errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("[OSLayout] ❌ Failed to get user role:", error);
+    console.error("[OSLayout] 🔄 Falling back to 'shopper' role");
+    // role remains "shopper" as default fallback
   }
+
+  console.log("[OSLayout] 🎨 Rendering layout with role:", role);
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -42,9 +49,13 @@ export async function OSLayout({ children }: OSLayoutProps) {
             {/* Page-specific content can go here */}
           </div>
 
-          {/* User Profile - Only show if not in test mode */}
-          {!isTestMode && (
-            <div className="flex items-center gap-4">
+          {/* User Profile */}
+          <div className="flex items-center gap-4">
+            {hasError ? (
+              <div className="flex items-center gap-2 px-3 py-1 bg-red-100 border border-red-300 rounded-md">
+                <span className="text-sm font-medium text-red-800">⚠️ Auth Error</span>
+              </div>
+            ) : (
               <UserButton
                 afterSignOutUrl="/sign-in"
                 appearance={{
@@ -53,15 +64,8 @@ export async function OSLayout({ children }: OSLayoutProps) {
                   },
                 }}
               />
-            </div>
-          )}
-
-          {/* Test Mode Indicator */}
-          {isTestMode && (
-            <div className="flex items-center gap-2 px-3 py-1 bg-yellow-100 border border-yellow-300 rounded-md">
-              <span className="text-sm font-medium text-yellow-800">⚠️ TEST MODE</span>
-            </div>
-          )}
+            )}
+          </div>
         </header>
 
         {/* Page Content */}

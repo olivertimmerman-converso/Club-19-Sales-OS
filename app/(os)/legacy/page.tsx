@@ -30,55 +30,120 @@ import { RecentTradesTable } from "@/components/legacy/RecentTradesTable";
 import { ReviewFlagsPanel } from "@/components/legacy/ReviewFlagsPanel";
 
 export default async function LegacyDashboardPage() {
-  // ---------------------------------------------
-  // TEST MODE OVERRIDE (RBAC + AUTH DISABLED)
-  // Bypass role checks entirely in test mode
-  // ---------------------------------------------
-  let role = "shopper";
-  if (process.env.TEST_MODE === "true") {
-    console.warn("[TEST MODE] Legacy page loading - RBAC fully bypassed");
-    role = "superadmin";
-  } else {
-    role = await getUserRole();
-    console.warn("[LEGACY PAGE] ⚠️  RBAC TEMP DISABLED - Allowing role:", role);
-  }
+  console.log("[Legacy Page] 🚀 Starting Legacy Dashboard render");
 
-  // Fetch all data in parallel with error handling
-  let summary: any, monthlySales: any[], categoryData: any[], supplierData: any[], topClients: any[], topSuppliers: any[], recentTrades: any[], reviewFlags: any;
-
+  // Get user role and check access
+  let role;
   try {
-    [
-      summary,
-      monthlySales,
-      categoryData,
-      supplierData,
-      topClients,
-      topSuppliers,
-      recentTrades,
-      reviewFlags,
-    ] = await Promise.all([
-      getLegacySummary().catch(e => { console.error("[LEGACY] getSummary failed:", e); return {} as any; }),
-      getLegacyMonthlySales().catch(e => { console.error("[LEGACY] getMonthlySales failed:", e); return []; }),
-      getLegacyByCategory().catch(e => { console.error("[LEGACY] getByCategory failed:", e); return []; }),
-      getLegacyBySupplier().catch(e => { console.error("[LEGACY] getBySupplier failed:", e); return []; }),
-      getTopLegacyClients().catch(e => { console.error("[LEGACY] getTopClients failed:", e); return []; }),
-      getTopLegacySuppliers().catch(e => { console.error("[LEGACY] getTopSuppliers failed:", e); return []; }),
-      getRecentLegacyTrades(20).catch(e => { console.error("[LEGACY] getRecentTrades failed:", e); return []; }),
-      getReviewFlags().catch(e => { console.error("[LEGACY] getReviewFlags failed:", e); return {} as any; }),
-    ]);
-    console.log("[TEST MODE] Legacy data fetched successfully");
+    console.log("[Legacy Page] 🔐 Getting user role");
+    role = await getUserRole();
+    console.log(`[Legacy Page] ✅ Role retrieved: "${role}"`);
+
+    // Check if user has access to legacy dashboard
+    console.log("[Legacy Page] 🔒 Checking legacy access permissions");
+    assertLegacyAccess(role);
+    console.log("[Legacy Page] ✅ Access granted");
   } catch (error) {
-    console.error("[LEGACY PAGE] Fatal error fetching data:", error);
-    // Provide safe defaults
-    summary = { totalSales: 0, totalMargin: 0, tradeCount: 0, clientCount: 0, supplierCount: 0, avgMargin: 0, dateRange: { start: null, end: null } };
-    monthlySales = [];
-    categoryData = [];
-    supplierData = [];
-    topClients = [];
-    topSuppliers = [];
-    recentTrades = [];
-    reviewFlags = { clientsRequiringReview: 0, suppliersRequiringReview: 0, tradesWithoutDates: 0, clientDetails: [], supplierDetails: [] };
+    console.error("[Legacy Page] ❌ Role/access check failed:", error);
+    throw error; // Re-throw to let Next.js handle the redirect or error
   }
+
+  // Initialize data variables with safe defaults
+  console.log("[Legacy Page] 📊 Initializing data variables");
+  let summary: any = { totalSales: 0, totalMargin: 0, tradeCount: 0, clientCount: 0, supplierCount: 0, avgMargin: 0, dateRange: { start: null, end: null } };
+  let monthlySales: any[] = [];
+  let categoryData: any[] = [];
+  let supplierData: any[] = [];
+  let topClients: any[] = [];
+  let topSuppliers: any[] = [];
+  let recentTrades: any[] = [];
+  let reviewFlags: any = { clientsRequiringReview: 0, suppliersRequiringReview: 0, tradesWithoutDates: 0, clientDetails: [], supplierDetails: [] };
+
+  // Fetch all data in parallel with comprehensive error handling
+  console.log("[Legacy Page] 🌐 Fetching all legacy data in parallel");
+  try {
+    const results = await Promise.allSettled([
+      getLegacySummary(),
+      getLegacyMonthlySales(),
+      getLegacyByCategory(),
+      getLegacyBySupplier(),
+      getTopLegacyClients(),
+      getTopLegacySuppliers(),
+      getRecentLegacyTrades(20),
+      getReviewFlags(),
+    ]);
+
+    // Process results with detailed logging
+    console.log("[Legacy Page] 📋 Processing data fetch results");
+
+    if (results[0].status === "fulfilled") {
+      summary = results[0].value;
+      console.log("[Legacy Page] ✅ Summary data:", summary);
+    } else {
+      console.error("[Legacy Page] ❌ getSummary failed:", results[0].reason);
+    }
+
+    if (results[1].status === "fulfilled") {
+      monthlySales = results[1].value;
+      console.log(`[Legacy Page] ✅ Monthly sales: ${monthlySales.length} months`);
+    } else {
+      console.error("[Legacy Page] ❌ getMonthlySales failed:", results[1].reason);
+    }
+
+    if (results[2].status === "fulfilled") {
+      categoryData = results[2].value;
+      console.log(`[Legacy Page] ✅ Category data: ${categoryData.length} categories`);
+    } else {
+      console.error("[Legacy Page] ❌ getByCategory failed:", results[2].reason);
+    }
+
+    if (results[3].status === "fulfilled") {
+      supplierData = results[3].value;
+      console.log(`[Legacy Page] ✅ Supplier data: ${supplierData.length} suppliers`);
+    } else {
+      console.error("[Legacy Page] ❌ getBySupplier failed:", results[3].reason);
+    }
+
+    if (results[4].status === "fulfilled") {
+      topClients = results[4].value;
+      console.log(`[Legacy Page] ✅ Top clients: ${topClients.length} clients`);
+    } else {
+      console.error("[Legacy Page] ❌ getTopClients failed:", results[4].reason);
+    }
+
+    if (results[5].status === "fulfilled") {
+      topSuppliers = results[5].value;
+      console.log(`[Legacy Page] ✅ Top suppliers: ${topSuppliers.length} suppliers`);
+    } else {
+      console.error("[Legacy Page] ❌ getTopSuppliers failed:", results[5].reason);
+    }
+
+    if (results[6].status === "fulfilled") {
+      recentTrades = results[6].value;
+      console.log(`[Legacy Page] ✅ Recent trades: ${recentTrades.length} trades`);
+    } else {
+      console.error("[Legacy Page] ❌ getRecentTrades failed:", results[6].reason);
+    }
+
+    if (results[7].status === "fulfilled") {
+      reviewFlags = results[7].value;
+      console.log("[Legacy Page] ✅ Review flags:", reviewFlags);
+    } else {
+      console.error("[Legacy Page] ❌ getReviewFlags failed:", results[7].reason);
+    }
+
+    console.log("[Legacy Page] ✅ All data fetching complete");
+  } catch (error) {
+    console.error("[Legacy Page] ❌ Fatal error during data fetch:", error);
+    console.error("[Legacy Page] 📊 Error details:", {
+      name: error instanceof Error ? error.name : "Unknown",
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    // Data variables remain with safe defaults
+  }
+
+  console.log("[Legacy Page] 🎨 Rendering dashboard UI");
 
   return (
     <div className="p-6">

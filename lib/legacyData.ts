@@ -92,23 +92,34 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
   }
 
   try {
-    console.log("[XATA DEBUG] getLegacySummary called, shopper:", shopper);
-    console.log("[XATA DEBUG] Database URL:", (xata() as any).options?.databaseURL);
+    console.log("[legacyData] 🚀 getLegacySummary called");
+    console.log("[legacyData] 📊 Shopper filter:", shopper || "(all)");
+    console.log("[legacyData] 🗄️  Database URL:", (xata() as any).options?.databaseURL);
 
     // Build filter
     const filter = shopper ? { source: shopper } : {};
+    console.log("[legacyData] 🔍 Query filter:", JSON.stringify(filter));
 
     // Get all trades
+    console.log("[legacyData] 📡 Fetching trades from legacy_trades table");
     const trades: any[] = await xata().db.legacy_trades
       .filter(filter)
       .select(["sell_price", "margin", "trade_date"])
       .getAll();
 
-    console.log("[XATA DEBUG] Query returned:", trades.length, "trades");
+    console.log(`[legacyData] ✅ Trades query returned: ${trades.length} records`);
+    if (trades.length > 0) {
+      console.log("[legacyData] 📋 Sample trade:", trades[0]);
+    }
 
     // Get unique counts
+    console.log("[legacyData] 📡 Fetching clients from legacy_clients table");
     const clients: any[] = await xata().db.legacy_clients.getAll();
+    console.log(`[legacyData] ✅ Clients query returned: ${clients.length} records`);
+
+    console.log("[legacyData] 📡 Fetching suppliers from legacy_suppliers table");
     const suppliers: any[] = await xata().db.legacy_suppliers.getAll();
+    console.log(`[legacyData] ✅ Suppliers query returned: ${suppliers.length} records`);
 
     const totalSales = trades.reduce((sum: number, t: any) => sum + (t.sell_price || 0), 0);
     const totalMargin = trades.reduce((sum: number, t: any) => sum + (t.margin || 0), 0);
@@ -120,7 +131,7 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
       .filter(Boolean)
       .sort();
 
-    return {
+    const summary = {
       totalSales,
       totalMargin,
       tradeCount: trades.length,
@@ -132,8 +143,18 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
         end: dates[dates.length - 1] || null,
       },
     };
+
+    console.log("[legacyData] 📊 Summary calculated:", summary);
+    console.log("[legacyData] ✅ getLegacySummary complete");
+    return summary;
   } catch (error) {
-    console.error("[getLegacySummary] Error:", error);
+    console.error("[legacyData] ❌ Error in getLegacySummary:", error);
+    console.error("[legacyData] 📊 Error details:", {
+      name: error instanceof Error ? error.name : "Unknown",
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    console.log("[legacyData] 🔄 Returning empty summary due to error");
     return {
       totalSales: 0,
       totalMargin: 0,

@@ -35,17 +35,11 @@ const ACCESS_DENIED = "/unauthorised";
 export default clerkMiddleware(async (auth, req: NextRequest) => {
   const { pathname } = req.nextUrl;
 
-  // ---------------------------------------------
-  // TEST MODE OVERRIDE (RBAC + AUTH DISABLED)
-  // Bypass ALL authentication and RBAC checks
-  // ---------------------------------------------
-  if (process.env.TEST_MODE === "true") {
-    console.warn(`[TEST MODE] ⚠️  Middleware override active for ${pathname}`);
-    console.warn(`[TEST MODE] 🔓 Bypassing all auth + role checks`);
-    return NextResponse.next();
-  }
+  console.log(`[Middleware] 🛡️  Processing request: ${pathname}`);
 
   const { userId, sessionClaims } = await auth();
+  console.log(`[Middleware] 👤 UserId: ${userId || "(none)"}`);
+
 
   // Allow public routes
   if (isPublicRoute(req)) {
@@ -117,29 +111,19 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
                     pathname.startsWith("/admin") ||
                     pathname.startsWith("/legacy");
 
-  // ---------------------------------------------
-  // TEMPORARY OVERRIDE: RBAC DISABLED FOR TESTING
-  // Allows all authenticated users to access OS routes,
-  // including /legacy, /admin, /finance, etc.
-  // This is a reversible patch to allow system preview
-  // while Clerk metadata is being configured.
-  // ---------------------------------------------
+  // Check RBAC permissions for new OS routes
   if (isOSRoute) {
-    console.warn(`[RBAC TEMP DISABLED] ⚠️  Allowing user through: pathname="${pathname}", resolvedRole="${role}", userId="${userId}"`);
-    console.warn(`[RBAC TEMP DISABLED] 📦 Metadata:`, JSON.stringify(metadata, null, 2));
-  }
+    const hasAccess = canAccessRoute(pathname, role);
+    console.log(`[Middleware] 🔐 RBAC check for ${pathname}: role="${role}", hasAccess=${hasAccess}`);
 
-  // ORIGINAL RBAC CODE (COMMENTED OUT FOR TESTING):
-  // if (isOSRoute) {
-  //   const hasAccess = canAccessRoute(pathname, role);
-  //   console.log(`[MIDDLEWARE] 🔐 Route check for ${pathname}: role="${role}", hasAccess=${hasAccess}`);
-  //
-  //   if (!hasAccess) {
-  //     console.error(`[MIDDLEWARE] ❌ Access denied: ${role} tried to access ${pathname}`);
-  //     console.error(`[MIDDLEWARE] 🚨 BLOCKING USER - Redirecting to ${ACCESS_DENIED}`);
-  //     return NextResponse.redirect(new URL(ACCESS_DENIED, req.url));
-  //   }
-  // }
+    if (!hasAccess) {
+      console.error(`[Middleware] ❌ Access DENIED: ${role} tried to access ${pathname}`);
+      console.error(`[Middleware] 🚨 Redirecting to ${ACCESS_DENIED}`);
+      return NextResponse.redirect(new URL(ACCESS_DENIED, req.url));
+    }
+
+    console.log(`[Middleware] ✅ Access GRANTED for ${role} to ${pathname}`);
+  }
 
   // Check RBAC permissions for legacy Staff routes (maintain backward compatibility)
   const isStaffRoute = pathname.startsWith("/staff");
