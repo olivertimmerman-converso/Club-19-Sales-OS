@@ -260,7 +260,7 @@ const DatabaseClient = buildClient();
 
 const defaultOptions = {
   databaseURL:
-    "https://Oliver-Timmerman-s-workspace-d3730u.eu-central-1.xata.sh/db/Club19SalesOS:main",
+    "https://Oliver-Timmerman-s-workspace-d3730u.eu-central-1.xata.sh/db/Club19SalesOS",
 };
 
 export class XataClient extends DatabaseClient<DatabaseSchema> {
