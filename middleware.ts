@@ -23,6 +23,7 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
   "/unauthorised",         // Access denied page (needs to be accessible)
   "/debug-role",           // Debug page (for troubleshooting auth issues)
+  "/api/debug/legacy",     // Temporary debug route - REMOVE AFTER INVESTIGATION
   "/api/xero/webhooks",    // Xero webhooks (signature-verified internally)
   "/favicon(.*)",
   "/api/webhooks(.*)",
