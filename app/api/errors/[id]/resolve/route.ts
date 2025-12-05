@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveError, clearSaleErrorFlag } from "@/lib/error-tools";
 import { getXataClient } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
-import { getUserRole } from "@/lib/auth";
+import { getUserRole } from "@/lib/getUserRole";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";

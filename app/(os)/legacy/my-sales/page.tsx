@@ -9,7 +9,7 @@
 export const dynamic = "force-dynamic";
 
 import { getUserRole } from "@/lib/getUserRole";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import {
   getLegacySummary,
   getLegacyMonthlySales,
@@ -45,15 +45,16 @@ export default async function MyLegacySalesPage({
     throw error;
   }
 
-  const { sessionClaims } = await auth();
-
   // Determine which shopper's data to show
   let shopperToView: "Hope" | "MC";
 
   if (role === "shopper") {
     // Shoppers see only their own data
     // Detect shopper from Clerk user name
-    const userName = (sessionClaims as any)?.name || "";
+    const { userId } = await auth();
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId!);
+    const userName = user.firstName || user.emailAddresses[0]?.emailAddress || "";
     shopperToView = userName.toLowerCase().includes("hope") ? "Hope" : "MC";
     console.log(`[My Legacy Sales] 👤 Shopper user viewing own data: "${shopperToView}"`);
   } else {

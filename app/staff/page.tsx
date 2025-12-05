@@ -5,7 +5,7 @@
  */
 
 import { redirect } from "next/navigation";
-import { getUserRole } from "@/lib/auth";
+import { getUserRole } from "@/lib/getUserRole";
 import { getHomepage } from "@/lib/rbac";
 
 export default async function StaffRootPage() {

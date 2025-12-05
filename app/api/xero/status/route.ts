@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getUserRole } from "@/lib/auth";
+import { getUserRole } from "@/lib/getUserRole";
 import { hasXeroConnection } from "@/lib/xero-auth";
 
 export const dynamic = "force-dynamic";

@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getXataClient } from "@/src/xata";
 import type { SalesRecord, ErrorsRecord } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
-import { getUserRole } from "@/lib/auth";
+import { getUserRole } from "@/lib/getUserRole";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import {
   computePaymentFlags,

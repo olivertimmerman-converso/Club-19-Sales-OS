@@ -9,8 +9,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getXataClient } from "@/src/xata";
-import { auth } from "@clerk/nextjs/server";
-import { getUserRole, getCurrentUser } from "@/lib/auth";
+import { auth, clerkClient } from "@clerk/nextjs/server";
+import { getUserRole } from "@/lib/getUserRole";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { transitionSaleStatus } from "@/lib/deal-lifecycle";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY, ERROR_GROUPS } from "@/lib/error-types";
@@ -82,8 +82,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Get current user for audit trail
-    const currentUser = await getCurrentUser();
-    const adminUserEmail = currentUser?.email || "unknown@system.local";
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+    const adminUserEmail = user.emailAddresses[0]?.emailAddress || "unknown@system.local";
 
     console.log(`[FINANCE][PAY-COMMISSIONS] ✓ Authorized (role: ${role}, email: ${adminUserEmail})`);
 
