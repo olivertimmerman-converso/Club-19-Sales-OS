@@ -60,6 +60,9 @@ export function canAccessRoute(pathname: string, role: StaffRole): boolean {
   // Shopper access - very restricted
   if (role === "shopper") {
     const shopperAllowedRoutes = [
+      "/staff",                    // Staff navigation hub
+      "/staff/shopper/dashboard",  // Shopper staff dashboard
+      "/staff/shopper/sales",      // Shopper sales management
       "/sales",
       "/legacy/my-sales",
       "/dashboard/shopper",
