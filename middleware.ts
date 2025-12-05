@@ -10,7 +10,7 @@
  * NO TEST MODE - Full production authentication
  */
 
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { canAccessRoute } from "./lib/assertAccess";
@@ -48,7 +48,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   // 2. REQUIRE AUTHENTICATION
   // ============================================
   try {
-    const { userId, sessionClaims } = await auth();
+    const { userId } = await auth();
     console.log(`[Middleware] 👤 UserId: ${userId || "(none)"}`);
 
     if (!userId) {
@@ -59,16 +59,14 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     }
 
     // ============================================
-    // 3. EXTRACT ROLE FROM SESSION CLAIMS
+    // 3. FETCH USER AND EXTRACT ROLE
     // ============================================
-    interface ClerkSessionClaims {
-      publicMetadata?: {
-        staffRole?: string;
-      };
-    }
+    console.log("[Middleware] 📡 Fetching full user object for metadata");
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
 
-    const metadata = (sessionClaims as ClerkSessionClaims)?.publicMetadata;
-    console.log(`[Middleware] 📦 Metadata from session:`, JSON.stringify(metadata, null, 2));
+    const metadata = user?.publicMetadata as { staffRole?: string } | undefined;
+    console.log(`[Middleware] 📦 Metadata from user:`, JSON.stringify(metadata, null, 2));
 
     const rawRole = metadata?.staffRole;
     console.log(`[Middleware] 📋 Raw staffRole: "${rawRole}"`);
