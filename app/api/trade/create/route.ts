@@ -160,7 +160,12 @@ export async function POST(request: NextRequest) {
         trade.buyer.name,
         trade.buyer.xeroContactId
       );
-      console.log(`[TRADE CREATE] Buyer: ${buyer.name} (${buyer.id})`);
+
+      if (!buyer) {
+        console.warn('[TRADE CREATE] ⚠️  Failed to create/find buyer, saving without buyer link');
+      } else {
+        console.log(`[TRADE CREATE] Buyer: ${buyer.name} (${buyer.id})`);
+      }
 
       // For multi-item trades, we'll save only the first item for now
       // TODO: In the future, consider creating separate Sale records for each item
@@ -181,8 +186,8 @@ export async function POST(request: NextRequest) {
         sale_date: new Date(),
         status: 'active',
 
-        // Buyer (link to Buyers table)
-        buyer: buyer.id,
+        // Buyer (link to Buyers table) - only if buyer exists
+        buyer: buyer?.id || undefined,
 
         // Item details (from first item)
         brand: firstItem.brand,
