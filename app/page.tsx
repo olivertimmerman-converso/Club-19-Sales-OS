@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  // Middleware will handle authentication
-  // Redirect unauthenticated users to sign-in
-  redirect("/sign-in");
+  // Redirect authenticated users to Deal Studio (Sales Atelier)
+  // Middleware will redirect unauthenticated users to sign-in
+  redirect("/trade/new");
 }
