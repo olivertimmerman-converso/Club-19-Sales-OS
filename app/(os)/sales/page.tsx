@@ -21,50 +21,60 @@ interface SalesPageProps {
 }
 
 export default async function SalesPage({ searchParams }: SalesPageProps) {
-  // Get role for filtering
-  const role = await getUserRole();
+  try {
+    // Get role for filtering
+    const role = await getUserRole();
+    console.log('[SalesPage] Role:', role);
 
-  // Get month filter
-  const params = await searchParams;
-  const monthParam = params.month || "current";
-  const dateRange = getMonthDateRange(monthParam);
+    // Get month filter
+    const params = await searchParams;
+    const monthParam = params.month || "current";
+    console.log('[SalesPage] Month param:', monthParam);
 
-  // Query Sales table from Xata
-  let query = xata.db.Sales
-    .select([
-      'id',
-      'sale_reference',
-      'sale_date',
-      'brand',
-      'item_title',
-      'sale_amount_inc_vat',
-      'gross_margin',
-      'xero_invoice_number',
-      'invoice_status',
-      'currency',
-      'buyer.name',
-      'shopper_name',
-    ]);
+    const dateRange = getMonthDateRange(monthParam);
+    console.log('[SalesPage] Date range:', dateRange);
 
-  // Filter for shoppers - only show their own sales
-  if (role === 'shopper') {
-    const currentUser = await getCurrentUser();
-    if (currentUser?.fullName) {
-      query = query.filter({ shopper_name: currentUser.fullName });
+    // Query Sales table from Xata
+    let query = xata.db.Sales
+      .select([
+        'id',
+        'sale_reference',
+        'sale_date',
+        'brand',
+        'item_title',
+        'sale_amount_inc_vat',
+        'gross_margin',
+        'xero_invoice_number',
+        'invoice_status',
+        'currency',
+        'buyer.name',
+        'shopper_name',
+      ]);
+
+    // Filter for shoppers - only show their own sales
+    if (role === 'shopper') {
+      console.log('[SalesPage] Fetching current user for shopper...');
+      const currentUser = await getCurrentUser();
+      console.log('[SalesPage] Current user:', currentUser?.fullName);
+      if (currentUser?.fullName) {
+        query = query.filter({ shopper_name: currentUser.fullName });
+      }
     }
-  }
 
-  // Apply date range filter if specified
-  if (dateRange) {
-    query = query.filter({
-      sale_date: {
-        $ge: dateRange.start,
-        $le: dateRange.end,
-      },
-    });
-  }
+    // Apply date range filter if specified
+    if (dateRange) {
+      console.log('[SalesPage] Applying date range filter');
+      query = query.filter({
+        sale_date: {
+          $ge: dateRange.start,
+          $le: dateRange.end,
+        },
+      });
+    }
 
-  const sales = await query.sort('sale_date', 'desc').getAll();
+    console.log('[SalesPage] Executing query...');
+    const sales = await query.sort('sale_date', 'desc').getAll();
+    console.log('[SalesPage] Sales count:', sales.length);
 
   // Format currency
   const formatCurrency = (amount: number | null | undefined, currency: string | null | undefined) => {
@@ -290,4 +300,26 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
       )}
     </div>
   );
+  } catch (error) {
+    console.error('[SalesPage] Error:', error);
+    console.error('[SalesPage] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('[SalesPage] Error message:', error instanceof Error ? error.message : String(error));
+
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h1 className="text-xl font-semibold text-red-900 mb-2">Error loading sales</h1>
+          <p className="text-sm text-red-700 mb-4">
+            {error instanceof Error ? error.message : 'Unknown error'}
+          </p>
+          <details className="text-xs text-red-600">
+            <summary className="cursor-pointer font-medium">Error details</summary>
+            <pre className="mt-2 p-2 bg-red-100 rounded overflow-auto">
+              {error instanceof Error ? error.stack : JSON.stringify(error, null, 2)}
+            </pre>
+          </details>
+        </div>
+      </div>
+    );
+  }
 }
