@@ -35,12 +35,16 @@ interface TopClient {
 }
 
 export async function FounderDashboard({ monthParam = "current" }: FounderDashboardProps) {
-  // Get date range for filtering
-  const dateRange = getMonthDateRange(monthParam);
-  const monthLabel = formatMonthLabel(monthParam);
+  try {
+    console.log('[FounderDashboard] Rendering with monthParam:', monthParam);
 
-  // Query all sales for the selected month
-  let salesQuery = xata.db.Sales
+    // Get date range for filtering
+    const dateRange = getMonthDateRange(monthParam);
+    const monthLabel = formatMonthLabel(monthParam);
+    console.log('[FounderDashboard] Date range:', dateRange);
+
+    // Query all sales for the selected month
+    let salesQuery = xata.db.Sales
     .select([
       'id',
       'sale_date',
@@ -73,9 +77,12 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
     });
   }
 
+  console.log('[FounderDashboard] Fetching sales...');
   const sales = await salesQuery.sort('sale_date', 'desc').getAll();
+  console.log('[FounderDashboard] Sales count:', sales.length);
 
   // Get YTD sales for comparison (Jan 1 to now)
+  console.log('[FounderDashboard] Fetching YTD sales...');
   const now = new Date();
   const ytdStart = new Date(now.getFullYear(), 0, 1);
   const ytdSales = await xata.db.Sales
@@ -87,6 +94,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
       },
     })
     .getAll();
+  console.log('[FounderDashboard] YTD sales count:', ytdSales.length);
 
   // Calculate shopper performance
   const shopperStats = new Map<string, ShopperPerformance>();
@@ -415,4 +423,26 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
       </div>
     </div>
   );
+  } catch (error) {
+    console.error('[FounderDashboard] Error:', error);
+    console.error('[FounderDashboard] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('[FounderDashboard] Error message:', error instanceof Error ? error.message : String(error));
+
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+          <h1 className="text-xl font-semibold text-red-900 mb-2">Error loading Founder Dashboard</h1>
+          <p className="text-sm text-red-700 mb-4">
+            {error instanceof Error ? error.message : 'Unknown error'}
+          </p>
+          <details className="text-xs text-red-600">
+            <summary className="cursor-pointer font-medium">Error details</summary>
+            <pre className="mt-2 p-2 bg-red-100 rounded overflow-auto">
+              {error instanceof Error ? error.stack : JSON.stringify(error, null, 2)}
+            </pre>
+          </details>
+        </div>
+      </div>
+    );
+  }
 }
