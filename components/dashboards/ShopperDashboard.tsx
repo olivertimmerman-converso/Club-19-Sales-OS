@@ -47,7 +47,22 @@ export async function ShopperDashboard({
   // Get date range for filtering
   const dateRange = getMonthDateRange(monthParam);
 
-  // Fetch shopper's sales only
+  // Fetch shopper's sales only - Look up the Shopper by name first
+  const shopper = await xata.db.Shoppers.filter({ name: shopperName }).getFirst();
+
+  if (!shopper) {
+    return (
+      <div className="p-8">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-yellow-900 mb-2">Shopper Not Found</h2>
+          <p className="text-sm text-yellow-700">
+            No shopper record found for &quot;{shopperName}&quot;. Please contact admin.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   let salesQuery = xata.db.Sales
     .select([
       'id',
@@ -61,7 +76,7 @@ export async function ShopperDashboard({
       'commission_paid',
       'buyer.name',
     ])
-    .filter({ shopper_name: shopperName });
+    .filter({ shopper: shopper.id });
 
   // Apply date range filter if specified
   if (dateRange) {

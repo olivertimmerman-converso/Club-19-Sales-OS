@@ -57,7 +57,13 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
       const currentUser = await getCurrentUser();
       console.log('[SalesPage] Current user:', currentUser?.fullName);
       if (currentUser?.fullName) {
-        query = query.filter({ 'shopper.name': currentUser.fullName });
+        // Look up the Shopper record by name to get the ID
+        const shopper = await xata.db.Shoppers.filter({ name: currentUser.fullName }).getFirst();
+        console.log('[SalesPage] Found shopper:', shopper?.id);
+        if (shopper) {
+          // Filter Sales by the shopper link ID
+          query = query.filter({ shopper: shopper.id });
+        }
       }
     }
 

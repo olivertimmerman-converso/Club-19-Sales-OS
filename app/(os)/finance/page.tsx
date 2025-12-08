@@ -53,7 +53,12 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
 
   // Filter for shoppers - only show their own sales
   if (role === 'shopper' && currentUser?.fullName) {
-    salesQuery = salesQuery.filter({ 'shopper.name': currentUser.fullName });
+    // Look up the Shopper record by name to get the ID
+    const shopper = await xata.db.Shoppers.filter({ name: currentUser.fullName }).getFirst();
+    if (shopper) {
+      // Filter Sales by the shopper link ID
+      salesQuery = salesQuery.filter({ shopper: shopper.id });
+    }
   }
 
   // Apply date range filter if specified
