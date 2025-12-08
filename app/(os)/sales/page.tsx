@@ -48,7 +48,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
         'invoice_status',
         'currency',
         'buyer.name',
-        'shopper_name',
+        'shopper.name',
       ]);
 
     // Filter for shoppers - only show their own sales
@@ -57,7 +57,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
       const currentUser = await getCurrentUser();
       console.log('[SalesPage] Current user:', currentUser?.fullName);
       if (currentUser?.fullName) {
-        query = query.filter({ shopper_name: currentUser.fullName });
+        query = query.filter({ 'shopper.name': currentUser.fullName });
       }
     }
 

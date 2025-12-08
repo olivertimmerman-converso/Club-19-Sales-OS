@@ -36,14 +36,14 @@ export default async function ClientsPage() {
       'sale_amount_inc_vat',
       'gross_margin',
       'sale_date',
-      'shopper_name',
+      'shopper.name',
     ]);
 
   // Filter sales for shoppers - only their own sales
   if (role === 'shopper') {
     const currentUser = await getCurrentUser();
     if (currentUser?.fullName) {
-      salesQuery = salesQuery.filter({ shopper_name: currentUser.fullName });
+      salesQuery = salesQuery.filter({ 'shopper.name': currentUser.fullName });
     }
   }
 

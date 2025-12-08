@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         "sale_date",
         "sale_reference",
         "xero_invoice_number",
-        "shopper_name",
+        "shopper.name",
         "buyer.name",
         "buyer.id",
         "brand",
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       return [
         saleDate,
         sale.xero_invoice_number || sale.sale_reference || "",
-        sale.shopper_name || "",
+        sale.shopper?.name || "",
         sale.buyer?.name || "",
         sale.brand || "",
         sale.category || "",

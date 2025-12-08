@@ -56,7 +56,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
       'commissionable_margin',
       'commission_locked',
       'commission_paid',
-      'shopper_name',
+      'shopper.name',
       'buyer.id',
       'buyer.name',
       'xero_invoice_number',
@@ -79,7 +79,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
   const now = new Date();
   const ytdStart = new Date(now.getFullYear(), 0, 1);
   const ytdSales = await xata.db.Sales
-    .select(['sale_amount_inc_vat', 'shopper_name'])
+    .select(['sale_amount_inc_vat', 'shopper.name'])
     .filter({
       sale_date: {
         $ge: ytdStart,
@@ -93,7 +93,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
 
   // Process current month sales
   sales.forEach(sale => {
-    const shopperName = sale.shopper_name || 'Unassigned';
+    const shopperName = sale.shopper?.name || 'Unassigned';
     if (!shopperStats.has(shopperName)) {
       shopperStats.set(shopperName, {
         name: shopperName,
@@ -112,7 +112,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
 
   // Add YTD data
   ytdSales.forEach(sale => {
-    const shopperName = sale.shopper_name || 'Unassigned';
+    const shopperName = sale.shopper?.name || 'Unassigned';
     if (shopperStats.has(shopperName)) {
       shopperStats.get(shopperName)!.ytdSales += sale.sale_amount_inc_vat || 0;
     }
@@ -378,7 +378,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
                           : sale.brand || sale.item_title || '—'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {sale.shopper_name || '—'}
+                        {sale.shopper?.name || '—'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
                         {formatCurrency(sale.sale_amount_inc_vat || 0)}

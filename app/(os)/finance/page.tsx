@@ -48,12 +48,12 @@ export default async function FinancePage({ searchParams }: FinancePageProps) {
       'commission_locked',
       'commission_paid',
       'shopper.name',
-      'shopper_name',
+      'shopper.name',
     ]);
 
   // Filter for shoppers - only show their own sales
   if (role === 'shopper' && currentUser?.fullName) {
-    salesQuery = salesQuery.filter({ shopper_name: currentUser.fullName });
+    salesQuery = salesQuery.filter({ 'shopper.name': currentUser.fullName });
   }
 
   // Apply date range filter if specified
