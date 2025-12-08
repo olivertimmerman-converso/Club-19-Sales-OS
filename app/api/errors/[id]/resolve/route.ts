@@ -41,9 +41,9 @@ interface ResolveErrorRequest {
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const errorId = params.id;
+  const { id: errorId } = await params;
 
   console.log(`[ERROR RESOLUTION API] POST request for error ${errorId}`);
 

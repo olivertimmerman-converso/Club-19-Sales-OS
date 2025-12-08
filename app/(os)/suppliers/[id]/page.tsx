@@ -12,11 +12,13 @@ export const dynamic = "force-dynamic";
 
 const xata = new XataClient();
 
-export default async function SupplierDetailPage({ params }: { params: { id: string } }) {
+export default async function SupplierDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
   // Fetch supplier record from Xata
   const supplier = await xata.db.Suppliers
     .select(['*'])
-    .filter({ id: params.id })
+    .filter({ id })
     .getFirst();
 
   // Handle not found
@@ -36,7 +38,7 @@ export default async function SupplierDetailPage({ params }: { params: { id: str
       'gross_margin',
       'buyer.name',
     ])
-    .filter({ 'supplier.id': params.id })
+    .filter({ 'supplier.id': id })
     .sort('sale_date', 'desc')
     .getAll();
 

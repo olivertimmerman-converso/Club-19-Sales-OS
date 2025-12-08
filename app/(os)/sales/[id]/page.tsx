@@ -12,7 +12,9 @@ export const dynamic = "force-dynamic";
 
 const xata = new XataClient();
 
-export default async function SaleDetailPage({ params }: { params: { id: string } }) {
+export default async function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
   // Fetch sale record from Xata
   const sale = await xata.db.Sales
     .select([
@@ -22,7 +24,7 @@ export default async function SaleDetailPage({ params }: { params: { id: string 
       'shopper.name',
       'introducer.name',
     ])
-    .filter({ id: params.id })
+    .filter({ id })
     .getFirst();
 
   // Handle not found
@@ -104,7 +106,7 @@ export default async function SaleDetailPage({ params }: { params: { id: string 
       <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-            {sale.sale_reference || `Sale #${params.id.slice(0, 8)}`}
+            {sale.sale_reference || `Sale #${id.slice(0, 8)}`}
           </h1>
           <div className="flex items-center gap-3">
             {getStatusBadge(sale.invoice_status)}

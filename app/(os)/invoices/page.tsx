@@ -15,10 +15,11 @@ const xata = new XataClient();
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams: { status?: string };
+  searchParams: Promise<{ status?: string }>;
 }) {
+  const { status } = await searchParams;
   // Get filter from URL params
-  const statusFilter = searchParams.status || 'all';
+  const statusFilter = status || 'all';
 
   // Fetch all sales (each sale = one invoice)
   const allSales = await xata.db.Sales

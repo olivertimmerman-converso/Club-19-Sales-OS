@@ -12,11 +12,13 @@ export const dynamic = "force-dynamic";
 
 const xata = new XataClient();
 
-export default async function ClientDetailPage({ params }: { params: { id: string } }) {
+export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+
   // Fetch buyer record from Xata
   const buyer = await xata.db.Buyers
     .select(['*'])
-    .filter({ id: params.id })
+    .filter({ id })
     .getFirst();
 
   // Handle not found
@@ -37,7 +39,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       'invoice_status',
       'currency',
     ])
-    .filter({ 'buyer.id': params.id })
+    .filter({ 'buyer.id': id })
     .sort('sale_date', 'desc')
     .getAll();
 

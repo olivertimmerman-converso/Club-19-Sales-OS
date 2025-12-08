@@ -1,29 +1,35 @@
-import { redirect } from 'next/navigation'
+'use client'
+
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useEffect } from 'react'
 
-type SearchParams = {
-  invoiceUrl?: string
-  invoiceNumber?: string
-  contactName?: string
-  total?: string
-  amountDue?: string
-  taxSummary?: string
-}
+export default function InvoiceSuccessPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
 
-export default function InvoiceSuccessPage({
-  searchParams,
-}: {
-  searchParams: SearchParams
-}) {
+  const invoiceUrl = searchParams.get('invoiceUrl')
+  const invoiceNumber = searchParams.get('invoiceNumber')
+  const contactName = searchParams.get('contactName')
+  const total = searchParams.get('total')
+  const amountDue = searchParams.get('amountDue')
+  const taxSummary = searchParams.get('taxSummary')
+
   // Redirect to error if no invoice URL
-  if (!searchParams.invoiceUrl) {
-    redirect('/invoice/error')
-  }
+  useEffect(() => {
+    if (!invoiceUrl) {
+      router.push('/invoice/error')
+    }
+  }, [invoiceUrl, router])
 
   const handleViewInXero = () => {
-    if (searchParams.invoiceUrl) {
-      window.open(searchParams.invoiceUrl, '_blank', 'noopener,noreferrer')
+    if (invoiceUrl) {
+      window.open(invoiceUrl, '_blank', 'noopener,noreferrer')
     }
+  }
+
+  if (!invoiceUrl) {
+    return null // Will redirect via useEffect
   }
 
   return (
@@ -52,59 +58,59 @@ export default function InvoiceSuccessPage({
           <div className="px-8 py-8 space-y-4">
             {/* Invoice Details */}
             <div className="space-y-4">
-              {searchParams.contactName && (
+              {contactName && (
                 <div className="flex justify-between items-center py-3 border-b border-club19-platinum">
                   <span className="text-xs uppercase tracking-wide text-club19-charcoal font-medium">
                     Contact
                   </span>
                   <span className="font-medium text-club19-black text-lg">
-                    {searchParams.contactName}
+                    {contactName}
                   </span>
                 </div>
               )}
 
-              {searchParams.invoiceNumber && (
+              {invoiceNumber && (
                 <div className="flex justify-between items-center py-3 border-b border-club19-platinum">
                   <span className="text-xs uppercase tracking-wide text-club19-charcoal font-medium">
                     Invoice Number
                   </span>
                   <span className="font-mono font-semibold text-club19-black text-lg">
-                    {searchParams.invoiceNumber}
+                    {invoiceNumber}
                   </span>
                 </div>
               )}
 
-              {searchParams.total && (
+              {total && (
                 <div className="flex justify-between items-center py-3 border-b border-club19-platinum">
                   <span className="text-xs uppercase tracking-wide text-club19-charcoal font-medium">
                     Total
                   </span>
                   <span className="font-semibold text-club19-black text-lg">
-                    {searchParams.total}
+                    {total}
                   </span>
                 </div>
               )}
 
-              {searchParams.amountDue && (
+              {amountDue && (
                 <div className="flex justify-between items-center py-3 border-b border-club19-platinum">
                   <span className="text-xs uppercase tracking-wide text-club19-charcoal font-medium">
                     Amount Due
                   </span>
                   <span className="font-semibold text-club19-black text-lg">
-                    {searchParams.amountDue}
+                    {amountDue}
                   </span>
                 </div>
               )}
             </div>
 
             {/* Tax Summary */}
-            {searchParams.taxSummary && (
+            {taxSummary && (
               <div className="border border-club19-platinum bg-club19-off-white p-6 mt-6">
                 <h3 className="text-xs uppercase tracking-wide font-medium text-club19-black mb-3">
                   Tax Details
                 </h3>
                 <p className="text-sm text-club19-charcoal whitespace-pre-line">
-                  {decodeURIComponent(searchParams.taxSummary)}
+                  {decodeURIComponent(taxSummary)}
                 </p>
               </div>
             )}
@@ -113,7 +119,7 @@ export default function InvoiceSuccessPage({
           {/* Card Actions */}
           <div className="px-8 py-6 border-t border-club19-platinum space-y-3">
             <a
-              href={searchParams.invoiceUrl}
+              href={invoiceUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="block w-full btn-primary text-center"

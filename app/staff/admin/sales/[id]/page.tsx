@@ -35,19 +35,19 @@ import {
   ChevronUp,
 } from "lucide-react";
 
-interface SaleDetailPageProps {
-  params: {
-    id: string;
-  };
-}
-
-export default function SaleDetailPage({ params }: SaleDetailPageProps) {
+export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const role = useUserRole();
 
   const [sale, setSale] = useState<SaleSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saleId, setSaleId] = useState<string | null>(null);
+
+  // Unwrap params Promise
+  useEffect(() => {
+    params.then(({ id }) => setSaleId(id));
+  }, [params]);
 
   // Action modals
   const [showLockModal, setShowLockModal] = useState(false);
@@ -70,7 +70,7 @@ export default function SaleDetailPage({ params }: SaleDetailPageProps) {
       setError(null);
 
       const summaryData = await getSalesSummary();
-      const foundSale = summaryData.sales.find((s) => s.sale_id === params.id);
+      const foundSale = summaryData.sales.find((s) => s.sale_id === saleId);
 
       if (!foundSale) {
         setError("Sale not found");
@@ -86,11 +86,11 @@ export default function SaleDetailPage({ params }: SaleDetailPageProps) {
   };
 
   useEffect(() => {
-    if (role !== null) {
+    if (role !== null && saleId) {
       fetchSaleData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id, role]);
+  }, [saleId, role]);
 
   const formatCurrency = (value: number | null | undefined) => {
     if (value === null || value === undefined) return "—";
@@ -121,7 +121,7 @@ export default function SaleDetailPage({ params }: SaleDetailPageProps) {
       const response = await fetch("/api/finance/lock-paid-sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sale_ids: [params.id] }),
+        body: JSON.stringify({ sale_ids: [saleId] }),
       });
 
       if (!response.ok) throw new Error("Failed to lock sale");
@@ -138,7 +138,7 @@ export default function SaleDetailPage({ params }: SaleDetailPageProps) {
       const response = await fetch("/api/finance/pay-commissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sale_ids: [params.id] }),
+        body: JSON.stringify({ sale_ids: [saleId] }),
       });
 
       if (!response.ok) throw new Error("Failed to pay commission");

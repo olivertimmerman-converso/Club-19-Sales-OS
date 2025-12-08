@@ -32,8 +32,9 @@ import { ShopperSelector } from "@/components/legacy/ShopperSelector";
 export default async function MyLegacySalesPage({
   searchParams,
 }: {
-  searchParams: { shopper?: string };
+  searchParams: Promise<{ shopper?: string }>;
 }) {
+  const params = await searchParams;
   console.log("[My Legacy Sales] 🚀 Starting page render");
 
   let role;
@@ -59,7 +60,7 @@ export default async function MyLegacySalesPage({
     console.log(`[My Legacy Sales] 👤 Shopper user viewing own data: "${shopperToView}"`);
   } else {
     // Non-shoppers can select
-    shopperToView = (searchParams.shopper as "Hope" | "MC") || "Hope";
+    shopperToView = (params.shopper as "Hope" | "MC") || "Hope";
     console.log(`[My Legacy Sales] 👔 Admin/Finance viewing: "${shopperToView}"`);
   }
 
