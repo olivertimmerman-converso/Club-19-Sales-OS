@@ -43,7 +43,8 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
     });
   }
 
-  const sales = await salesQuery.sort('sale_date', 'desc').getAll();
+  // Limit to 200 recent sales for dashboard performance
+  const sales = await salesQuery.sort('sale_date', 'desc').getMany({ pagination: { size: 200 } });
 
   // Calculate metrics
   const totalSales = sales.reduce((sum, sale) => sum + (sale.sale_amount_inc_vat || 0), 0);

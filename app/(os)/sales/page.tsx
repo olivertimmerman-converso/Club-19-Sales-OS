@@ -79,7 +79,8 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
     }
 
     console.log('[SalesPage] Executing query...');
-    const sales = await query.sort('sale_date', 'desc').getAll();
+    // Limit to 200 recent sales for performance
+    const sales = await query.sort('sale_date', 'desc').getMany({ pagination: { size: 200 } });
     console.log('[SalesPage] Sales count:', sales.length);
 
   // Format currency

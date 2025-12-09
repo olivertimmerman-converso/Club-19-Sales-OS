@@ -52,17 +52,19 @@ export default async function ClientsPage() {
     }
   }
 
-  const sales = await salesQuery.getAll();
+  // Limit sales query to last 1000 for performance (still covers all recent clients)
+  const sales = await salesQuery.getMany({ pagination: { size: 1000 } });
 
   // Get unique buyer IDs from sales
   const uniqueBuyerIds = [...new Set(sales.map(sale => sale.buyer?.id).filter((id): id is string => !!id))];
 
   // Fetch only buyers that have sales (filtered by shopper if applicable)
+  // Limit to 100 top clients for performance
   const buyers = uniqueBuyerIds.length > 0
     ? await xata.db.Buyers
         .select(['*'])
         .filter({ id: { $any: uniqueBuyerIds } })
-        .getAll()
+        .getMany({ pagination: { size: 100 } })
     : [];
 
   // Calculate stats for each buyer

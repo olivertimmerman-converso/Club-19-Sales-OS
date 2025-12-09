@@ -88,7 +88,8 @@ export async function ShopperDashboard({
     });
   }
 
-  const sales = await salesQuery.sort('sale_date', 'desc').getAll();
+  // Limit to 100 recent sales for dashboard performance
+  const sales = await salesQuery.sort('sale_date', 'desc').getMany({ pagination: { size: 100 } });
 
   // Calculate totals
   const totalSales = sales.length;

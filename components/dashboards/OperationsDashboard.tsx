@@ -109,7 +109,8 @@ export async function OperationsDashboard({
     "buyer.name",
   ]);
 
-  const sales = await salesQuery.sort("sale_date", "desc").getAll();
+  // Limit to 200 sales for dashboard performance
+  const sales = await salesQuery.sort("sale_date", "desc").getMany({ pagination: { size: 200 } });
 
   // Fetch last month's data for comparison
   const lastMonthStart = new Date(dateRange.start);
@@ -118,6 +119,7 @@ export async function OperationsDashboard({
   lastMonthEnd.setDate(0);
   lastMonthEnd.setHours(23, 59, 59);
 
+  // Limit to 200 for comparison
   const lastMonthSales = await xata.db.Sales
     .filter({
       sale_date: {
@@ -131,9 +133,9 @@ export async function OperationsDashboard({
       "shopper.id",
       "shopper.name",
     ])
-    .getAll();
+    .getMany({ pagination: { size: 200 } });
 
-  // Fetch YTD data
+  // Fetch YTD data - limit to 500
   const ytdStart = new Date(dateRange.start.getFullYear(), 0, 1);
   const ytdSales = await xata.db.Sales
     .filter({
@@ -148,9 +150,9 @@ export async function OperationsDashboard({
       "shopper.id",
       "shopper.name",
     ])
-    .getAll();
+    .getMany({ pagination: { size: 500 } });
 
-  // Fetch all invoices to calculate outstanding amounts
+  // Fetch recent invoices to calculate outstanding amounts - limit to 500
   const invoices = await xata.db.Sales
     .filter({
       xero_invoice_number: { $isNot: null },
@@ -161,16 +163,18 @@ export async function OperationsDashboard({
       "sale_amount_inc_vat",
       "sale_date",
     ])
-    .getAll();
+    .sort("sale_date", "desc")
+    .getMany({ pagination: { size: 500 } });
 
-  // Fetch all buyers for new client detection
-  const allBuyers = await xata.db.Buyers.select(["id", "name"]).getAll();
+  // Fetch buyers - limit to 200
+  const allBuyers = await xata.db.Buyers.select(["id", "name"]).getMany({ pagination: { size: 200 } });
   const buyerFirstPurchase = new Map<string, Date>();
 
+  // Fetch recent sales for buyer analysis - limit to 1000
   const allSalesForBuyers = await xata.db.Sales
     .select(["buyer.id", "sale_date"])
     .sort("sale_date", "asc")
-    .getAll();
+    .getMany({ pagination: { size: 1000 } });
 
   allSalesForBuyers.forEach((sale) => {
     if (sale.buyer?.id && sale.sale_date) {

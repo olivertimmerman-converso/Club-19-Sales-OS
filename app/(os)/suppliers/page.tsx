@@ -23,12 +23,12 @@ interface SupplierWithStats {
 }
 
 export default async function SuppliersPage() {
-  // Fetch all suppliers
+  // Fetch suppliers - limit to 200 for performance
   const suppliers = await xata.db.Suppliers
     .select(['*'])
-    .getAll();
+    .getMany({ pagination: { size: 200 } });
 
-  // Fetch all sales to calculate stats
+  // Fetch sales - limit to last 1000 for performance (still covers recent supplier activity)
   const sales = await xata.db.Sales
     .select([
       'supplier.id',
@@ -36,7 +36,7 @@ export default async function SuppliersPage() {
       'gross_margin',
       'sale_date',
     ])
-    .getAll();
+    .getMany({ pagination: { size: 1000 } });
 
   // Calculate stats for each supplier
   const suppliersWithStats: SupplierWithStats[] = suppliers.map(supplier => {

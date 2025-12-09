@@ -79,10 +79,11 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
   }
 
   console.log('[FounderDashboard] Fetching sales...');
-  const sales = await salesQuery.sort('sale_date', 'desc').getAll();
+  // Limit to 200 recent sales for dashboard performance
+  const sales = await salesQuery.sort('sale_date', 'desc').getMany({ pagination: { size: 200 } });
   console.log('[FounderDashboard] Sales count:', sales.length);
 
-  // Get YTD sales for comparison (Jan 1 to now)
+  // Get YTD sales for comparison (Jan 1 to now) - limit to 500
   console.log('[FounderDashboard] Fetching YTD sales...');
   const now = new Date();
   const ytdStart = new Date(now.getFullYear(), 0, 1);
@@ -94,7 +95,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
         $le: now,
       },
     })
-    .getAll();
+    .getMany({ pagination: { size: 500 } });
   console.log('[FounderDashboard] YTD sales count:', ytdSales.length);
 
   // Calculate shopper performance
