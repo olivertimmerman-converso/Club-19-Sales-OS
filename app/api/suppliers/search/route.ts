@@ -31,15 +31,18 @@ export async function GET(request: NextRequest) {
     })
       .select(["id", "name", "email"])
       .sort("name", "asc")
-      .getMany({ pagination: { size: 20 } });
+      .getMany();
 
-    console.log(`[SUPPLIER SEARCH] Found ${suppliers.records.length} results`);
-    if (suppliers.records.length > 0) {
-      console.log(`[SUPPLIER SEARCH] First 3 results:`, suppliers.records.slice(0, 3).map(s => s.name));
+    // Limit to first 20 results for autocomplete
+    const limitedSuppliers = suppliers.slice(0, 20);
+
+    console.log(`[SUPPLIER SEARCH] Found ${suppliers.length} total results, returning first ${limitedSuppliers.length}`);
+    if (limitedSuppliers.length > 0) {
+      console.log(`[SUPPLIER SEARCH] First 3 results:`, limitedSuppliers.slice(0, 3).map(s => s.name));
     }
 
     // Format response for autocomplete
-    const results = suppliers.records.map((supplier) => ({
+    const results = limitedSuppliers.map((supplier) => ({
       id: supplier.id,
       name: supplier.name || "",
       email: supplier.email || "",
