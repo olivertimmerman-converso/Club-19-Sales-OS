@@ -11,6 +11,7 @@ import { AdminDashboard } from "@/components/dashboards/AdminDashboard";
 import { FinanceDashboard } from "@/components/dashboards/FinanceDashboard";
 import { SuperadminDashboard } from "@/components/dashboards/SuperadminDashboard";
 import { FounderDashboard } from "@/components/dashboards/FounderDashboard";
+import { OperationsDashboard } from "@/components/dashboards/OperationsDashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         case "founder":
           console.log('[DashboardPage] Rendering FounderDashboard...');
           return <FounderDashboard monthParam={monthParam} />;
+        case "operations":
+          console.log('[DashboardPage] Rendering OperationsDashboard...');
+          return <OperationsDashboard monthParam={monthParam} />;
         case "shopper-hope":
           console.log('[DashboardPage] Rendering ShopperDashboard for Hope...');
           return <ShopperDashboard monthParam={monthParam} shopperNameOverride="Hope" />;
@@ -63,6 +67,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         return <FinanceDashboard monthParam={monthParam} />;
       case "founder":
         return <FounderDashboard monthParam={monthParam} />;
+      case "operations":
+        return <OperationsDashboard monthParam={monthParam} />;
       case "superadmin":
         return <SuperadminDashboard monthParam={monthParam} />;
       default:

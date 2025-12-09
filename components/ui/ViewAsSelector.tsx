@@ -18,6 +18,7 @@ interface ViewAsOption {
 const VIEW_AS_OPTIONS: ViewAsOption[] = [
   { value: "superadmin", label: "Superadmin" },
   { value: "founder", label: "Founder" },
+  { value: "operations", label: "Operations (Alys)" },
   { value: "shopper-hope", label: "Shopper (Hope)" },
   { value: "shopper-mc", label: "Shopper (MC)" },
 ];

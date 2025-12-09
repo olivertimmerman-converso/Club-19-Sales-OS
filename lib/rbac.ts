@@ -8,7 +8,7 @@
  * - superadmin: Oliver (full system access)
  */
 
-export type UserRole = 'shopper' | 'admin' | 'finance' | 'superadmin' | 'founder';
+export type UserRole = 'shopper' | 'admin' | 'finance' | 'superadmin' | 'founder' | 'operations';
 
 export interface RoleConfig {
   allowedRoutes: string[];
@@ -50,6 +50,20 @@ export const ROLE_CONFIG: Record<UserRole, RoleConfig> = {
     readOnlyRoutes: ['/staff/admin/sales'],
     homepage: '/staff/finance/dashboard',
     label: 'Finance',
+  },
+  operations: {
+    allowedRoutes: [
+      '/staff',
+      '/dashboard',
+      '/sales',
+      '/clients',
+      '/suppliers',
+      '/invoices',
+      '/finance',
+      '/legacy',
+    ],
+    homepage: '/dashboard',
+    label: 'Operations Manager',
   },
   superadmin: {
     allowedRoutes: [
