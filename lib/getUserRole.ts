@@ -7,7 +7,7 @@
 
 import "server-only";
 import { auth, clerkClient } from "@clerk/nextjs/server";
-import { type StaffRole, isValidStaffRole, getDefaultRole } from "./roleTypes";
+import { type StaffRole, isValidStaffRole, getDefaultRole } from "./permissions";
 
 /**
  * Get the current user's staff role from Clerk metadata

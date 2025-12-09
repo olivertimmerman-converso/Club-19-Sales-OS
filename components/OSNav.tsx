@@ -8,7 +8,7 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import { type StaffRole } from "@/lib/roleTypes";
+import { type StaffRole } from "@/lib/permissions";
 import { useState, useEffect } from "react";
 
 interface OSNavProps {

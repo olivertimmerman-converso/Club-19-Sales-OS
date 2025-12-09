@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type StaffRole } from "@/lib/roleTypes";
+import { type StaffRole } from "@/lib/permissions";
 import { getSidebarItemsForRole } from "@/lib/sidebarConfig";
 import {
   LayoutDashboard,

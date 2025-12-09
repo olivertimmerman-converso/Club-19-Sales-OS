@@ -13,8 +13,12 @@
 import { clerkMiddleware, createRouteMatcher, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { canAccessRoute } from "./lib/assertAccess";
-import { type StaffRole, isValidStaffRole, getDefaultRole } from "./lib/roleTypes";
+import {
+  canAccessRoute,
+  type StaffRole,
+  isValidStaffRole,
+  getDefaultRole,
+} from "./lib/permissions";
 
 // Public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
@@ -79,7 +83,7 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
     // ============================================
     // 4. CHECK RBAC PERMISSIONS
     // ============================================
-    const hasAccess = canAccessRoute(pathname, role);
+    const hasAccess = canAccessRoute(role, pathname);
     console.log(`[Middleware] 🔐 RBAC check: hasAccess=${hasAccess}`);
 
     if (!hasAccess) {

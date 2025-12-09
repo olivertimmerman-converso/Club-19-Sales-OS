@@ -2,18 +2,88 @@
  * Club 19 Sales OS - Sidebar Configuration
  *
  * Role-based navigation configuration
+ * Derives permissions from lib/permissions.ts (single source of truth)
  */
 
-import { type StaffRole } from "./roleTypes";
+import { type StaffRole, canAccessRoute } from "./permissions";
 
 export interface SidebarItem {
   label: string;
   href: string;
-  roles: StaffRole[];
   icon?: string;
 }
 
-export const sidebarConfig: Record<string, SidebarItem> = {
+/**
+ * All possible sidebar items
+ * Actual visibility is determined by canAccessRoute() from permissions.ts
+ */
+const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: "LayoutDashboard",
+  },
+  {
+    label: "Sales",
+    href: "/sales",
+    icon: "Briefcase",
+  },
+  {
+    label: "Deal Studio",
+    href: "/trade/new",
+    icon: "Sparkles",
+  },
+  {
+    label: "Clients",
+    href: "/clients",
+    icon: "Users",
+  },
+  {
+    label: "Suppliers",
+    href: "/suppliers",
+    icon: "Truck",
+  },
+  {
+    label: "Shoppers",
+    href: "/shoppers",
+    icon: "Users",
+  },
+  {
+    label: "Invoices",
+    href: "/invoices",
+    icon: "FileText",
+  },
+  {
+    label: "Finance",
+    href: "/finance",
+    icon: "Calculator",
+  },
+  {
+    label: "Admin",
+    href: "/admin",
+    icon: "Shield",
+  },
+  {
+    label: "Legacy Data",
+    href: "/legacy",
+    icon: "Archive",
+  },
+];
+
+/**
+ * Get sidebar items allowed for a specific role
+ *
+ * Uses canAccessRoute() from permissions.ts to determine visibility
+ */
+export function getSidebarItemsForRole(role: StaffRole): SidebarItem[] {
+  return ALL_SIDEBAR_ITEMS.filter((item) => canAccessRoute(role, item.href));
+}
+
+/**
+ * @deprecated Use getSidebarItemsForRole instead
+ * This exists only for backward compatibility
+ */
+export const sidebarConfig: Record<string, SidebarItem & { roles: StaffRole[] }> = {
   dashboard: {
     label: "Dashboard",
     href: "/dashboard",
@@ -69,12 +139,3 @@ export const sidebarConfig: Record<string, SidebarItem> = {
     icon: "Archive",
   },
 };
-
-/**
- * Get sidebar items allowed for a specific role
- */
-export function getSidebarItemsForRole(role: StaffRole): SidebarItem[] {
-  return Object.values(sidebarConfig).filter((item) =>
-    item.roles.includes(role)
-  );
-}
