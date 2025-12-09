@@ -91,6 +91,15 @@ async function findOrCreateSupplier(supplierName: string, supplierXataId?: strin
  */
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    const { userId: authUserId } = await auth();
+    if (!authUserId) {
+      return NextResponse.json(
+        { error: "UNAUTHORIZED", message: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     // Parse request body
     const body = await request.json();
 

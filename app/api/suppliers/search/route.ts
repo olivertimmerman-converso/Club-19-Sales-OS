@@ -6,12 +6,19 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getXataClient } from "@/src/xata";
 
 const xata = getXataClient();
 
 export async function GET(request: NextRequest) {
   try {
+    // Verify authentication - any authenticated user can search suppliers
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q") || "";
 
