@@ -41,6 +41,15 @@ export function xata() {
 // UPSTREAM TABLE HELPERS - SHOPPERS
 // ============================================================================
 
+/**
+ * Get or create a shopper by name
+ *
+ * @param name - The shopper's full name
+ * @returns Existing or newly created shopper record
+ *
+ * @example
+ * const shopper = await getOrCreateShopperByName("Hope Smith");
+ */
 export async function getOrCreateShopperByName(
   name: string
 ): Promise<ShoppersRecord> {
@@ -55,6 +64,15 @@ export async function getOrCreateShopperByName(
   });
 }
 
+/**
+ * Get a shopper by their Clerk user ID
+ *
+ * @param clerkId - The Clerk user ID
+ * @returns Shopper record or null if not found
+ *
+ * @example
+ * const shopper = await getShopperByClerkId("user_abc123");
+ */
 export async function getShopperByClerkId(
   clerkId: string
 ): Promise<ShoppersRecord | null> {
@@ -67,6 +85,22 @@ export async function getShopperByClerkId(
 // UPSTREAM TABLE HELPERS - BUYERS
 // ============================================================================
 
+/**
+ * Get or create a buyer by name or Xero contact ID
+ *
+ * Searches in this order:
+ * 1. By name (exact match)
+ * 2. By Xero contact ID (if provided)
+ * 3. Creates new record if not found
+ *
+ * @param name - The buyer's name
+ * @param email - Optional email address
+ * @param xero_contact_id - Optional Xero contact ID
+ * @returns Existing or newly created buyer record
+ *
+ * @example
+ * const buyer = await getOrCreateBuyer("John Doe", "john@example.com", "xero_123");
+ */
 export async function getOrCreateBuyer(
   name: string,
   email?: string,
@@ -96,6 +130,22 @@ export async function getOrCreateBuyer(
 // UPSTREAM TABLE HELPERS - SUPPLIERS
 // ============================================================================
 
+/**
+ * Get or create a supplier by name or Xero contact ID
+ *
+ * Searches in this order:
+ * 1. By name (exact match)
+ * 2. By Xero contact ID (if provided)
+ * 3. Creates new record if not found
+ *
+ * @param name - The supplier's name
+ * @param email - Optional email address
+ * @param xero_contact_id - Optional Xero contact ID
+ * @returns Existing or newly created supplier record
+ *
+ * @example
+ * const supplier = await getOrCreateSupplier("Luxury Goods Ltd", "info@luxury.com");
+ */
 export async function getOrCreateSupplier(
   name: string,
   email?: string,
