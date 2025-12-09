@@ -15,22 +15,31 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q") || "";
 
+    console.log(`[SUPPLIER SEARCH] Query: "${query}"`);
+
     // If no query, return empty results
     if (!query.trim()) {
+      console.log('[SUPPLIER SEARCH] Empty query, returning empty array');
       return NextResponse.json([]);
     }
 
     // Search Suppliers by name (case-insensitive, partial match)
-    // Use Xata's full-text search or filter with contains
+    // Note: Xata's $contains is case-sensitive, we should use $iContains for case-insensitive
+    console.log(`[SUPPLIER SEARCH] Searching with $iContains filter`);
     const suppliers = await xata.db.Suppliers.filter({
-      name: { $contains: query },
+      name: { $iContains: query },
     })
       .select(["id", "name", "email"])
       .sort("name", "asc")
       .getMany({ pagination: { size: 20 } });
 
+    console.log(`[SUPPLIER SEARCH] Found ${suppliers.records.length} results`);
+    if (suppliers.records.length > 0) {
+      console.log(`[SUPPLIER SEARCH] First 3 results:`, suppliers.records.slice(0, 3).map(s => s.name));
+    }
+
     // Format response for autocomplete
-    const results = suppliers.map((supplier) => ({
+    const results = suppliers.records.map((supplier) => ({
       id: supplier.id,
       name: supplier.name || "",
       email: supplier.email || "",
@@ -38,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(results);
   } catch (error) {
-    console.error("Error searching suppliers:", error);
+    console.error("[SUPPLIER SEARCH] Error searching suppliers:", error);
     return NextResponse.json(
       { error: "Failed to search suppliers" },
       { status: 500 }
