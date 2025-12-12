@@ -50,35 +50,30 @@ export function ViewAsSelector() {
 
   return (
     <div className="relative">
-      <label className="block text-xs font-medium text-gray-500 mb-1">
-        Viewing as:
-      </label>
-      <div className="relative">
-        <select
-          value={currentView}
-          onChange={(e) => handleViewChange(e.target.value)}
-          className="
-            appearance-none
-            h-10 pl-4 pr-10 py-2 min-w-[180px]
-            bg-white border border-gray-200 rounded-lg
-            text-sm font-medium text-gray-700
-            hover:bg-gray-50 hover:border-gray-400
-            focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
-            transition-colors
-            cursor-pointer
-          "
-        >
-          {VIEW_AS_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <ChevronDown
-          className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"
-          size={16}
-        />
-      </div>
+      <select
+        value={currentView}
+        onChange={(e) => handleViewChange(e.target.value)}
+        className="
+          appearance-none
+          h-10 pl-4 pr-10 py-2 min-w-[180px]
+          bg-white border border-gray-200 rounded-lg
+          text-sm font-medium text-gray-700
+          hover:bg-gray-50 hover:border-gray-400
+          focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
+          transition-colors
+          cursor-pointer
+        "
+      >
+        {VIEW_AS_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown
+        className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500"
+        size={16}
+      />
     </div>
   );
 }
