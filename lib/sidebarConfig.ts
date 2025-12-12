@@ -59,11 +59,6 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "Archive",
   },
   {
-    label: "Sales Atelier",
-    href: "/trade/new",
-    icon: "PlusCircle",
-  },
-  {
     label: "Admin",
     href: "/admin",
     icon: "Shield",

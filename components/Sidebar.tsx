@@ -8,7 +8,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { type StaffRole } from "@/lib/permissions";
+import { type StaffRole, canAccessRoute } from "@/lib/permissions";
 import { getSidebarItemsForRole } from "@/lib/sidebarConfig";
 import {
   LayoutDashboard,
@@ -19,6 +19,7 @@ import {
   Calculator,
   Shield,
   Archive,
+  PlusCircle,
 } from "lucide-react";
 
 const iconMap = {
@@ -30,6 +31,7 @@ const iconMap = {
   Calculator,
   Shield,
   Archive,
+  PlusCircle,
 };
 
 interface SidebarProps {
@@ -39,6 +41,7 @@ interface SidebarProps {
 export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
   const items = getSidebarItemsForRole(role);
+  const showSalesAtelier = canAccessRoute(role, "/trade");
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
@@ -80,6 +83,26 @@ export function Sidebar({ role }: SidebarProps) {
           })}
         </ul>
       </nav>
+
+      {/* Sales Atelier - Bottom positioned above role badge */}
+      {showSalesAtelier && (
+        <div className="p-4 border-t border-gray-200">
+          <Link
+            href="/trade/new"
+            className={`
+              flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
+              ${
+                pathname === "/trade/new" || pathname.startsWith("/trade/")
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              }
+            `}
+          >
+            <PlusCircle size={18} />
+            <span>Sales Atelier</span>
+          </Link>
+        </div>
+      )}
 
       {/* Footer / Role Badge */}
       <div className="p-4 border-t border-gray-200">
