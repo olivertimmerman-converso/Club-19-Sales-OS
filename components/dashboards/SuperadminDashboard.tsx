@@ -30,6 +30,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
       'brand',
       'item_title',
       'sale_reference',
+      'invoice_status',
       'id',
     ]);
 
@@ -68,6 +69,31 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
       month: 'short',
       year: 'numeric'
     });
+  };
+
+  // Get status badge styling
+  const getStatusBadge = (status: string | null | undefined) => {
+    const normalizedStatus = (status || 'draft').toLowerCase();
+
+    if (normalizedStatus === 'paid' || normalizedStatus === 'authorised') {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          Paid
+        </span>
+      );
+    } else if (normalizedStatus === 'pending' || normalizedStatus === 'submitted') {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+          Pending
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+          Draft
+        </span>
+      );
+    }
   };
 
   return (
@@ -116,17 +142,17 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Total Margin</h3>
           <p className="text-2xl font-bold text-green-600">{formatCurrency(totalMargin)}</p>
-          <p className="text-xs text-gray-500 mt-1">Gross margin</p>
+          <p className="text-xs text-gray-500 mt-1">Gross profit</p>
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Trades</h3>
           <p className="text-2xl font-bold text-gray-900">{tradesCount}</p>
-          <p className="text-xs text-gray-500 mt-1">Total completed</p>
+          <p className="text-xs text-gray-500 mt-1">Completed</p>
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Avg Margin</h3>
           <p className="text-2xl font-bold text-purple-600">{avgMarginPercent.toFixed(1)}%</p>
-          <p className="text-xs text-gray-500 mt-1">Average margin rate</p>
+          <p className="text-xs text-gray-500 mt-1">Margin rate</p>
         </div>
       </div>
 
@@ -218,6 +244,12 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
                   >
                     Margin
                   </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -246,6 +278,9 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">
                       {formatCurrency(sale.gross_margin || 0)}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      {getStatusBadge(sale.invoice_status)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -257,21 +292,18 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
       {/* System Status Section */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">System Status</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">System Health</h3>
-            <p className="text-2xl font-bold text-green-600">Good</p>
-            <p className="text-xs text-gray-500 mt-1">All systems operational</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">API Status</h3>
-            <p className="text-2xl font-bold text-green-600">Online</p>
-            <p className="text-xs text-gray-500 mt-1">Xero integration active</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="text-sm font-medium text-gray-500 mb-2">DB Status</h3>
-            <p className="text-2xl font-bold text-green-600">Online</p>
-            <p className="text-xs text-gray-500 mt-1">Xata database connected</p>
+        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">All Systems Operational</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Xero API • Xata Database • All services running
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-green-600">Online</span>
+            </div>
           </div>
         </div>
       </div>

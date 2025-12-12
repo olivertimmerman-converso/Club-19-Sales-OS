@@ -77,8 +77,8 @@ export function MonthPicker({ className = "" }: MonthPickerProps) {
         onChange={(e) => handleMonthChange(e.target.value)}
         className="
           appearance-none
-          pl-4 pr-10 py-2
-          bg-white border border-gray-300 rounded-lg
+          h-10 pl-3 pr-10 py-2
+          bg-white border border-gray-200 rounded-lg
           text-sm font-medium text-gray-700
           hover:bg-gray-50 hover:border-gray-400
           focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
