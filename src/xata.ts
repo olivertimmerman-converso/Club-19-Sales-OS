@@ -110,6 +110,7 @@ const tables = [
       { name: "shopper_name", type: "text" },
       { name: "introducer_name", type: "text" },
       { name: "invoice_due_date", type: "datetime" },
+      { name: "needs_allocation", type: "bool" },
     ],
     revLinks: [{ column: "sale", table: "Errors" }],
   },
