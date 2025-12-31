@@ -7,7 +7,7 @@ import { NeedsAllocationSection } from './NeedsAllocationSection';
 interface Sale {
   id: string;
   xero_invoice_number?: string | null;
-  sale_date?: Date | null;
+  sale_date?: string | null; // ISO string from server
   sale_amount_inc_vat?: number | null;
   buyer_name?: string | null;
   internal_notes?: string | null;

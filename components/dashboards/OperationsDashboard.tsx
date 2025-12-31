@@ -177,11 +177,11 @@ export async function OperationsDashboard({
     .select(['id', 'xero_invoice_number', 'sale_date', 'sale_amount_inc_vat', 'buyer_name', 'internal_notes', 'buyer.name'])
     .getMany();
 
-  // Serialize unallocated sales for client component
+  // Serialize unallocated sales for client component (convert Date to string)
   const unallocatedSales = unallocatedSalesRaw.map(sale => ({
     id: sale.id,
     xero_invoice_number: sale.xero_invoice_number,
-    sale_date: sale.sale_date,
+    sale_date: sale.sale_date ? sale.sale_date.toISOString() : null,
     sale_amount_inc_vat: sale.sale_amount_inc_vat,
     buyer_name: sale.buyer_name,
     internal_notes: sale.internal_notes,

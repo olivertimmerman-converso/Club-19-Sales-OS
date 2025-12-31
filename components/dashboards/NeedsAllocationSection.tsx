@@ -6,7 +6,7 @@ import { AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 interface Sale {
   id: string;
   xero_invoice_number?: string | null;
-  sale_date?: Date | null;
+  sale_date?: string | null; // ISO string from server
   sale_amount_inc_vat?: number | null;
   buyer_name?: string | null;
   internal_notes?: string | null;
@@ -65,7 +65,7 @@ export function NeedsAllocationSection({ sales, shoppers, onAllocated }: NeedsAl
     }
   };
 
-  const formatDate = (date: Date | null | undefined) => {
+  const formatDate = (date: string | null | undefined) => {
     if (!date) return '—';
     return new Date(date).toLocaleDateString('en-GB', {
       day: '2-digit',
