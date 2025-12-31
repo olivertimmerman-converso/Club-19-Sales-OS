@@ -8,6 +8,7 @@
 import { XataClient } from "@/src/xata";
 import Link from "next/link";
 import { MonthPicker } from "@/components/ui/MonthPicker";
+import { DashboardClientWrapper } from "./DashboardClientWrapper";
 
 const xata = new XataClient();
 
@@ -169,6 +170,18 @@ export async function OperationsDashboard({
   // Fetch buyers - limit to 200
   const allBuyers = await xata.db.Buyers.select(["id", "name"]).getMany({ pagination: { size: 200 } });
   const buyerFirstPurchase = new Map<string, Date>();
+
+  // Query unallocated sales (for Xero sync system)
+  const unallocatedSales = await xata.db.Sales
+    .filter({ needs_allocation: true })
+    .select(['id', 'xero_invoice_number', 'sale_date', 'sale_amount_inc_vat', 'buyer_name', 'internal_notes', 'buyer.name'])
+    .getMany();
+
+  // Query all shoppers (for allocation dropdown)
+  const shoppers = await xata.db.Shoppers
+    .select(['id', 'name'])
+    .sort('name', 'asc')
+    .getMany();
 
   // Fetch recent sales for buyer analysis - limit to 1000
   const allSalesForBuyers = await xata.db.Sales
@@ -462,6 +475,12 @@ export async function OperationsDashboard({
         </div>
         <MonthPicker />
       </div>
+
+      {/* Xero Sync Controls and Unallocated Invoices */}
+      <DashboardClientWrapper
+        unallocatedSales={unallocatedSales}
+        shoppers={shoppers}
+      />
 
       {/* SECTION 1: Key Metrics Bar */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

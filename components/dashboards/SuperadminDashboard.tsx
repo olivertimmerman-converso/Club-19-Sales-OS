@@ -3,6 +3,7 @@ import { XataClient } from "@/src/xata";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { ViewAsSelector } from "@/components/ui/ViewAsSelector";
 import { getMonthDateRange } from "@/lib/dateUtils";
+import { DashboardClientWrapper } from "./DashboardClientWrapper";
 
 /**
  * Club 19 Sales OS - Superadmin Dashboard
@@ -88,6 +89,18 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
 
   // Get recent 5 sales
   const recentSales = sales.slice(0, 5);
+
+  // Query unallocated sales (for Xero sync system)
+  const unallocatedSales = await xata.db.Sales
+    .filter({ needs_allocation: true })
+    .select(['id', 'xero_invoice_number', 'sale_date', 'sale_amount_inc_vat', 'buyer_name', 'internal_notes', 'buyer.name'])
+    .getMany();
+
+  // Query all shoppers (for allocation dropdown)
+  const shoppers = await xata.db.Shoppers
+    .select(['id', 'name'])
+    .sort('name', 'asc')
+    .getMany();
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -238,6 +251,12 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
           )}
         </div>
       </div>
+
+      {/* Xero Sync Controls and Unallocated Invoices */}
+      <DashboardClientWrapper
+        unallocatedSales={unallocatedSales}
+        shoppers={shoppers}
+      />
 
       {/* Recent Sales Section */}
       <div className="mb-8">
