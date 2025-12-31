@@ -91,16 +91,33 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
   const recentSales = sales.slice(0, 5);
 
   // Query unallocated sales (for Xero sync system)
-  const unallocatedSales = await xata.db.Sales
+  const unallocatedSalesRaw = await xata.db.Sales
     .filter({ needs_allocation: true })
     .select(['id', 'xero_invoice_number', 'sale_date', 'sale_amount_inc_vat', 'buyer_name', 'internal_notes', 'buyer.name'])
     .getMany();
 
+  // Serialize unallocated sales for client component
+  const unallocatedSales = unallocatedSalesRaw.map(sale => ({
+    id: sale.id,
+    xero_invoice_number: sale.xero_invoice_number,
+    sale_date: sale.sale_date,
+    sale_amount_inc_vat: sale.sale_amount_inc_vat,
+    buyer_name: sale.buyer_name,
+    internal_notes: sale.internal_notes,
+    buyer: sale.buyer ? { name: sale.buyer.name } : null,
+  }));
+
   // Query all shoppers (for allocation dropdown)
-  const shoppers = await xata.db.Shoppers
+  const shoppersRaw = await xata.db.Shoppers
     .select(['id', 'name'])
     .sort('name', 'asc')
     .getMany();
+
+  // Serialize shoppers for client component
+  const shoppers = shoppersRaw.map(shopper => ({
+    id: shopper.id,
+    name: shopper.name,
+  }));
 
   // Format currency
   const formatCurrency = (amount: number) => {
