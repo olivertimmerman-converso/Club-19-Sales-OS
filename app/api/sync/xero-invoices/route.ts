@@ -15,6 +15,39 @@ import { getValidTokens } from '@/lib/xero-auth';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Safely convert a date value to Date object or null
+ * Handles invalid dates without throwing errors
+ */
+function safeDate(dateValue: any): Date | null {
+  if (!dateValue) return null;
+  try {
+    const date = new Date(dateValue);
+    if (isNaN(date.getTime())) {
+      console.warn(`[XERO SYNC] Invalid date value: ${dateValue}`);
+      return null;
+    }
+    return date;
+  } catch (err) {
+    console.error(`[XERO SYNC] Error parsing date ${dateValue}:`, err);
+    return null;
+  }
+}
+
+/**
+ * Safely convert a date to ISO string or null
+ */
+function safeISOString(dateValue: any): string | null {
+  const date = safeDate(dateValue);
+  if (!date) return null;
+  try {
+    return date.toISOString();
+  } catch (err) {
+    console.error(`[XERO SYNC] Error converting to ISO string:`, err);
+    return null;
+  }
+}
+
 interface XeroInvoice {
   InvoiceID: string;
   InvoiceNumber: string;
@@ -163,6 +196,17 @@ export async function POST() {
 
           console.log(`[XERO SYNC] Creating new sale for ${invoice.InvoiceNumber} - Client: ${contactName}`);
 
+          // Safely parse dates
+          const saleDate = safeDate(invoice.Date);
+          const dueDate = safeDate(invoice.DueDate);
+
+          if (!saleDate) {
+            console.warn(`[XERO SYNC] Invoice ${invoice.InvoiceNumber} has invalid sale date: ${invoice.Date}`);
+          }
+          if (invoice.DueDate && !dueDate) {
+            console.warn(`[XERO SYNC] Invoice ${invoice.InvoiceNumber} has invalid due date: ${invoice.DueDate}`);
+          }
+
           // Try to find matching buyer by name
           const buyer = await xata.db.Buyers.filter({
             name: { $iContains: contactName }
@@ -174,12 +218,15 @@ export async function POST() {
             console.log(`[XERO SYNC] No matching buyer found for: ${contactName}`);
           }
 
+          const currentDate = new Date();
+          const importNotes = `Auto-imported from Xero on ${safeISOString(currentDate) || currentDate.toString()}. Client: ${contactName}. Needs shopper allocation and cost details.`;
+
           await xata.db.Sales.create({
             xero_invoice_id: invoice.InvoiceID,
             xero_invoice_number: invoice.InvoiceNumber,
             invoice_status: invoice.Status,
-            sale_date: invoice.Date ? new Date(invoice.Date) : new Date(),
-            invoice_due_date: invoice.DueDate ? new Date(invoice.DueDate) : null,
+            sale_date: saleDate || currentDate, // Fallback to current date if invalid
+            invoice_due_date: dueDate,
             sale_amount_inc_vat: total,
             sale_amount_ex_vat: invoice.SubTotal || (total / 1.2), // Use SubTotal or assume 20% VAT
             currency: 'GBP',
@@ -192,7 +239,7 @@ export async function POST() {
             quantity: firstItem.Quantity || 1,
             buy_price: 0, // Unknown - Operations will need to fill in
             gross_margin: 0,
-            internal_notes: `Auto-imported from Xero on ${new Date().toISOString()}. Client: ${contactName}. Needs shopper allocation and cost details.`,
+            internal_notes: importNotes,
           });
           newCount++;
           console.log(`[XERO SYNC] ✓ Created new sale for ${invoice.InvoiceNumber}`);

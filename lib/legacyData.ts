@@ -187,7 +187,27 @@ export async function getLegacyMonthlySales(shopper?: "Hope" | "MC"): Promise<Mo
     trades.forEach(trade => {
       if (!trade.trade_date) return;
 
-      const month = trade.trade_date.substring(0, 7); // YYYY-MM
+      // Safely convert date to string and extract YYYY-MM
+      let month: string;
+      try {
+        if (typeof trade.trade_date === 'string') {
+          month = trade.trade_date.substring(0, 7); // YYYY-MM
+        } else if (trade.trade_date instanceof Date) {
+          month = trade.trade_date.toISOString().substring(0, 7); // YYYY-MM
+        } else {
+          // Fallback: try to convert to Date
+          const date = new Date(trade.trade_date);
+          if (isNaN(date.getTime())) {
+            console.warn('[getLegacyMonthlySales] Invalid trade_date:', trade.trade_date);
+            return;
+          }
+          month = date.toISOString().substring(0, 7);
+        }
+      } catch (err) {
+        console.error('[getLegacyMonthlySales] Error processing trade_date:', err);
+        return;
+      }
+
       const existing = monthlyData.get(month) || { sales: 0, margin: 0, count: 0 };
 
       monthlyData.set(month, {
