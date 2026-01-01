@@ -58,8 +58,10 @@ export function Sidebar({ role }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto p-4">
         <ul className="space-y-1">
           {items.map((item) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(item.href + "/");
+            // For /admin route, only match exact path to avoid highlighting when on /admin/sync
+            const isActive = item.href === "/admin"
+              ? pathname === "/admin"
+              : pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon
               ? iconMap[item.icon as keyof typeof iconMap]
               : null;

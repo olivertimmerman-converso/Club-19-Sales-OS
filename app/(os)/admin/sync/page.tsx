@@ -20,7 +20,7 @@ export default async function SyncPage() {
   // Fetch unallocated sales
   const unallocatedRaw = await xata.db.Sales
     .filter({ needs_allocation: true })
-    .select(['id', 'xero_invoice_number', 'sale_amount_inc_vat', 'sale_date', 'buyer_name', 'internal_notes', 'buyer.name'])
+    .select(['id', 'xero_invoice_number', 'sale_amount_inc_vat', 'sale_date', 'buyer_name', 'internal_notes', 'buyer.*'])
     .getAll();
 
   // Fetch shoppers
