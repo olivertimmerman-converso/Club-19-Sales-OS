@@ -207,15 +207,21 @@ export async function POST() {
             console.warn(`[XERO SYNC] Invoice ${invoice.InvoiceNumber} has invalid due date: ${invoice.DueDate}`);
           }
 
-          // Try to find matching buyer by name
-          const buyer = await xata.db.Buyers.filter({
+          // Try to find or create buyer
+          let buyer = await xata.db.Buyers.filter({
             name: { $iContains: contactName }
           }).getFirst();
 
           if (buyer) {
-            console.log(`[XERO SYNC] Found matching buyer: ${buyer.name}`);
+            console.log(`[XERO SYNC] Found existing buyer: ${buyer.name}`);
           } else {
-            console.log(`[XERO SYNC] No matching buyer found for: ${contactName}`);
+            // Create new buyer record
+            console.log(`[XERO SYNC] Creating new buyer: ${contactName}`);
+            buyer = await xata.db.Buyers.create({
+              name: contactName,
+              xero_contact_id: invoice.Contact?.ContactID || null,
+            });
+            console.log(`[XERO SYNC] ✓ Created buyer: ${buyer.name} (${buyer.id})`);
           }
 
           const currentDate = new Date();
