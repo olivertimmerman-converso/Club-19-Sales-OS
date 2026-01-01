@@ -113,43 +113,52 @@ export async function POST() {
     const tokens = await getValidTokens(systemUserId);
     console.log('[XERO SYNC] ✓ Got valid Xero tokens');
 
-    // 3. Fetch recent invoices from Xero (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const year = sevenDaysAgo.getFullYear();
-    const month = sevenDaysAgo.getMonth() + 1; // JavaScript months are 0-indexed
-    const day = sevenDaysAgo.getDate();
-
-    const whereClause = `UpdatedDateUTC>=DateTime(${year},${month},${day})`;
+    // 3. Fetch all invoices from Xero with pagination
     const statusFilter = 'AUTHORISED,PAID,SUBMITTED';
-
-    console.log(`[XERO SYNC] Fetching invoices where: ${whereClause}`);
     console.log(`[XERO SYNC] Status filter: ${statusFilter}`);
+    console.log(`[XERO SYNC] Fetching ALL historical invoices (with pagination)...`);
 
-    const xeroUrl = `https://api.xero.com/api.xro/2.0/Invoices?where=${encodeURIComponent(whereClause)}&Statuses=${statusFilter}`;
+    const allInvoices: XeroInvoice[] = [];
+    let page = 1;
+    let hasMorePages = true;
 
-    const xeroResponse = await fetch(xeroUrl, {
-      headers: {
-        'Authorization': `Bearer ${tokens.accessToken}`,
-        'Xero-Tenant-Id': tokens.tenantId,
-        'Accept': 'application/json',
-      },
-    });
+    while (hasMorePages) {
+      const xeroUrl = `https://api.xero.com/api.xro/2.0/Invoices?Statuses=${statusFilter}&page=${page}`;
 
-    if (!xeroResponse.ok) {
-      const errorText = await xeroResponse.text();
-      console.error('[XERO SYNC] ❌ Xero API error:', xeroResponse.status, errorText);
-      return NextResponse.json({
-        error: 'Xero API error',
-        details: errorText
-      }, { status: 500 });
+      console.log(`[XERO SYNC] Fetching page ${page}...`);
+
+      const xeroResponse = await fetch(xeroUrl, {
+        headers: {
+          'Authorization': `Bearer ${tokens.accessToken}`,
+          'Xero-Tenant-Id': tokens.tenantId,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!xeroResponse.ok) {
+        const errorText = await xeroResponse.text();
+        console.error('[XERO SYNC] ❌ Xero API error:', xeroResponse.status, errorText);
+        return NextResponse.json({
+          error: 'Xero API error',
+          details: errorText
+        }, { status: 500 });
+      }
+
+      const xeroData: XeroInvoicesResponse = await xeroResponse.json();
+      const invoices = xeroData.Invoices || [];
+
+      console.log(`[XERO SYNC] Page ${page}: Fetched ${invoices.length} invoices`);
+
+      if (invoices.length === 0) {
+        hasMorePages = false;
+      } else {
+        allInvoices.push(...invoices);
+        page++;
+      }
     }
 
-    const xeroData: XeroInvoicesResponse = await xeroResponse.json();
-    const invoices = xeroData.Invoices || [];
-
-    console.log(`[XERO SYNC] Fetched ${invoices.length} invoices from Xero`);
+    const invoices = allInvoices;
+    console.log(`[XERO SYNC] ✓ Total invoices fetched: ${invoices.length} (across ${page - 1} pages)`);
 
     // 4. Process each invoice
     const xata = getXataClient();
