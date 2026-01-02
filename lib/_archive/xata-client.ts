@@ -194,7 +194,7 @@ export async function updateSale(
   id: string,
   updates: Partial<CreateSaleInput>
 ): Promise<SalesRecord | null> {
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
 
   // Only include fields that are provided
   if (updates.sale_reference !== undefined)

@@ -18,6 +18,13 @@ import {
   getTopLegacySuppliers,
   getRecentLegacyTrades,
   getReviewFlags,
+  type LegacySummary,
+  type MonthlySales,
+  type CategoryData,
+  type SupplierData,
+  type ClientData,
+  type LegacyTrade,
+  type ReviewFlags,
 } from "@/lib/legacyData";
 import { SummaryCards } from "@/components/legacy/SummaryCards";
 import { SalesOverTimeChart } from "@/components/legacy/SalesOverTimeChart";
@@ -50,14 +57,14 @@ export default async function LegacyDashboardPage() {
 
   // Initialize data variables with safe defaults
   console.log("[Legacy Page] 📊 Initializing data variables");
-  let summary: any = { totalSales: 0, totalMargin: 0, tradeCount: 0, clientCount: 0, supplierCount: 0, avgMargin: 0, dateRange: { start: null, end: null } };
-  let monthlySales: any[] = [];
-  let categoryData: any[] = [];
-  let supplierData: any[] = [];
-  let topClients: any[] = [];
-  let topSuppliers: any[] = [];
-  let recentTrades: any[] = [];
-  let reviewFlags: any = { clientsRequiringReview: 0, suppliersRequiringReview: 0, tradesWithoutDates: 0, clientDetails: [], supplierDetails: [] };
+  let summary: LegacySummary = { totalSales: 0, totalMargin: 0, tradeCount: 0, clientCount: 0, supplierCount: 0, avgMargin: 0, dateRange: { start: null, end: null } };
+  let monthlySales: MonthlySales[] = [];
+  let categoryData: CategoryData[] = [];
+  let supplierData: SupplierData[] = [];
+  let topClients: ClientData[] = [];
+  let topSuppliers: SupplierData[] = [];
+  let recentTrades: LegacyTrade[] = [];
+  let reviewFlags: ReviewFlags = { clientsRequiringReview: 0, suppliersRequiringReview: 0, tradesWithoutDates: 0, clientDetails: [], supplierDetails: [] };
 
   // Fetch all data in parallel with comprehensive error handling
   console.log("[Legacy Page] 🌐 Fetching all legacy data in parallel");

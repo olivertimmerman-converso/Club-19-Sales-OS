@@ -18,6 +18,12 @@ import {
   getTopLegacyClients,
   getTopLegacySuppliers,
   getRecentLegacyTrades,
+  type LegacySummary,
+  type MonthlySales,
+  type CategoryData,
+  type SupplierData,
+  type ClientData,
+  type LegacyTrade,
 } from "@/lib/legacyData";
 import { SummaryCards } from "@/components/legacy/SummaryCards";
 import { SalesOverTimeChart } from "@/components/legacy/SalesOverTimeChart";
@@ -66,13 +72,13 @@ export default async function MyLegacySalesPage({
 
   // Fetch data for selected shopper with error handling
   console.log(`[My Legacy Sales] 📊 Fetching legacy data for shopper: "${shopperToView}"`);
-  let summary: any = { totalSales: 0, totalMargin: 0, tradeCount: 0, avgMargin: 0, dateRange: { start: null, end: null } };
-  let monthlySales: any[] = [];
-  let categoryData: any[] = [];
-  let supplierData: any[] = [];
-  let topClients: any[] = [];
-  let topSuppliers: any[] = [];
-  let recentTrades: any[] = [];
+  let summary: LegacySummary = { totalSales: 0, totalMargin: 0, tradeCount: 0, clientCount: 0, supplierCount: 0, avgMargin: 0, dateRange: { start: null, end: null } };
+  let monthlySales: MonthlySales[] = [];
+  let categoryData: CategoryData[] = [];
+  let supplierData: SupplierData[] = [];
+  let topClients: ClientData[] = [];
+  let topSuppliers: SupplierData[] = [];
+  let recentTrades: LegacyTrade[] = [];
 
   try {
     const results = await Promise.allSettled([

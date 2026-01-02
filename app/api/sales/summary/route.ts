@@ -48,7 +48,7 @@ interface ErrorRecord {
   severity: string;
   source: string;
   message: string[];
-  metadata: any;
+  metadata: Record<string, unknown>;
   triggered_by: string;
   timestamp: Date;
   resolved: boolean;
@@ -183,7 +183,7 @@ export async function GET(req: NextRequest) {
 
     logger.info("SALES_SUMMARY", "Found errors", { count: allErrors.length });
 
-    // Group errors by sale ID
+    // Group errors by sale ID (using any to avoid Xata SelectedPick complexity)
     const errorsBySale = new Map<string, any[]>();
     for (const error of allErrors) {
       const saleId = error.sale?.id;

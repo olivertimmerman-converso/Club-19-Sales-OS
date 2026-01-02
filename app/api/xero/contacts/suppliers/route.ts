@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 // Request-level search cache (2-minute TTL)
-const searchCache = new Map<string, { results: any[], timestamp: number }>();
+const searchCache = new Map<string, { results: NormalizedContact[], timestamp: number }>();
 const SEARCH_CACHE_TTL = 2 * 60 * 1000; // 2 minutes
 
 /**

@@ -20,17 +20,17 @@ export const dynamic = 'force-dynamic';
  * Safely convert a date value to Date object or null
  * Handles invalid dates without throwing errors
  */
-function safeDate(dateValue: any): Date | null {
+function safeDate(dateValue: unknown): Date | null {
   if (!dateValue) return null;
   try {
-    const date = new Date(dateValue);
+    const date = new Date(dateValue as string | number | Date);
     if (isNaN(date.getTime())) {
-      logger.warn('XERO_SYNC', 'Invalid date value', { dateValue });
+      logger.warn('XERO_SYNC', 'Invalid date value', { dateValue: String(dateValue) });
       return null;
     }
     return date;
   } catch (err) {
-    logger.error('XERO_SYNC', 'Error parsing date', { dateValue, error: err as any });
+    logger.error('XERO_SYNC', 'Error parsing date', { dateValue: String(dateValue), error: err as any });
     return null;
   }
 }
@@ -38,7 +38,7 @@ function safeDate(dateValue: any): Date | null {
 /**
  * Safely convert a date to ISO string or null
  */
-function safeISOString(dateValue: any): string | null {
+function safeISOString(dateValue: unknown): string | null {
   const date = safeDate(dateValue);
   if (!date) return null;
   try {

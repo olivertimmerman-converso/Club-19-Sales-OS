@@ -274,7 +274,7 @@ export async function createXeroInvoice(
       error: errorText,
     });
 
-    const error: any = new Error(`Xero API error: ${response.status} - ${response.statusText}`);
+    const error = new Error(`Xero API error: ${response.status} - ${response.statusText}`) as Error & { details?: string };
     error.details = errorText;
     throw error;
   }

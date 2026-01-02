@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
 
     // 6. Transform Xero contacts to simplified format
-    const contacts: XeroContact[] = (data.Contacts || []).map((contact: any) => ({
+    const contacts: XeroContact[] = (data.Contacts || []).map((contact: XeroContact) => ({
       Name: contact.Name,
       ContactID: contact.ContactID,
       EmailAddress: contact.EmailAddress || undefined,

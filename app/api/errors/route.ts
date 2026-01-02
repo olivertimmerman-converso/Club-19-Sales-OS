@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     // Apply filters
-    const filters: any = {};
+    const filters: Record<string, string | boolean> = {};
 
     if (type) {
       filters.error_type = type;

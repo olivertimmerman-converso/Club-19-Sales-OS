@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { XataClient } from "@/src/xata";
+import type { SalesRecord } from "@/src/xata";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { ViewAsSelector } from "@/components/ui/ViewAsSelector";
 import { getMonthDateRange } from "@/lib/dateUtils";

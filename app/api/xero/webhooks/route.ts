@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
     }
 
     // STEP 5: Parse JSON payload
-    let payload: any;
+    let payload: unknown;
     try {
       payload = JSON.parse(rawBody);
     } catch (err) {
@@ -153,30 +153,38 @@ export async function POST(req: NextRequest) {
     }
 
     logger.info("XERO_WEBHOOKS", "Processing events", {
-      eventCount: payload.events?.length || 0,
+      eventCount: (payload as { events?: unknown[] }).events?.length || 0,
     });
 
     // STEP 6: Process each event
-    const events = payload.events || [];
+    const events = (payload as { events?: unknown[] }).events || [];
     let processedCount = 0;
     let errorCount = 0;
 
     for (const event of events) {
+      const webhookEvent = event as {
+        resourceType?: string;
+        eventType?: string;
+        resourceId?: string;
+        eventId?: string;
+      };
+
       try {
+
         // Only process invoice events
-        if (event.resourceType !== "invoices") {
+        if (webhookEvent.resourceType !== "invoices") {
           logger.info("XERO_WEBHOOKS", "Skipping non-invoice event", {
-            resourceType: event.resourceType,
+            resourceType: webhookEvent.resourceType,
           });
           continue;
         }
 
         logger.info("XERO_WEBHOOKS", "Processing invoice event", {
-          eventType: event.eventType,
+          eventType: webhookEvent.eventType,
         });
 
         // Get invoice details from event
-        const invoiceId = event.resourceId;
+        const invoiceId = webhookEvent.resourceId;
 
         if (!invoiceId) {
           logger.warn("XERO_WEBHOOKS", "Event missing resourceId");
@@ -269,7 +277,7 @@ export async function POST(req: NextRequest) {
               invoiceId: invoice.InvoiceID,
               invoiceStatus: invoice.Status,
               amountDue: invoice.AmountDue,
-              eventId: event.eventId,
+              eventId: webhookEvent.eventId || '',
             },
             triggered_by: ERROR_TRIGGERED_BY.WEBHOOK,
             timestamp: new Date(),
@@ -340,8 +348,8 @@ export async function POST(req: NextRequest) {
             metadata: {
               error: err.message || String(err),
               stack: err.stack,
-              eventId: event.eventId,
-              resourceId: event.resourceId,
+              eventId: webhookEvent.eventId,
+              resourceId: webhookEvent.resourceId,
             },
             triggered_by: ERROR_TRIGGERED_BY.WEBHOOK,
             timestamp: new Date(),

@@ -9,6 +9,7 @@
  */
 
 import { xata } from "@/lib/xata-sales";
+import type { legacy_tradesRecord, legacy_clientsRecord, legacy_suppliersRecord } from "@/src/xata";
 import * as logger from "./logger";
 
 // Legacy tables are now active in Xata
@@ -103,27 +104,27 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
 
     // Get all trades
     logger.info("LEGACY_DATA", "Fetching trades from legacy_trades table");
-    const trades: any[] = await xata().db.legacy_trades
+    const trades = await xata().db.legacy_trades
       .filter(filter)
       .select(["sell_price", "margin", "trade_date"])
       .getAll();
 
     logger.info("LEGACY_DATA", "Trades query returned", { count: trades.length });
     if (trades.length > 0) {
-      logger.debug("LEGACY_DATA", "Sample trade", { trade: trades[0] });
+      logger.debug("LEGACY_DATA", "Sample trade", { trade: trades[0] as any });
     }
 
     // Get unique counts
     logger.info("LEGACY_DATA", "Fetching clients from legacy_clients table");
-    const clients: any[] = await xata().db.legacy_clients.getAll();
+    const clients = await xata().db.legacy_clients.getAll();
     logger.info("LEGACY_DATA", "Clients query returned", { count: clients.length });
 
     logger.info("LEGACY_DATA", "Fetching suppliers from legacy_suppliers table");
-    const suppliers: any[] = await xata().db.legacy_suppliers.getAll();
+    const suppliers = await xata().db.legacy_suppliers.getAll();
     logger.info("LEGACY_DATA", "Suppliers query returned", { count: suppliers.length });
 
-    const totalSales = trades.reduce((sum: number, t: any) => sum + (t.sell_price || 0), 0);
-    const totalMargin = trades.reduce((sum: number, t: any) => sum + (t.margin || 0), 0);
+    const totalSales = trades.reduce((sum: number, t) => sum + (t.sell_price || 0), 0);
+    const totalMargin = trades.reduce((sum: number, t) => sum + (t.margin || 0), 0);
     const avgMargin = trades.length > 0 ? totalMargin / trades.length : 0;
 
     // Get date range
@@ -132,7 +133,7 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
       .filter(Boolean)
       .sort();
 
-    const summary = {
+    const summary: LegacySummary = {
       totalSales,
       totalMargin,
       tradeCount: trades.length,
@@ -140,12 +141,12 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
       supplierCount: shopper ? 0 : suppliers.length,
       avgMargin,
       dateRange: {
-        start: dates[0] || null,
-        end: dates[dates.length - 1] || null,
+        start: dates[0] ? String(dates[0]) : null,
+        end: dates[dates.length - 1] ? String(dates[dates.length - 1]) : null,
       },
     };
 
-    logger.info("LEGACY_DATA", "Summary calculated", { summary });
+    logger.info("LEGACY_DATA", "Summary calculated", { summary: summary as any });
     logger.info("LEGACY_DATA", "getLegacySummary complete");
     return summary;
   } catch (error) {
@@ -176,7 +177,7 @@ export async function getLegacyMonthlySales(shopper?: "Hope" | "MC"): Promise<Mo
   try {
     const filter = shopper ? { source: shopper } : {};
 
-    const trades: any[] = await xata().db.legacy_trades
+    const trades = await xata().db.legacy_trades
       .filter(filter)
       .select(["trade_date", "sell_price", "margin"])
       .getAll();
@@ -190,8 +191,9 @@ export async function getLegacyMonthlySales(shopper?: "Hope" | "MC"): Promise<Mo
       // Safely convert date to string and extract YYYY-MM
       let month: string;
       try {
-        if (typeof trade.trade_date === 'string') {
-          month = trade.trade_date.substring(0, 7); // YYYY-MM
+        const dateValue = trade.trade_date as string | Date;
+        if (typeof dateValue === 'string') {
+          month = dateValue.substring(0, 7); // YYYY-MM
         } else if (trade.trade_date instanceof Date) {
           month = trade.trade_date.toISOString().substring(0, 7); // YYYY-MM
         } else {
@@ -239,7 +241,7 @@ export async function getLegacyByCategory(shopper?: "Hope" | "MC"): Promise<Cate
   try {
     const filter = shopper ? { source: shopper } : {};
 
-    const trades: any[] = await xata().db.legacy_trades
+    const trades = await xata().db.legacy_trades
       .filter(filter)
       .select(["category", "sell_price", "margin"])
       .getAll();
@@ -281,7 +283,7 @@ export async function getLegacyBySupplier(shopper?: "Hope" | "MC"): Promise<Supp
   try {
     const filter = shopper ? { source: shopper } : {};
 
-    const trades: any[] = await xata().db.legacy_trades
+    const trades = await xata().db.legacy_trades
       .filter(filter)
       .select(["raw_supplier", "sell_price", "margin"])
       .getAll();
@@ -323,7 +325,7 @@ export async function getTopLegacyClients(shopper?: "Hope" | "MC"): Promise<Clie
   try {
     const filter = shopper ? { source: shopper } : {};
 
-    const trades: any[] = await xata().db.legacy_trades
+    const trades = await xata().db.legacy_trades
       .filter(filter)
       .select(["raw_client", "sell_price", "margin"])
       .getAll();
@@ -376,7 +378,7 @@ export async function getRecentLegacyTrades(
   try{
     const filter = shopper ? { source: shopper } : {};
 
-    const result: any = await xata().db.legacy_trades
+    const result = await xata().db.legacy_trades
       .filter(filter)
       .select([
         "id",
@@ -395,9 +397,9 @@ export async function getRecentLegacyTrades(
       .sort("trade_date", "desc")
       .getPaginated({ pagination: { size: limit } });
 
-    return result.records.map((record: any) => ({
+    return result.records.map((record): LegacyTrade => ({
       id: record.id,
-      trade_date: record.trade_date || null,
+      trade_date: record.trade_date as string | null,
       invoice_number: record.invoice_number || "",
       raw_client: record.raw_client || "",
       raw_supplier: record.raw_supplier || "",
@@ -431,19 +433,19 @@ export async function getReviewFlags(): Promise<ReviewFlags> {
 
   try {
     // Get clients requiring review
-    const clients: any[] = await xata().db.legacy_clients
+    const clients = await xata().db.legacy_clients
       .filter({ requires_review: true })
       .select(["client_clean"])
       .getAll();
 
     // Get suppliers requiring review
-    const suppliers: any[] = await xata().db.legacy_suppliers
+    const suppliers = await xata().db.legacy_suppliers
       .filter({ requires_review: true })
       .select(["supplier_clean", "reason"])
       .getAll();
 
     // Count trades without dates
-    const tradesWithoutDates: any[] = await xata().db.legacy_trades
+    const tradesWithoutDates = await xata().db.legacy_trades
       .filter({ trade_date: null })
       .select(["id"])
       .getAll();

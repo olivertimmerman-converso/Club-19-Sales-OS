@@ -38,6 +38,19 @@ export interface PayCommissionsResponse {
   results: PayCommissionResult[];
 }
 
+export interface ErrorRecord {
+  id: string;
+  error_type: string;
+  error_group: string;
+  severity: string;
+  source: string;
+  message: string[];
+  metadata: Record<string, unknown>;
+  triggered_by: string;
+  timestamp: Date;
+  resolved: boolean;
+}
+
 export interface OverdueSale {
   sale_id: string;
   sale_reference: string;
@@ -48,7 +61,7 @@ export interface OverdueSale {
   days_overdue: number;
   isPaid: boolean;
   status: string;
-  errors: any[];
+  errors: ErrorRecord[];
 }
 
 export interface OverdueSalesResponse {

@@ -37,9 +37,22 @@ export interface SaleSummary {
   commissionable_margin: number;
   commission_amount: number;
   margin_percent: number;
-  errors: any[];
-  warnings: any[];
+  errors: ErrorRecord[];
+  warnings: ErrorRecord[];
   error_groups: Record<string, number>;
+}
+
+export interface ErrorRecord {
+  id: string;
+  error_type: string;
+  error_group: string;
+  severity: string;
+  source: string;
+  message: string[];
+  metadata: Record<string, unknown>;
+  triggered_by: string;
+  timestamp: Date;
+  resolved: boolean;
 }
 
 export interface SalesSummaryResponse {

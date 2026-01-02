@@ -8,8 +8,8 @@ export type StaffRole = "superadmin" | "admin" | "finance" | "shopper" | "founde
 
 export const STAFF_ROLES: StaffRole[] = ["superadmin", "admin", "finance", "shopper", "founder", "operations"];
 
-export function isValidStaffRole(role: any): role is StaffRole {
-  return STAFF_ROLES.includes(role);
+export function isValidStaffRole(role: unknown): role is StaffRole {
+  return STAFF_ROLES.includes(role as StaffRole);
 }
 
 export function getDefaultRole(): StaffRole {
