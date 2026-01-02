@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getSupplierContacts } from "@/lib/xero-contacts-cache";
 import { searchSuppliers } from "@/lib/search";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -44,7 +45,7 @@ interface NormalizedContact {
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  console.log("[XERO SUPPLIER SEARCH] === API Route Started ===");
+  logger.info("XERO_CONTACTS", "Supplier search API route started");
 
   // 0. Rate limiting
   const rateLimitResponse = withRateLimit(request, RATE_LIMITS.contacts);
@@ -55,10 +56,12 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Authenticate user
     const { userId } = await auth();
-    console.log(`[XERO SUPPLIER SEARCH] User ID: ${userId || "NOT AUTHENTICATED"}`);
+    logger.info("XERO_CONTACTS", "Supplier search request", {
+      userId: userId || "NOT AUTHENTICATED",
+    });
 
     if (!userId) {
-      console.error("[XERO SUPPLIER SEARCH] ❌ Unauthorized request");
+      logger.error("XERO_CONTACTS", "Unauthorized supplier search request");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -68,14 +71,16 @@ export async function GET(request: NextRequest) {
     // 2. Get search query
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("query");
-    console.log(`[XERO SUPPLIER SEARCH] Query parameter: "${query}"`);
+    logger.info("XERO_CONTACTS", "Supplier search query received", { query });
 
     if (!query || query.length < 3) {
-      console.log(`[XERO SUPPLIER SEARCH] Query too short (${query?.length || 0} chars), returning empty`);
+      logger.info("XERO_CONTACTS", "Query too short, returning empty", {
+        queryLength: query?.length || 0,
+      });
       return NextResponse.json({ contacts: [] });
     }
 
-    console.log(`[XERO SUPPLIER SEARCH] Searching for: "${query}" (user: ${userId})`);
+    logger.info("XERO_CONTACTS", "Searching for suppliers", { query, userId });
 
     // 2.5. Check search cache first
     const cacheKey = `${userId}:${query.toLowerCase()}`;
@@ -83,7 +88,10 @@ export async function GET(request: NextRequest) {
 
     if (cached && Date.now() - cached.timestamp < SEARCH_CACHE_TTL) {
       const age = Math.round((Date.now() - cached.timestamp) / 1000);
-      console.log(`[XERO SUPPLIER SEARCH] ✓ Cache HIT (${age}s old), returning ${cached.results.length} cached results`);
+      logger.info("XERO_CONTACTS", "Cache hit for supplier search", {
+        age,
+        resultCount: cached.results.length,
+      });
       return NextResponse.json({ contacts: cached.results });
     }
 
@@ -91,9 +99,11 @@ export async function GET(request: NextRequest) {
     let supplierContacts;
     try {
       supplierContacts = await getSupplierContacts(userId);
-      console.log(`[XERO SUPPLIER SEARCH] Loaded ${supplierContacts.length} supplier contacts (pre-filtered)`);
+      logger.info("XERO_CONTACTS", "Loaded supplier contacts", {
+        count: supplierContacts.length,
+      });
     } catch (error: any) {
-      console.error("[XERO SUPPLIER SEARCH] ❌ Failed to fetch contacts:", error.message);
+      logger.error("XERO_CONTACTS", "Failed to fetch contacts", { error });
 
       // Check if it's an auth error
       if (error.message.includes("Xero") || error.message.includes("token")) {
@@ -116,26 +126,32 @@ export async function GET(request: NextRequest) {
     // 4. Perform fast simplified supplier search with STRICT classification
     const searchStartTime = Date.now();
 
-    console.log(`[XERO SUPPLIER SEARCH] Searching ${supplierContacts.length} pre-filtered suppliers`);
+    logger.info("XERO_CONTACTS", "Searching pre-filtered suppliers", {
+      supplierCount: supplierContacts.length,
+    });
 
     const results = searchSuppliers(query, supplierContacts, 15);
     const searchDuration = Date.now() - searchStartTime;
 
-    console.log(`[XERO SUPPLIER SEARCH] Simple match scoring applied (exact/starts/contains)`);
-    console.log(`[XERO SUPPLIER SEARCH] Search completed in ${searchDuration}ms`);
-    console.log(`[XERO SUPPLIER SEARCH] Returning ${results.length} supplier contacts`);
+    logger.info("XERO_CONTACTS", "Supplier search completed", {
+      duration: searchDuration,
+      resultCount: results.length,
+    });
 
     // 5. Log detailed match information
     if (results.length > 0) {
-      console.log(`[XERO SUPPLIER SEARCH] Top supplier matches:`);
-      results.slice(0, 5).forEach((result, idx) => {
-        console.log(
-          `  ${idx + 1}. "${result.contact.name}" (score: ${result.score}, field: ${result.matchedField})`
-        );
+      logger.info("XERO_CONTACTS", "Top supplier matches found", {
+        topMatches: results.slice(0, 5).map((result, idx) => ({
+          rank: idx + 1,
+          name: result.contact.name,
+          score: result.score,
+          field: result.matchedField,
+        })),
       });
     } else {
-      console.log(`[XERO SUPPLIER SEARCH] No supplier matches found for query: "${query}"`);
-      console.log(`[XERO SUPPLIER SEARCH] Returning empty list (strict mode - no fallback)`);
+      logger.info("XERO_CONTACTS", "No supplier matches found (strict mode)", {
+        query,
+      });
     }
 
     // 6. Convert to UI format
@@ -152,14 +168,20 @@ export async function GET(request: NextRequest) {
       results: contacts,
       timestamp: Date.now()
     });
-    console.log(`[XERO SUPPLIER SEARCH] ✓ Cached ${contacts.length} results for "${query}"`);
+    logger.info("XERO_CONTACTS", "Cached supplier search results", {
+      count: contacts.length,
+      query,
+    });
 
     const totalDuration = Date.now() - startTime;
-    console.log(`[XERO SUPPLIER SEARCH] ✓✓✓ Returning ${contacts.length} supplier contacts in ${totalDuration}ms`);
+    logger.info("XERO_CONTACTS", "Returning supplier contacts", {
+      count: contacts.length,
+      duration: totalDuration,
+    });
 
     return NextResponse.json({ contacts });
   } catch (error: any) {
-    console.error("[XERO SUPPLIER SEARCH] ❌ Fatal error:", error);
+    logger.error("XERO_CONTACTS", "Fatal error in supplier search", { error });
     return NextResponse.json(
       { error: "Internal server error", details: error.message },
       { status: 500 }

@@ -14,6 +14,7 @@ import { getUserRole } from "@/lib/getUserRole";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { transitionSaleStatus } from "@/lib/deal-lifecycle";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY, ERROR_GROUPS } from "@/lib/error-types";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -53,7 +54,7 @@ interface PayCommissionsResponse {
 // ============================================================================
 
 export async function POST(req: NextRequest) {
-  console.log("[FINANCE][PAY-COMMISSIONS] POST request received");
+  logger.info("COMMISSIONS", "POST request received");
 
   // Rate limiting
   const rateLimitResponse = withRateLimit(req, RATE_LIMITS.general);
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
     // STEP 1: Check authentication and authorization
     const { userId } = await auth();
     if (!userId) {
-      console.error("[FINANCE][PAY-COMMISSIONS] ❌ Unauthorized - no userId");
+      logger.error("COMMISSIONS", "Unauthorized - no userId");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     const role = await getUserRole();
     if (!role || (role !== "admin" && role !== "superadmin" && role !== "finance")) {
-      console.error(`[FINANCE][PAY-COMMISSIONS] ❌ Forbidden - insufficient permissions (role: ${role})`);
+      logger.error("COMMISSIONS", "Forbidden - insufficient permissions", { role });
       return NextResponse.json(
         { error: "Forbidden", message: "Admin/Finance access required" },
         { status: 403 }
@@ -86,20 +87,20 @@ export async function POST(req: NextRequest) {
     const user = await client.users.getUser(userId);
     const adminUserEmail = user.emailAddresses[0]?.emailAddress || "unknown@system.local";
 
-    console.log(`[FINANCE][PAY-COMMISSIONS] ✓ Authorized (role: ${role}, email: ${adminUserEmail})`);
+    logger.info("COMMISSIONS", "Authorized", { role, email: adminUserEmail });
 
     // STEP 2: Fetch all sales with status = "locked"
-    console.log("[FINANCE][PAY-COMMISSIONS] Fetching locked sales...");
+    logger.info("COMMISSIONS", "Fetching locked sales...");
 
     const lockedSales = await xata()
       .db.Sales.filter({ status: "locked" })
       .select(["id", "sale_reference", "status"])
       .getMany();
 
-    console.log(`[FINANCE][PAY-COMMISSIONS] ✓ Found ${lockedSales.length} locked sales`);
+    logger.info("COMMISSIONS", `Found ${lockedSales.length} locked sales`);
 
     if (lockedSales.length === 0) {
-      console.log("[FINANCE][PAY-COMMISSIONS] ✅ No locked sales to process");
+      logger.info("COMMISSIONS", "No locked sales to process");
       return NextResponse.json({
         total_locked: 0,
         total_commission_paid: 0,
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
     }
 
     // STEP 3: Transition each sale from "locked" → "commission_paid"
-    console.log("[FINANCE][PAY-COMMISSIONS] Processing transitions...");
+    logger.info("COMMISSIONS", "Processing transitions...");
 
     const results: PayCommissionResult[] = [];
     let total_commission_paid = 0;
@@ -117,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     for (const sale of lockedSales) {
       try {
-        console.log(`[FINANCE][PAY-COMMISSIONS] Processing sale: ${sale.id} (${sale.sale_reference})`);
+        logger.info("COMMISSIONS", "Processing sale", { saleId: sale.id, saleReference: sale.sale_reference });
 
         const transitionResult = await transitionSaleStatus({
           saleId: sale.id,
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest) {
             sale_reference: sale.sale_reference || "",
             status: "commission_paid",
           });
-          console.log(`[FINANCE][PAY-COMMISSIONS] ✓ Commission paid: ${sale.sale_reference}`);
+          logger.info("COMMISSIONS", "Commission paid", { saleReference: sale.sale_reference });
         } else {
           total_failed++;
           results.push({
@@ -142,7 +143,10 @@ export async function POST(req: NextRequest) {
             status: "failed",
             error: transitionResult.error || "Unknown error",
           });
-          console.error(`[FINANCE][PAY-COMMISSIONS] ❌ Failed: ${sale.sale_reference} - ${transitionResult.error}`);
+          logger.error("COMMISSIONS", "Failed to pay commission", {
+            saleReference: sale.sale_reference,
+            error: transitionResult.error
+          });
 
           // Log error to Errors table
           try {
@@ -167,7 +171,7 @@ export async function POST(req: NextRequest) {
               resolved_notes: null,
             });
           } catch (logErr) {
-            console.error(`[FINANCE][PAY-COMMISSIONS] ❌ Failed to log error for sale ${sale.id}:`, logErr);
+            logger.error("COMMISSIONS", "Failed to log error", { saleId: sale.id, error: logErr as any });
           }
         }
       } catch (saleErr: any) {
@@ -178,7 +182,7 @@ export async function POST(req: NextRequest) {
           status: "failed",
           error: saleErr.message || "Unexpected error",
         });
-        console.error(`[FINANCE][PAY-COMMISSIONS] ❌ Exception for sale ${sale.id}:`, saleErr);
+        logger.error("COMMISSIONS", "Exception processing sale", { saleId: sale.id, error: saleErr });
       }
     }
 
@@ -190,11 +194,14 @@ export async function POST(req: NextRequest) {
       results,
     };
 
-    console.log(`[FINANCE][PAY-COMMISSIONS] ✅ Complete - Commission Paid: ${total_commission_paid}, Failed: ${total_failed}`);
+    logger.info("COMMISSIONS", "Complete", {
+      commissionPaid: total_commission_paid,
+      failed: total_failed
+    });
 
     return NextResponse.json(response);
   } catch (error: any) {
-    console.error("[FINANCE][PAY-COMMISSIONS] ❌ Unexpected error:", error);
+    logger.error("COMMISSIONS", "Unexpected error", { error });
 
     return NextResponse.json(
       {

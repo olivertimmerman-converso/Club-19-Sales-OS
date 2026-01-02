@@ -3,6 +3,7 @@ import { TradeSchema } from "@/lib/schemas/trade";
 import { ZodError } from "zod";
 import { XataClient } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
+import * as logger from "@/lib/logger";
 
 // Initialize Xata client
 const xata = new XataClient();
@@ -123,7 +124,7 @@ export async function POST(request: NextRequest) {
     // Get Make.com webhook URL from environment
     const makeWebhookUrl = process.env.MAKE_TRADE_WEBHOOK_URL;
     if (!makeWebhookUrl) {
-      console.error("MAKE_TRADE_WEBHOOK_URL not configured");
+      logger.error("TRADE_CREATE", "MAKE_TRADE_WEBHOOK_URL not configured");
       return NextResponse.json(
         {
           error: "SERVER_CONFIGURATION_ERROR",
@@ -143,13 +144,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (!makeResponse.ok) {
-      console.error(
-        "Make.com webhook failed:",
-        makeResponse.status,
-        makeResponse.statusText,
-      );
       const errorText = await makeResponse.text();
-      console.error("Make.com error response:", errorText);
+      logger.error("TRADE_CREATE", "Make.com webhook failed", {
+        status: makeResponse.status,
+        statusText: makeResponse.statusText,
+        errorText
+      });
 
       return NextResponse.json(
         {
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       !makeData.invoiceId ||
       !makeData.invoiceUrl
     ) {
-      console.error("Make.com response missing required fields:", makeData);
+      logger.error("TRADE_CREATE", "Make.com response missing required fields", { makeData });
       return NextResponse.json(
         {
           error: "MAKE_RESPONSE_ERROR",
@@ -180,13 +180,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[TRADE CREATE] Xero invoice created successfully, saving to Sales table...');
+    logger.info('TRADE_CREATE', 'Xero invoice created successfully, saving to Sales table');
 
     // CRITICAL: Save deal to Xata Sales table
     try {
       // Generate sale reference (C19-XXXX format)
       const saleReference = await generateSaleReference();
-      console.log(`[TRADE CREATE] Generated sale reference: ${saleReference}`);
+      logger.info('TRADE_CREATE', 'Generated sale reference', { saleReference });
 
       // Get authenticated user
       const { userId } = await auth();
@@ -198,9 +198,12 @@ export async function POST(request: NextRequest) {
       );
 
       if (!buyer) {
-        console.warn('[TRADE CREATE] ⚠️  Failed to create/find buyer, saving without buyer link');
+        logger.warn('TRADE_CREATE', 'Failed to create/find buyer, saving without buyer link');
       } else {
-        console.log(`[TRADE CREATE] Buyer: ${buyer.name} (${buyer.id})`);
+        logger.info('TRADE_CREATE', 'Buyer found/created', {
+          name: buyer.name,
+          id: buyer.id
+        });
       }
 
       // For multi-item trades, we'll save only the first item for now
@@ -214,9 +217,12 @@ export async function POST(request: NextRequest) {
       );
 
       if (!supplier) {
-        console.warn('[TRADE CREATE] ⚠️  Failed to create/find supplier, saving without supplier link');
+        logger.warn('TRADE_CREATE', 'Failed to create/find supplier, saving without supplier link');
       } else {
-        console.log(`[TRADE CREATE] Supplier: ${supplier.name} (${supplier.id})`);
+        logger.info('TRADE_CREATE', 'Supplier found/created', {
+          name: supplier.name,
+          id: supplier.id
+        });
       }
 
       // Calculate totals
@@ -274,9 +280,11 @@ export async function POST(request: NextRequest) {
         error_flag: false,
       });
 
-      console.log(`[TRADE CREATE] ✅ Sale saved to database: ${saleRecord.id}`);
-      console.log(`[TRADE CREATE] Sale reference: ${saleReference}`);
-      console.log(`[TRADE CREATE] Xero invoice: ${makeData.invoiceNumber}`);
+      logger.info('TRADE_CREATE', 'Sale saved to database', {
+        saleId: saleRecord.id,
+        saleReference,
+        xeroInvoiceNumber: makeData.invoiceNumber
+      });
 
       // Return success response with sale ID
       return NextResponse.json({
@@ -291,8 +299,10 @@ export async function POST(request: NextRequest) {
     } catch (dbError) {
       // Log database error but don't fail the request
       // The Xero invoice was created successfully, so we should still return success
-      console.error('[TRADE CREATE] ❌ Failed to save to Sales table:', dbError);
-      console.error('[TRADE CREATE] ERROR STACK:', dbError instanceof Error ? dbError.stack : 'Unknown error');
+      logger.error('TRADE_CREATE', 'Failed to save to Sales table', {
+        error: dbError as any,
+        stack: dbError instanceof Error ? dbError.stack : undefined
+      });
 
       // Return success with warning
       return NextResponse.json({
@@ -305,7 +315,7 @@ export async function POST(request: NextRequest) {
       });
     }
   } catch (err) {
-    console.error("Unexpected error in /api/trade/create:", err);
+    logger.error("TRADE_CREATE", "Unexpected error", { error: err as any });
     return NextResponse.json(
       {
         error: "UNKNOWN_ERROR",

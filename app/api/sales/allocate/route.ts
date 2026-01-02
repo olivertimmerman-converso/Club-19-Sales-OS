@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getUserRole } from '@/lib/getUserRole';
 import { getXataClient } from '@/src/xata';
+import * as logger from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,21 +22,21 @@ interface AllocateRequest {
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  console.log('[ALLOCATE INVOICE] === Starting invoice allocation ===');
+  logger.info('ALLOCATE', 'Starting invoice allocation');
 
   try {
     // 1. Auth check - superadmin, operations, or founder only
     const { userId } = await auth();
     if (!userId) {
-      console.error('[ALLOCATE INVOICE] ❌ Unauthorized - no userId');
+      logger.error('ALLOCATE', 'Unauthorized - no userId');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const role = await getUserRole();
-    console.log(`[ALLOCATE INVOICE] User role: ${role}`);
+    logger.info('ALLOCATE', 'User role check', { role });
 
     if (!['superadmin', 'operations', 'founder'].includes(role || '')) {
-      console.error(`[ALLOCATE INVOICE] ❌ Forbidden - role ${role} not allowed`);
+      logger.error('ALLOCATE', 'Forbidden - insufficient role', { role });
       return NextResponse.json({ error: 'Forbidden - requires superadmin, operations, or founder role' }, { status: 403 });
     }
 
@@ -44,18 +45,18 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (err) {
-      console.error('[ALLOCATE INVOICE] ❌ Invalid JSON body');
+      logger.error('ALLOCATE', 'Invalid JSON body', { error: err as any });
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
     const { saleId, shopperId } = body;
 
     if (!saleId || !shopperId) {
-      console.error('[ALLOCATE INVOICE] ❌ Missing required fields');
+      logger.error('ALLOCATE', 'Missing required fields', { saleId, shopperId });
       return NextResponse.json({ error: 'Missing saleId or shopperId' }, { status: 400 });
     }
 
-    console.log(`[ALLOCATE INVOICE] Allocating sale ${saleId} to shopper ${shopperId}`);
+    logger.info('ALLOCATE', 'Allocating sale to shopper', { saleId, shopperId });
 
     const xata = getXataClient();
 
@@ -75,11 +76,11 @@ export async function POST(request: NextRequest) {
       .getFirst();
 
     if (!sale) {
-      console.error(`[ALLOCATE INVOICE] ❌ Sale not found: ${saleId}`);
+      logger.error('ALLOCATE', 'Sale not found', { saleId });
       return NextResponse.json({ error: 'Sale not found' }, { status: 404 });
     }
 
-    console.log(`[ALLOCATE INVOICE] Found sale: ${sale.xero_invoice_number}`);
+    logger.info('ALLOCATE', 'Found sale', { invoiceNumber: sale.xero_invoice_number });
 
     // 4. Fetch the shopper record
     const shopper = await xata.db.Shoppers
@@ -88,38 +89,38 @@ export async function POST(request: NextRequest) {
       .getFirst();
 
     if (!shopper) {
-      console.error(`[ALLOCATE INVOICE] ❌ Shopper not found: ${shopperId}`);
+      logger.error('ALLOCATE', 'Shopper not found', { shopperId });
       return NextResponse.json({ error: 'Shopper not found' }, { status: 404 });
     }
 
-    console.log(`[ALLOCATE INVOICE] Found shopper: ${shopper.name} (scheme: ${shopper.commission_scheme})`);
+    logger.info('ALLOCATE', 'Found shopper', { shopperName: shopper.name, scheme: shopper.commission_scheme });
 
     // 5. Calculate commission based on shopper's scheme and gross margin
     let commissionAmount = 0;
     const grossMargin = sale.gross_margin || 0;
     const scheme = shopper.commission_scheme || 'standard'; // Default to 'standard' if null
 
-    console.log(`[ALLOCATE INVOICE] Calculating commission for gross margin: £${grossMargin}`);
+    logger.info('ALLOCATE', 'Calculating commission', { grossMargin, scheme });
 
     // Commission scheme logic (matching existing system)
     switch (scheme.toLowerCase()) {
       case 'founder':
         // Founder gets 50% of gross margin
         commissionAmount = grossMargin * 0.5;
-        console.log(`[ALLOCATE INVOICE] Founder scheme: 50% of £${grossMargin} = £${commissionAmount}`);
+        logger.info('ALLOCATE', 'Commission calculated', { scheme: 'founder', rate: '50%', amount: commissionAmount });
         break;
 
       case 'senior':
         // Senior gets 40% of gross margin
         commissionAmount = grossMargin * 0.4;
-        console.log(`[ALLOCATE INVOICE] Senior scheme: 40% of £${grossMargin} = £${commissionAmount}`);
+        logger.info('ALLOCATE', 'Commission calculated', { scheme: 'senior', rate: '40%', amount: commissionAmount });
         break;
 
       case 'standard':
       default:
         // Standard gets 30% of gross margin
         commissionAmount = grossMargin * 0.3;
-        console.log(`[ALLOCATE INVOICE] Standard scheme: 30% of £${grossMargin} = £${commissionAmount}`);
+        logger.info('ALLOCATE', 'Commission calculated', { scheme: 'standard', rate: '30%', amount: commissionAmount });
         break;
     }
 
@@ -131,13 +132,17 @@ export async function POST(request: NextRequest) {
     });
 
     if (!updatedSale) {
-      console.error(`[ALLOCATE INVOICE] ❌ Failed to update sale: ${saleId}`);
+      logger.error('ALLOCATE', 'Failed to update sale', { saleId });
       return NextResponse.json({ error: 'Failed to update sale' }, { status: 500 });
     }
 
     const duration = Date.now() - startTime;
-    console.log(`[ALLOCATE INVOICE] ✓✓✓ Allocation completed in ${duration}ms`);
-    console.log(`[ALLOCATE INVOICE] Sale ${sale.xero_invoice_number} allocated to ${shopper.name} with commission £${commissionAmount}`);
+    logger.info('ALLOCATE', 'Allocation completed', {
+      duration: `${duration}ms`,
+      invoiceNumber: sale.xero_invoice_number,
+      shopperName: shopper.name,
+      commissionAmount
+    });
 
     return NextResponse.json({
       success: true,
@@ -157,7 +162,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[ALLOCATE INVOICE] ❌ Fatal error:', error);
+    logger.error('ALLOCATE', 'Fatal error during allocation', { error: error as any });
     return NextResponse.json({
       error: 'Allocation failed',
       details: errorMessage

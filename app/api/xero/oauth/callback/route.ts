@@ -1,5 +1,6 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -30,20 +31,20 @@ interface XeroConnection {
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  console.log("[XERO CALLBACK] === OAuth callback initiated ===");
+  logger.info("XERO_OAUTH", "OAuth callback initiated");
 
   try {
     // 1. Verify user is authenticated via Clerk
     const { userId } = await auth();
 
     if (!userId) {
-      console.error("[XERO CALLBACK] ❌ No userId - user not authenticated");
+      logger.error("XERO_OAUTH", "No userId - user not authenticated");
       return NextResponse.redirect(
         new URL("/sign-in?error=xero_auth_failed", request.url)
       );
     }
 
-    console.log(`[XERO CALLBACK] ✓ User authenticated: ${userId}`);
+    logger.info("XERO_OAUTH", "User authenticated", { userId });
 
     // 2. Extract authorization code and state from query params
     const searchParams = request.nextUrl.searchParams;
@@ -54,14 +55,14 @@ export async function GET(request: NextRequest) {
 
     // Handle OAuth errors from Xero
     if (error) {
-      console.error(`[XERO CALLBACK] ❌ Xero returned error: ${error} - ${errorDescription}`);
+      logger.error("XERO_OAUTH", "Xero returned error", { error, errorDescription });
       return NextResponse.redirect(
         new URL(`/trade/new?xero_error=${encodeURIComponent(error)}`, request.url)
       );
     }
 
     if (!code) {
-      console.error("[XERO CALLBACK] ❌ Missing authorization code");
+      logger.error("XERO_OAUTH", "Missing authorization code");
       return NextResponse.redirect(
         new URL("/trade/new?xero_error=missing_code", request.url)
       );
@@ -69,13 +70,13 @@ export async function GET(request: NextRequest) {
 
     // Verify state matches userId for security
     if (state !== userId) {
-      console.error(`[XERO CALLBACK] ❌ State mismatch: expected ${userId}, got ${state}`);
+      logger.error("XERO_OAUTH", "State mismatch", { expected: userId, received: state });
       return NextResponse.redirect(
         new URL("/trade/new?xero_error=invalid_state", request.url)
       );
     }
 
-    console.log(`[XERO CALLBACK] ✓ Authorization code received (length: ${code.length})`);
+    logger.info("XERO_OAUTH", "Authorization code received", { codeLength: code.length });
 
     // 3. Validate environment configuration
     // NOTE: OAuth 2.0 spec allows client_id to be public - this is intentional
@@ -85,7 +86,7 @@ export async function GET(request: NextRequest) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
     if (!clientId || !clientSecret || !appUrl) {
-      console.error("[XERO CALLBACK] ❌ Missing environment variables:", {
+      logger.error("XERO_OAUTH", "Missing environment variables", {
         hasClientId: !!clientId,
         hasClientSecret: !!clientSecret,
         hasAppUrl: !!appUrl,
@@ -96,10 +97,10 @@ export async function GET(request: NextRequest) {
     }
 
     const redirectUri = `${appUrl}/api/xero/oauth/callback`;
-    console.log(`[XERO CALLBACK] Redirect URI: ${redirectUri}`);
+    logger.info("XERO_OAUTH", "Redirect URI", { redirectUri });
 
     // 4. Exchange authorization code for access token
-    console.log("[XERO CALLBACK] Exchanging code for tokens...");
+    logger.info("XERO_OAUTH", "Exchanging code for tokens...");
     const tokenResponse = await fetch("https://identity.xero.com/connect/token", {
       method: "POST",
       headers: {
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
-      console.error("[XERO CALLBACK] ❌ Token exchange failed:", {
+      logger.error("XERO_OAUTH", "Token exchange failed", {
         status: tokenResponse.status,
         statusText: tokenResponse.statusText,
         error: errorText,
@@ -127,10 +128,10 @@ export async function GET(request: NextRequest) {
     }
 
     const tokens: XeroTokenResponse = await tokenResponse.json();
-    console.log(`[XERO CALLBACK] ✓ Tokens received (expires in ${tokens.expires_in}s)`);
+    logger.info("XERO_OAUTH", "Tokens received", { expiresIn: tokens.expires_in });
 
     // 5. Fetch tenant/organization information
-    console.log("[XERO CALLBACK] Fetching Xero tenant connections...");
+    logger.info("XERO_OAUTH", "Fetching Xero tenant connections...");
     const connectionsResponse = await fetch("https://api.xero.com/connections", {
       method: "GET",
       headers: {
@@ -141,7 +142,7 @@ export async function GET(request: NextRequest) {
 
     if (!connectionsResponse.ok) {
       const errorText = await connectionsResponse.text();
-      console.error("[XERO CALLBACK] ❌ Connections fetch failed:", {
+      logger.error("XERO_OAUTH", "Connections fetch failed", {
         status: connectionsResponse.status,
         error: errorText,
       });
@@ -153,20 +154,23 @@ export async function GET(request: NextRequest) {
     const connections: XeroConnection[] = await connectionsResponse.json();
 
     if (!connections || connections.length === 0) {
-      console.error("[XERO CALLBACK] ❌ No Xero organizations found for user");
+      logger.error("XERO_OAUTH", "No Xero organizations found for user");
       return NextResponse.redirect(
         new URL("/trade/new?xero_error=no_organizations", request.url)
       );
     }
 
     const primaryConnection = connections[0];
-    console.log(`[XERO CALLBACK] ✓ Tenant found: ${primaryConnection.tenantName} (${primaryConnection.tenantId})`);
+    logger.info("XERO_OAUTH", "Tenant found", {
+      tenantName: primaryConnection.tenantName,
+      tenantId: primaryConnection.tenantId
+    });
 
     // 6. Calculate token expiration timestamp
     const expiresAt = Date.now() + tokens.expires_in * 1000;
 
     // 7. Store tokens in Clerk user privateMetadata with nested structure
-    console.log("[XERO CALLBACK] Storing tokens in Clerk privateMetadata...");
+    logger.info("XERO_OAUTH", "Storing tokens in Clerk privateMetadata...");
     await clerkClient.users.updateUser(userId, {
       privateMetadata: {
         xero: {
@@ -181,11 +185,11 @@ export async function GET(request: NextRequest) {
     });
 
     const duration = Date.now() - startTime;
-    console.log(`[XERO CALLBACK] ✓✓✓ SUCCESS! Xero connected in ${duration}ms`);
-    console.log(`[XERO CALLBACK] Stored metadata:`, {
+    logger.info("XERO_OAUTH", "SUCCESS! Xero connected", {
+      duration_ms: duration,
       tenantId: primaryConnection.tenantId,
       tenantName: primaryConnection.tenantName,
-      expiresIn: `${tokens.expires_in}s`,
+      expiresIn: tokens.expires_in
     });
 
     // 8. Redirect back to trade wizard with success message
@@ -193,8 +197,7 @@ export async function GET(request: NextRequest) {
       new URL("/trade/new?xero_connected=true", request.url)
     );
   } catch (error: any) {
-    console.error("[XERO CALLBACK] ❌ Fatal error:", error);
-    console.error("[XERO CALLBACK] Error stack:", error.stack);
+    logger.error("XERO_OAUTH", "Fatal error", { error, stack: error.stack });
     return NextResponse.redirect(
       new URL("/trade/new?xero_error=oauth_failed", request.url)
     );

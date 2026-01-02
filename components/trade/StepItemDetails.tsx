@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useTrade } from "@/contexts/TradeContext";
 import { BRANDS, CATEGORIES } from "@/lib/constants";
+import * as logger from '@/lib/logger';
 
 export function StepItemDetails() {
   const { state, setCurrentItem } = useTrade();
@@ -62,13 +63,13 @@ export function StepItemDetails() {
         const data = await response.json();
 
         if (!data.connected) {
-          console.log("[STEP 1] Xero not connected, showing banner");
+          logger.info('TRADE_UI', 'Xero not connected, showing banner');
           setXeroError("Please connect your Xero account to start creating deals");
         } else {
-          console.log("[STEP 1] Xero already connected");
+          logger.info('TRADE_UI', 'Xero already connected');
         }
       } catch (error) {
-        console.error("[STEP 1] Failed to check Xero connection:", error);
+        logger.error('TRADE_UI', 'Failed to check Xero connection', { error: error as any } as any);
       } finally {
         setIsCheckingConnection(false);
       }

@@ -11,6 +11,7 @@ import Link from "next/link";
 import { XataClient } from "@/src/xata";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { getMonthDateRange, formatMonthLabel } from "@/lib/dateUtils";
+import * as logger from '@/lib/logger';
 
 const xata = new XataClient();
 
@@ -36,12 +37,12 @@ interface TopClient {
 
 export async function FounderDashboard({ monthParam = "current" }: FounderDashboardProps) {
   try {
-    console.log('[FounderDashboard] Rendering with monthParam:', monthParam);
+    logger.info('DASHBOARD', 'Rendering FounderDashboard', { monthParam });
 
     // Get date range for filtering
     const dateRange = getMonthDateRange(monthParam);
     const monthLabel = formatMonthLabel(monthParam);
-    console.log('[FounderDashboard] Date range:', dateRange);
+    logger.info('DASHBOARD', 'Date range calculated', { dateRange: dateRange as any });
 
     // Query all sales for the selected month
     let salesQuery = xata.db.Sales
@@ -78,13 +79,13 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
     });
   }
 
-  console.log('[FounderDashboard] Fetching sales...');
+  logger.info('DASHBOARD', 'Fetching sales');
   // Limit to 200 recent sales for dashboard performance
   const sales = await salesQuery.sort('sale_date', 'desc').getMany({ pagination: { size: 200 } });
-  console.log('[FounderDashboard] Sales count:', sales.length);
+  logger.info('DASHBOARD', 'Sales fetched', { count: sales.length });
 
   // Get YTD sales for comparison (Jan 1 to now) - limit to 500
-  console.log('[FounderDashboard] Fetching YTD sales...');
+  logger.info('DASHBOARD', 'Fetching YTD sales');
   const now = new Date();
   const ytdStart = new Date(now.getFullYear(), 0, 1);
   const ytdSales = await xata.db.Sales
@@ -96,7 +97,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
       },
     })
     .getMany({ pagination: { size: 500 } });
-  console.log('[FounderDashboard] YTD sales count:', ytdSales.length);
+  logger.info('DASHBOARD', 'YTD sales fetched', { count: ytdSales.length });
 
   // Calculate shopper performance
   const shopperStats = new Map<string, ShopperPerformance>();
@@ -426,9 +427,11 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
     </div>
   );
   } catch (error) {
-    console.error('[FounderDashboard] Error:', error);
-    console.error('[FounderDashboard] Error stack:', error instanceof Error ? error.stack : 'No stack');
-    console.error('[FounderDashboard] Error message:', error instanceof Error ? error.message : String(error));
+    logger.error('DASHBOARD', 'FounderDashboard error', {
+      error: error as any,
+      stack: error instanceof Error ? error.stack : 'No stack',
+      message: error instanceof Error ? error.message : String(error)
+    });
 
     return (
       <div className="p-8">

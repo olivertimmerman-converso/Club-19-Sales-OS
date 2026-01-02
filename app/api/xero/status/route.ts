@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getUserRole } from "@/lib/getUserRole";
 import { hasXeroConnection } from "@/lib/xero-auth";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -26,20 +27,20 @@ export async function GET() {
     // Check role authorization
     const role = await getUserRole();
     if (!role || (role !== "admin" && role !== "superadmin" && role !== "finance")) {
-      console.error(`[XERO STATUS] ❌ Forbidden - insufficient permissions (role: ${role})`);
+      logger.error("XERO_STATUS", "Forbidden - insufficient permissions", { role });
       return NextResponse.json(
         { connected: false, error: "Admin/Finance access required" },
         { status: 403 }
       );
     }
 
-    console.log(`[XERO STATUS] Checking connection for user: ${userId} (role: ${role})`);
+    logger.info("XERO_STATUS", "Checking connection", { userId, role });
     const connected = await hasXeroConnection(userId);
-    console.log(`[XERO STATUS] User ${userId} connected: ${connected}`);
+    logger.info("XERO_STATUS", "Connection status checked", { userId, connected });
 
     return NextResponse.json({ connected });
   } catch (error: any) {
-    console.error("[XERO STATUS] Error:", error);
+    logger.error("XERO_STATUS", "Error checking status", { error });
     return NextResponse.json(
       { connected: false, error: error.message },
       { status: 500 }

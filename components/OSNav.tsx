@@ -10,6 +10,7 @@
 import { UserButton } from "@clerk/nextjs";
 import { type StaffRole } from "@/lib/permissions";
 import { useState, useEffect } from "react";
+import * as logger from '@/lib/logger';
 
 interface OSNavProps {
   role: StaffRole;
@@ -59,7 +60,7 @@ export function OSNav({ role }: OSNavProps) {
       </div>
     );
   } catch (error) {
-    console.error("[OSNav] ❌ UserButton error:", error);
+    logger.error('NAV', 'UserButton error', { error: error as any } as any);
     setHasError(true);
     return (
       <div className="flex items-center gap-2 px-3 py-1 bg-red-100 border border-red-300 rounded-md">

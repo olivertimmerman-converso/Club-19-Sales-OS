@@ -20,6 +20,7 @@ import {
 } from "@/lib/xata-sales";
 import { getValidTokens } from "@/lib/xero-auth";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY } from "@/lib/error-types";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -51,7 +52,7 @@ function verifyXeroSignature(rawBody: string, signature: string): boolean {
   const webhookSecret = process.env.XERO_WEBHOOK_SECRET;
 
   if (!webhookSecret || webhookSecret === "FILL_ME") {
-    console.error("[XERO WEBHOOK] ❌ XERO_WEBHOOK_SECRET not configured or is placeholder");
+    logger.error("XERO_WEBHOOKS", "XERO_WEBHOOK_SECRET not configured or is placeholder");
     return false;
   }
 
@@ -63,14 +64,14 @@ function verifyXeroSignature(rawBody: string, signature: string): boolean {
     const isValid = computedSignature === signature;
 
     if (isValid) {
-      console.log("[XERO WEBHOOK] ✓ Signature verified");
+      logger.info("XERO_WEBHOOKS", "Signature verified");
     } else {
-      console.error("[XERO WEBHOOK] ❌ Invalid signature");
+      logger.error("XERO_WEBHOOKS", "Invalid signature");
     }
 
     return isValid;
   } catch (err) {
-    console.error("[XERO WEBHOOK] ❌ Signature verification error:", err);
+    logger.error("XERO_WEBHOOKS", "Signature verification error", { error: err as any });
     return false;
   }
 }
@@ -80,7 +81,7 @@ function verifyXeroSignature(rawBody: string, signature: string): boolean {
 // ============================================================================
 
 export async function POST(req: NextRequest) {
-  console.log("[XERO WEBHOOK] Received webhook request");
+  logger.info("XERO_WEBHOOKS", "Received webhook request");
 
   try {
     // STEP 1: Read raw body (required for signature verification)
@@ -91,12 +92,13 @@ export async function POST(req: NextRequest) {
     const eventId = req.headers.get("x-xero-event-id");
     const eventTimestamp = req.headers.get("x-xero-event-timestamp");
 
-    console.log(
-      `[XERO WEBHOOK] Event ID: ${eventId}, Timestamp: ${eventTimestamp}`
-    );
+    logger.info("XERO_WEBHOOKS", "Event received", {
+      eventId,
+      timestamp: eventTimestamp,
+    });
 
     if (!signature) {
-      console.error("[XERO WEBHOOK] ❌ Missing x-xero-signature header");
+      logger.error("XERO_WEBHOOKS", "Missing x-xero-signature header");
       return new Response("Missing signature", { status: 401 });
     }
 
@@ -125,7 +127,7 @@ export async function POST(req: NextRequest) {
           resolved_notes: null,
         });
       } catch (err) {
-        console.error("[XERO WEBHOOK] ❌ Failed to log security error:", err);
+        logger.error("XERO_WEBHOOKS", "Failed to log security error", { error: err as any });
       }
 
       return new Response("Invalid signature", { status: 401 });
@@ -134,7 +136,7 @@ export async function POST(req: NextRequest) {
     // STEP 4: Handle Xero validation handshake
     // Xero sends empty events array to verify endpoint
     if (rawBody.includes('"events":[]') || rawBody === '{"events":[]}') {
-      console.log("[XERO WEBHOOK] ✓ Handshake validation request");
+      logger.info("XERO_WEBHOOKS", "Handshake validation request");
       return NextResponse.json({ status: "ok" }, { status: 200 });
     }
 
@@ -143,16 +145,16 @@ export async function POST(req: NextRequest) {
     try {
       payload = JSON.parse(rawBody);
     } catch (err) {
-      console.error("[XERO WEBHOOK] ❌ Invalid JSON:", err);
+      logger.error("XERO_WEBHOOKS", "Invalid JSON", { error: err as any });
       return NextResponse.json(
         { error: "Invalid JSON payload" },
         { status: 400 }
       );
     }
 
-    console.log(
-      `[XERO WEBHOOK] Processing ${payload.events?.length || 0} events`
-    );
+    logger.info("XERO_WEBHOOKS", "Processing events", {
+      eventCount: payload.events?.length || 0,
+    });
 
     // STEP 6: Process each event
     const events = payload.events || [];
@@ -163,21 +165,21 @@ export async function POST(req: NextRequest) {
       try {
         // Only process invoice events
         if (event.resourceType !== "invoices") {
-          console.log(
-            `[XERO WEBHOOK] Skipping non-invoice event: ${event.resourceType}`
-          );
+          logger.info("XERO_WEBHOOKS", "Skipping non-invoice event", {
+            resourceType: event.resourceType,
+          });
           continue;
         }
 
-        console.log(
-          `[XERO WEBHOOK] Processing invoice event: ${event.eventType}`
-        );
+        logger.info("XERO_WEBHOOKS", "Processing invoice event", {
+          eventType: event.eventType,
+        });
 
         // Get invoice details from event
         const invoiceId = event.resourceId;
 
         if (!invoiceId) {
-          console.warn("[XERO WEBHOOK] ⚠️ Event missing resourceId");
+          logger.warn("XERO_WEBHOOKS", "Event missing resourceId");
           continue;
         }
 
@@ -185,16 +187,14 @@ export async function POST(req: NextRequest) {
         // Use system admin user for webhook token access
         const systemUserId = process.env.XERO_SYSTEM_USER_ID;
         if (!systemUserId || systemUserId === "FILL_ME") {
-          console.error(
-            "[XERO WEBHOOK] ❌ XERO_SYSTEM_USER_ID not configured or is placeholder"
-          );
+          logger.error("XERO_WEBHOOKS", "XERO_SYSTEM_USER_ID not configured or is placeholder");
           errorCount++;
           continue;
         }
 
         const tokens = await getValidTokens(systemUserId);
         if (!tokens) {
-          console.error("[XERO WEBHOOK] ❌ No valid Xero tokens available");
+          logger.error("XERO_WEBHOOKS", "No valid Xero tokens available");
           errorCount++;
           continue;
         }
@@ -212,9 +212,10 @@ export async function POST(req: NextRequest) {
         );
 
         if (!invoiceResponse.ok) {
-          console.error(
-            `[XERO WEBHOOK] ❌ Failed to fetch invoice ${invoiceId}: ${invoiceResponse.status}`
-          );
+          logger.error("XERO_WEBHOOKS", "Failed to fetch invoice", {
+            invoiceId,
+            status: invoiceResponse.status,
+          });
           errorCount++;
           continue;
         }
@@ -223,14 +224,16 @@ export async function POST(req: NextRequest) {
         const invoice = invoiceData.Invoices?.[0];
 
         if (!invoice) {
-          console.error(`[XERO WEBHOOK] ❌ Invoice ${invoiceId} not found`);
+          logger.error("XERO_WEBHOOKS", "Invoice not found", { invoiceId });
           errorCount++;
           continue;
         }
 
-        console.log(
-          `[XERO WEBHOOK] Invoice ${invoice.InvoiceNumber} - Status: ${invoice.Status}, AmountDue: ${invoice.AmountDue}`
-        );
+        logger.info("XERO_WEBHOOKS", "Invoice fetched", {
+          invoiceNumber: invoice.InvoiceNumber,
+          status: invoice.Status,
+          amountDue: invoice.AmountDue,
+        });
 
         // Check if invoice is paid
         const isPaid =
@@ -238,9 +241,9 @@ export async function POST(req: NextRequest) {
           (invoice.AmountDue !== undefined && invoice.AmountDue === 0);
 
         if (!isPaid) {
-          console.log(
-            `[XERO WEBHOOK] Invoice ${invoice.InvoiceNumber} not paid yet - skipping`
-          );
+          logger.info("XERO_WEBHOOKS", "Invoice not paid yet - skipping", {
+            invoiceNumber: invoice.InvoiceNumber,
+          });
           continue;
         }
 
@@ -248,9 +251,9 @@ export async function POST(req: NextRequest) {
         const sale = await findSaleByInvoiceNumber(invoice.InvoiceNumber);
 
         if (!sale) {
-          console.error(
-            `[XERO WEBHOOK] ❌ No sale found for invoice ${invoice.InvoiceNumber}`
-          );
+          logger.error("XERO_WEBHOOKS", "No sale found for invoice", {
+            invoiceNumber: invoice.InvoiceNumber,
+          });
 
           // Log to Errors table
           await xata().db.Errors.create({
@@ -288,14 +291,16 @@ export async function POST(req: NextRequest) {
         });
 
         if (result.success) {
-          console.log(
-            `[XERO WEBHOOK] ✅ Sale ${sale.id} marked as paid for invoice ${invoice.InvoiceNumber}`
-          );
+          logger.info("XERO_WEBHOOKS", "Sale marked as paid", {
+            saleId: sale.id,
+            invoiceNumber: invoice.InvoiceNumber,
+          });
           processedCount++;
         } else {
-          console.error(
-            `[XERO WEBHOOK] ❌ Failed to update sale ${sale.id}: ${result.error}`
-          );
+          logger.error("XERO_WEBHOOKS", "Failed to update sale", {
+            saleId: sale.id,
+            error: result.error,
+          });
           errorCount++;
 
           // Log error
@@ -321,7 +326,7 @@ export async function POST(req: NextRequest) {
           });
         }
       } catch (err: any) {
-        console.error("[XERO WEBHOOK] ❌ Error processing event:", err);
+        logger.error("XERO_WEBHOOKS", "Error processing event", { error: err as any });
         errorCount++;
 
         // Log error
@@ -346,14 +351,15 @@ export async function POST(req: NextRequest) {
             resolved_notes: null,
           });
         } catch (logErr) {
-          console.error("[XERO WEBHOOK] ❌ Failed to log error:", logErr);
+          logger.error("XERO_WEBHOOKS", "Failed to log error", { error: logErr as any });
         }
       }
     }
 
-    console.log(
-      `[XERO WEBHOOK] ✅ Processed ${processedCount} events, ${errorCount} errors`
-    );
+    logger.info("XERO_WEBHOOKS", "Webhook processing complete", {
+      processed: processedCount,
+      errors: errorCount,
+    });
 
     return NextResponse.json({
       received: true,
@@ -361,7 +367,7 @@ export async function POST(req: NextRequest) {
       errors: errorCount,
     });
   } catch (error: any) {
-    console.error("[XERO WEBHOOK] ❌ Fatal error:", error);
+    logger.error("XERO_WEBHOOKS", "Fatal error", { error: error as any });
 
     return NextResponse.json(
       { error: "Internal server error", details: error.message },

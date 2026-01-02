@@ -1,3 +1,4 @@
+import * as logger from './logger';
 import { WEBHOOKS } from "./constants";
 
 export type AuditEventType =
@@ -63,8 +64,8 @@ export async function logAuditEvent(
       body: JSON.stringify(auditPayload),
     });
 
-    console.log(`[AUDIT] ${eventType}:`, auditPayload);
+    logger.info('AUDIT', `${eventType}`, auditPayload);
   } catch (error) {
-    console.error("Audit logging failed:", error);
+    logger.error('AUDIT', 'Audit logging failed', { error: error as any } as any);
   }
 }

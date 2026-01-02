@@ -10,6 +10,7 @@
 
 import { getXataClient } from "@/src/xata";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY } from "./error-types";
+import * as logger from './logger';
 
 // ============================================================================
 // CLIENT SINGLETON
@@ -98,14 +99,12 @@ export async function transitionSaleStatus(
 ): Promise<TransitionResult> {
   const { saleId, currentStatus, nextStatus, xeroPaymentDate, adminUserEmail } = args;
 
-  console.log(
-    `[DEAL LIFECYCLE] Attempting transition: ${currentStatus} → ${nextStatus} (Sale: ${saleId})`
-  );
+  logger.info('LIFECYCLE', `Attempting transition: ${currentStatus} → ${nextStatus} (Sale: ${saleId})`);
 
   // STEP 1: Validate transition
   if (!canTransition(currentStatus, nextStatus)) {
     const errorMessage = `Invalid transition: ${currentStatus} → ${nextStatus}`;
-    console.error(`[DEAL LIFECYCLE] ❌ ${errorMessage}`);
+    logger.error('LIFECYCLE', errorMessage);
 
     // Log to Errors table
     try {
@@ -130,9 +129,9 @@ export async function transitionSaleStatus(
         resolved_at: null,
         resolved_notes: null,
       });
-      console.log(`[DEAL LIFECYCLE] ⚠️ Error logged to Errors table`);
+      logger.info('LIFECYCLE', 'Error logged to Errors table');
     } catch (err) {
-      console.error(`[DEAL LIFECYCLE] ❌ Failed to log error:`, err);
+      logger.error('LIFECYCLE', 'Failed to log error', { error: err as any } as any);
     }
 
     // Set error flag on sale
@@ -142,7 +141,7 @@ export async function transitionSaleStatus(
         error_message: [errorMessage],
       });
     } catch (err) {
-      console.error(`[DEAL LIFECYCLE] ❌ Failed to set error flag:`, err);
+      logger.error('LIFECYCLE', 'Failed to set error flag', { error: err as any } as any);
     }
 
     return {
@@ -161,36 +160,28 @@ export async function transitionSaleStatus(
     case "paid":
       // Update payment date from Xero or use current timestamp
       updateFields.xero_payment_date = xeroPaymentDate || new Date();
-      console.log(
-        `[DEAL LIFECYCLE] Setting xero_payment_date: ${updateFields.xero_payment_date}`
-      );
+      logger.info('LIFECYCLE', `Setting xero_payment_date: ${updateFields.xero_payment_date}`);
       break;
 
     case "locked":
       // Lock commission for month-end processing
       updateFields.commission_locked = true;
       updateFields.commission_lock_date = new Date();
-      console.log(
-        `[DEAL LIFECYCLE] Locking commission at: ${updateFields.commission_lock_date}`
-      );
+      logger.info('LIFECYCLE', `Locking commission at: ${updateFields.commission_lock_date}`);
       break;
 
     case "commission_paid":
       // Mark commission as paid
       updateFields.commission_paid = true;
       updateFields.commission_paid_date = new Date();
-      console.log(
-        `[DEAL LIFECYCLE] Marking commission paid at: ${updateFields.commission_paid_date}`
-      );
+      logger.info('LIFECYCLE', `Marking commission paid at: ${updateFields.commission_paid_date}`);
       break;
   }
 
   // STEP 4: Apply updates to sale
   try {
     await xata().db.Sales.update(saleId, updateFields);
-    console.log(
-      `[DEAL LIFECYCLE] ✅ Sale ${saleId} transitioned to "${nextStatus}"`
-    );
+    logger.info('LIFECYCLE', `Sale ${saleId} transitioned to "${nextStatus}"`);
 
     return {
       success: true,
@@ -198,7 +189,7 @@ export async function transitionSaleStatus(
     };
   } catch (err) {
     const errorMessage = `Failed to update sale status: ${err}`;
-    console.error(`[DEAL LIFECYCLE] ❌ ${errorMessage}`);
+    logger.error('LIFECYCLE', errorMessage);
 
     return {
       success: false,

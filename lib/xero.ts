@@ -1,3 +1,4 @@
+import * as logger from './logger';
 import { WEBHOOKS } from "./constants";
 import { InvoiceScenario } from "./constants";
 
@@ -37,7 +38,7 @@ export async function fetchXeroBuyers(query: string): Promise<NormalizedContact[
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("[XERO BUYERS] API error:", response.status, errorData);
+      logger.error('XERO', 'Buyers API error', { status: response.status, errorData });
 
       // Re-throw connection errors so UI can show reconnect banner
       if (errorData.action === "connect_xero" || errorData.action === "reconnect_xero") {
@@ -50,7 +51,7 @@ export async function fetchXeroBuyers(query: string): Promise<NormalizedContact[
     const data = await response.json();
     return data.contacts || [];
   } catch (err) {
-    console.error("[XERO BUYERS] Search error:", err);
+    logger.error('XERO', 'Buyers search error', { error: err as any } as any);
     throw err; // Re-throw to allow UI to handle connection errors
   }
 }
@@ -71,7 +72,7 @@ export async function fetchXeroSuppliers(query: string): Promise<NormalizedConta
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("[XERO SUPPLIERS] API error:", response.status, errorData);
+      logger.error('XERO', 'Suppliers API error', { status: response.status, errorData });
 
       // Re-throw connection errors so UI can show reconnect banner
       if (errorData.action === "connect_xero" || errorData.action === "reconnect_xero") {
@@ -84,7 +85,7 @@ export async function fetchXeroSuppliers(query: string): Promise<NormalizedConta
     const data = await response.json();
     return data.contacts || [];
   } catch (err) {
-    console.error("[XERO SUPPLIERS] Search error:", err);
+    logger.error('XERO', 'Suppliers search error', { error: err as any } as any);
     throw err; // Re-throw to allow UI to handle connection errors
   }
 }
@@ -104,14 +105,15 @@ export async function fetchXeroContacts(query: string): Promise<XeroContact[]> {
     });
 
     if (!response.ok) {
-      console.error("Xero contacts API error:", response.status, await response.text());
+      const errorText = await response.text();
+      logger.error('XERO', 'Contacts API error', { status: response.status, error: errorText });
       return [];
     }
 
     const data = await response.json();
     return data.contacts || [];
   } catch (err) {
-    console.error("Contact search error:", err);
+    logger.error('XERO', 'Contact search error', { error: err as any } as any);
     return [];
   }
 }
@@ -216,7 +218,7 @@ export async function createXeroInvoice(
   accessToken: string,
   payload: CreateInvoicePayload
 ): Promise<XeroInvoice> {
-  console.log("[XERO API] Creating invoice with payload:", {
+  logger.info('XERO', 'Creating invoice with payload', {
     contactId: payload.buyerContactId,
     amount: payload.finalPrice,
     currency: payload.currency,
@@ -246,8 +248,8 @@ export async function createXeroInvoice(
     ...(payload.brandingThemeId && { BrandingThemeID: payload.brandingThemeId }),
   };
 
-  console.log("[XERO API] Using due date:", xeroPayload.DueDate);
-  console.log("[XERO API] Payload sent to Xero:", JSON.stringify(xeroPayload, null, 2));
+  logger.info('XERO', `Using due date: ${xeroPayload.DueDate}`);
+  logger.info('XERO', 'Payload sent to Xero', xeroPayload);
 
   // Call Xero API
   const xeroUrl = "https://api.xero.com/api.xro/2.0/Invoices";
@@ -262,11 +264,11 @@ export async function createXeroInvoice(
     body: JSON.stringify(xeroPayload),
   });
 
-  console.log(`[XERO API] Response status: ${response.status}`);
+  logger.info('XERO', `Response status: ${response.status}`);
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("[XERO API] ❌ Xero API error:", {
+    logger.error('XERO', 'Xero API error', {
       status: response.status,
       statusText: response.statusText,
       error: errorText,
@@ -278,14 +280,14 @@ export async function createXeroInvoice(
   }
 
   const data: XeroInvoiceResponse = await response.json();
-  console.log("[XERO API] Response received:", JSON.stringify(data, null, 2));
+  logger.info('XERO', 'Response received', { invoice: data as any } as any);
 
   if (!data.Invoices || data.Invoices.length === 0) {
     throw new Error("No invoice returned from Xero API");
   }
 
   const invoice = data.Invoices[0];
-  console.log(`[XERO API] ✓ Invoice created: ${invoice.InvoiceNumber} (ID: ${invoice.InvoiceID})`);
+  logger.info('XERO', `Invoice created: ${invoice.InvoiceNumber} (ID: ${invoice.InvoiceID})`);
 
   return invoice;
 }

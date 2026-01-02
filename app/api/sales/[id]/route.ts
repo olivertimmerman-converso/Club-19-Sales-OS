@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getUserRole } from '@/lib/getUserRole';
 import { getXataClient } from '@/src/xata';
+import * as logger from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    console.log(`[GET /api/sales/${id}] Fetching sale`);
+    logger.info('SALES_API', 'Fetching sale', { saleId: id });
 
     const xata = getXataClient();
     const sale = await xata.db.Sales
@@ -41,7 +42,7 @@ export async function GET(
 
     return NextResponse.json({ sale });
   } catch (error) {
-    console.error('[GET /api/sales/[id]] Error:', error);
+    logger.error('SALES_API', 'Error fetching sale', { error: error as any });
     return NextResponse.json(
       { error: 'Failed to fetch sale' },
       { status: 500 }
@@ -73,7 +74,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    console.log(`[PATCH /api/sales/${id}] Update request:`, body);
+    logger.info('SALES_API', 'Update sale request', { saleId: id, fields: Object.keys(body) });
 
     const xata = getXataClient();
 
@@ -111,7 +112,7 @@ export async function PATCH(
       );
     }
 
-    console.log(`[PATCH /api/sales/${id}] Updating with:`, updateData);
+    logger.info('SALES_API', 'Updating sale', { saleId: id, updateFields: Object.keys(updateData) });
 
     const updatedSale = await xata.db.Sales.update(id, updateData);
 
@@ -127,7 +128,7 @@ export async function PATCH(
       sale: updatedSale,
     });
   } catch (error) {
-    console.error('[PATCH /api/sales/[id]] Error:', error);
+    logger.error('SALES_API', 'Error updating sale', { error: error as any });
     return NextResponse.json(
       { error: 'Failed to update sale' },
       { status: 500 }

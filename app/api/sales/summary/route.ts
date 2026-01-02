@@ -20,6 +20,7 @@ import {
   computeAuthenticityRisk,
   type AuthenticityRisk,
 } from "@/lib/sales-summary-helpers";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -100,7 +101,7 @@ interface SaleSummary {
 // ============================================================================
 
 export async function GET(req: NextRequest) {
-  console.log("[SALES SUMMARY API] GET request received");
+  logger.info("SALES_SUMMARY", "GET request received");
 
   // Rate limiting
   const rateLimitResponse = withRateLimit(req, RATE_LIMITS.general);
@@ -112,7 +113,7 @@ export async function GET(req: NextRequest) {
     // STEP 1: Check authentication and authorization
     const { userId } = await auth();
     if (!userId) {
-      console.error("[SALES SUMMARY API] ❌ Unauthorized - no userId");
+      logger.error("SALES_SUMMARY", "Unauthorized - no userId");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -121,17 +122,17 @@ export async function GET(req: NextRequest) {
 
     const role = await getUserRole();
     if (!role || (role !== "admin" && role !== "superadmin" && role !== "finance")) {
-      console.error(`[SALES SUMMARY API] ❌ Forbidden - insufficient permissions (role: ${role})`);
+      logger.error("SALES_SUMMARY", "Forbidden - insufficient permissions", { role });
       return NextResponse.json(
         { error: "Forbidden", message: "Admin/Finance access required" },
         { status: 403 }
       );
     }
 
-    console.log(`[SALES SUMMARY API] ✓ Authorized (role: ${role})`);
+    logger.info("SALES_SUMMARY", "Authorized", { role });
 
     // STEP 2: Fetch all sales with required fields
-    console.log("[SALES SUMMARY API] Fetching sales...");
+    logger.info("SALES_SUMMARY", "Fetching sales...");
 
     const sales = await xata()
       .db.Sales.select([
@@ -159,10 +160,10 @@ export async function GET(req: NextRequest) {
       .sort("sale_date", "desc")
       .getMany();
 
-    console.log(`[SALES SUMMARY API] ✓ Found ${sales.length} sales`);
+    logger.info("SALES_SUMMARY", "Found sales", { count: sales.length });
 
     // STEP 3: Fetch all errors (we'll group by sale_id)
-    console.log("[SALES SUMMARY API] Fetching errors...");
+    logger.info("SALES_SUMMARY", "Fetching errors...");
 
     const allErrors = await xata()
       .db.Errors.select([
@@ -180,7 +181,7 @@ export async function GET(req: NextRequest) {
       ])
       .getMany();
 
-    console.log(`[SALES SUMMARY API] ✓ Found ${allErrors.length} errors`);
+    logger.info("SALES_SUMMARY", "Found errors", { count: allErrors.length });
 
     // Group errors by sale ID
     const errorsBySale = new Map<string, any[]>();
@@ -195,7 +196,7 @@ export async function GET(req: NextRequest) {
     }
 
     // STEP 4: Transform sales into summary format
-    console.log("[SALES SUMMARY API] Computing derived fields...");
+    logger.info("SALES_SUMMARY", "Computing derived fields...");
 
     const summaries: SaleSummary[] = sales.map((sale) => {
       // Compute flags
@@ -280,7 +281,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    console.log(`[SALES SUMMARY API] ✅ Returning ${summaries.length} sale summaries`);
+    logger.info("SALES_SUMMARY", "Returning sale summaries", { count: summaries.length });
 
     // STEP 5: Return response
     return NextResponse.json({
@@ -288,7 +289,7 @@ export async function GET(req: NextRequest) {
       count: summaries.length,
     });
   } catch (error: any) {
-    console.error("[SALES SUMMARY API] ❌ Failed to fetch sales summary:", error);
+    logger.error("SALES_SUMMARY", "Failed to fetch sales summary", { error });
 
     return NextResponse.json(
       {

@@ -22,6 +22,7 @@ import {
   computeAuthenticityRisk,
 } from "@/lib/sales-summary-helpers";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY, ERROR_GROUPS } from "@/lib/error-types";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -64,7 +65,7 @@ interface DailyMaintenanceResponse {
 // ============================================================================
 
 export async function POST(req: NextRequest) {
-  console.log("[FINANCE][DAILY-MAINTENANCE] POST request received");
+  logger.info("MAINTENANCE", "POST request received");
 
   // Rate limiting
   const rateLimitResponse = withRateLimit(req, RATE_LIMITS.general);
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
     if (systemKey && expectedKey && systemKey === expectedKey) {
       isAuthorized = true;
       authMethod = "system-token";
-      console.log("[FINANCE][DAILY-MAINTENANCE] ✓ Authorized via system token");
+      logger.info("MAINTENANCE", "Authorized via system token");
     } else {
       // Option 2: Superadmin role authentication
       const { userId } = await auth();
@@ -93,13 +94,13 @@ export async function POST(req: NextRequest) {
         if (role === "superadmin") {
           isAuthorized = true;
           authMethod = "superadmin";
-          console.log(`[FINANCE][DAILY-MAINTENANCE] ✓ Authorized via superadmin role`);
+          logger.info("MAINTENANCE", "Authorized via superadmin role");
         }
       }
     }
 
     if (!isAuthorized) {
-      console.error("[FINANCE][DAILY-MAINTENANCE] ❌ Unauthorized - invalid token or insufficient permissions");
+      logger.error("MAINTENANCE", "Unauthorized - invalid token or insufficient permissions");
       return NextResponse.json(
         { error: "Unauthorized", message: "Invalid system key or superadmin role required" },
         { status: 401 }
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
     }
 
     // STEP 2: Fetch all sales with required fields
-    console.log("[FINANCE][DAILY-MAINTENANCE] Fetching sales...");
+    logger.info("MAINTENANCE", "Fetching sales...");
 
     const sales = await xata()
       .db.Sales.select([
@@ -123,10 +124,10 @@ export async function POST(req: NextRequest) {
       ])
       .getMany();
 
-    console.log(`[FINANCE][DAILY-MAINTENANCE] ✓ Found ${sales.length} sales`);
+    logger.info("MAINTENANCE", `Found ${sales.length} sales`);
 
     // STEP 3: Task 1 - Flag overdue sales
-    console.log("[FINANCE][DAILY-MAINTENANCE] Task 1: Flagging overdue sales...");
+    logger.info("MAINTENANCE", "Task 1: Flagging overdue sales...");
 
     const overdueSales: Array<{
       sale_id: string;
@@ -145,10 +146,10 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log(`[FINANCE][DAILY-MAINTENANCE] ✓ Task 1 complete - ${overdueSales.length} overdue sales identified`);
+    logger.info("MAINTENANCE", `Task 1 complete - ${overdueSales.length} overdue sales identified`);
 
     // STEP 4: Task 2 - Generate economics warnings
-    console.log("[FINANCE][DAILY-MAINTENANCE] Task 2: Generating economics warnings...");
+    logger.info("MAINTENANCE", "Task 2: Generating economics warnings...");
 
     const warningsCreated: Array<{
       sale_id: string;
@@ -228,17 +229,23 @@ export async function POST(req: NextRequest) {
             message: warning.message,
           });
 
-          console.log(`[FINANCE][DAILY-MAINTENANCE] ⚠️ Warning created for ${sale.sale_reference}: ${warning.type}`);
+          logger.warn("MAINTENANCE", "Warning created", {
+            saleReference: sale.sale_reference,
+            warningType: warning.type
+          });
         } catch (createErr) {
-          console.error(`[FINANCE][DAILY-MAINTENANCE] ❌ Failed to create warning for sale ${sale.id}:`, createErr);
+          logger.error("MAINTENANCE", "Failed to create warning", {
+            saleId: sale.id,
+            error: createErr as any
+          });
         }
       }
     }
 
-    console.log(`[FINANCE][DAILY-MAINTENANCE] ✓ Task 2 complete - ${warningsCreated.length} warnings created`);
+    logger.info("MAINTENANCE", `Task 2 complete - ${warningsCreated.length} warnings created`);
 
     // STEP 5: Task 3 - Recompute authenticity risk
-    console.log("[FINANCE][DAILY-MAINTENANCE] Task 3: Recomputing authenticity risk...");
+    logger.info("MAINTENANCE", "Task 3: Recomputing authenticity risk...");
 
     let authenticityWarningsCreated = 0;
 
@@ -278,14 +285,19 @@ export async function POST(req: NextRequest) {
             message: "Authenticity verification not performed - high risk",
           });
 
-          console.log(`[FINANCE][DAILY-MAINTENANCE] ⚠️ Authenticity warning created for ${sale.sale_reference}`);
+          logger.warn("MAINTENANCE", "Authenticity warning created", {
+            saleReference: sale.sale_reference
+          });
         } catch (createErr) {
-          console.error(`[FINANCE][DAILY-MAINTENANCE] ❌ Failed to create authenticity warning for sale ${sale.id}:`, createErr);
+          logger.error("MAINTENANCE", "Failed to create authenticity warning", {
+            saleId: sale.id,
+            error: createErr as any
+          });
         }
       }
     }
 
-    console.log(`[FINANCE][DAILY-MAINTENANCE] ✓ Task 3 complete - ${authenticityWarningsCreated} authenticity warnings created`);
+    logger.info("MAINTENANCE", `Task 3 complete - ${authenticityWarningsCreated} authenticity warnings created`);
 
     // STEP 6: Build and return response
     const response: DailyMaintenanceResponse = {
@@ -296,11 +308,15 @@ export async function POST(req: NextRequest) {
       warnings_created: warningsCreated,
     };
 
-    console.log(`[FINANCE][DAILY-MAINTENANCE] ✅ Complete - Auth: ${authMethod}, Overdue: ${overdueSales.length}, Warnings: ${warningsCreated.length}`);
+    logger.info("MAINTENANCE", "Complete", {
+      authMethod,
+      overdue: overdueSales.length,
+      warnings: warningsCreated.length
+    });
 
     return NextResponse.json(response);
   } catch (error: any) {
-    console.error("[FINANCE][DAILY-MAINTENANCE] ❌ Unexpected error:", error);
+    logger.error("MAINTENANCE", "Unexpected error", { error });
 
     return NextResponse.json(
       {

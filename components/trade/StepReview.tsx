@@ -7,6 +7,7 @@ import { calculateImpliedCosts } from "@/lib/implied-costs";
 import { TradeItem } from "@/lib/types/invoice";
 import { v4 as uuidv4 } from "uuid";
 import { FileText, CheckCircle } from "lucide-react";
+import * as logger from '@/lib/logger';
 
 export function StepReview() {
   const {
@@ -168,7 +169,7 @@ export function StepReview() {
         notes: state.notes || undefined,
       };
 
-      console.log("[INVOICE CREATE] Sending to Xero API:", invoicePayload);
+      logger.info('TRADE_UI', 'Sending invoice to Xero API', { invoicePayload });
 
       // Call native Xero API
       const response = await fetch("/api/xero/invoices", {
@@ -189,7 +190,7 @@ export function StepReview() {
         throw new Error(data.message || data.error || "Invoice creation failed");
       }
 
-      console.log("[INVOICE CREATE] Success:", data);
+      logger.info('TRADE_UI', 'Invoice created successfully', { data });
 
       // Redirect to success page with invoice details
       const successUrl = new URLSearchParams({

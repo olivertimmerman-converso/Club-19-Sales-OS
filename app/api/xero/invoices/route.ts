@@ -5,6 +5,7 @@ import { createXeroInvoice } from "@/lib/xero";
 import { getBrandingThemeId } from "@/lib/xero-branding-themes";
 import { syncSaleToMake, buildSalePayload } from "@/lib/make-sync";
 import { syncInvoiceAndAppDataToXata } from "@/lib/xata-sales";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -85,15 +86,15 @@ interface InvoiceResponse {
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
-  console.log("[XERO INVOICE] === Create Invoice API Started ===");
+  logger.info("XERO_INVOICES", "Create Invoice API Started");
 
   try {
     // 1. Authenticate user
     const { userId } = await auth();
-    console.log(`[XERO INVOICE] User ID: ${userId || "NOT AUTHENTICATED"}`);
+    logger.info("XERO_INVOICES", "User ID", { userId: userId || "NOT AUTHENTICATED" });
 
     if (!userId) {
-      console.error("[XERO INVOICE] ❌ Unauthorized request");
+      logger.error("XERO_INVOICES", "Unauthorized request");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
     let payload: CreateInvoicePayload;
     try {
       payload = await request.json();
-      console.log("[XERO INVOICE] Payload received:", {
+      logger.info("XERO_INVOICES", "Payload received", {
         buyerContactId: payload.buyerContactId,
         description: payload.description?.substring(0, 50) + "...",
         finalPrice: payload.finalPrice,
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
         lineAmountType: payload.lineAmountType,
       });
     } catch (error) {
-      console.error("[XERO INVOICE] ❌ Invalid JSON payload");
+      logger.error("XERO_INVOICES", "Invalid JSON payload");
       return NextResponse.json(
         { error: "Invalid request", message: "Invalid JSON payload" },
         { status: 400 }
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     for (const field of requiredFields) {
       if (!payload[field as keyof CreateInvoicePayload]) {
-        console.error(`[XERO INVOICE] ❌ Missing required field: ${field}`);
+        logger.error("XERO_INVOICES", "Missing required field", { field });
         return NextResponse.json(
           { error: "Validation error", message: `Missing required field: ${field}` },
           { status: 400 }
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     // Validate finalPrice is positive
     if (payload.finalPrice <= 0) {
-      console.error(`[XERO INVOICE] ❌ Invalid finalPrice: ${payload.finalPrice}`);
+      logger.error("XERO_INVOICES", "Invalid finalPrice", { finalPrice: payload.finalPrice });
       return NextResponse.json(
         { error: "Validation error", message: "finalPrice must be greater than 0" },
         { status: 400 }
@@ -156,13 +157,13 @@ export async function POST(request: NextRequest) {
     let tenantId: string;
 
     try {
-      console.log("[XERO INVOICE] Fetching valid tokens...");
+      logger.info("XERO_INVOICES", "Fetching valid tokens...");
       const tokens = await getValidTokens(userId);
       accessToken = tokens.accessToken;
       tenantId = tokens.tenantId;
-      console.log(`[XERO INVOICE] ✓ Valid tokens obtained for tenant: ${tenantId}`);
+      logger.info("XERO_INVOICES", "Valid tokens obtained", { tenantId });
     } catch (error: any) {
-      console.error("[XERO INVOICE] ❌ Failed to get Xero tokens:", error.message);
+      logger.error("XERO_INVOICES", "Failed to get Xero tokens", { error: error as any });
       return NextResponse.json(
         {
           error: "Xero not connected",
@@ -178,27 +179,36 @@ export async function POST(request: NextRequest) {
 
     if (payload.brandingThemeId) {
       try {
-        console.log(`[XERO INVOICE] Resolving branding theme: "${payload.brandingThemeId}"`);
+        logger.info("XERO_INVOICES", "Resolving branding theme", { brandingThemeId: payload.brandingThemeId });
 
         // Check if it's already a GUID (contains dashes) or a name
         const isGuid = payload.brandingThemeId.includes("-");
 
         if (!isGuid) {
           // It's a name, need to resolve to GUID
-          console.log(`[XERO INVOICE] Branding theme appears to be a name, fetching GUID...`);
+          logger.info("XERO_INVOICES", "Branding theme appears to be a name, fetching GUID...");
           resolvedBrandingThemeId = await getBrandingThemeId(userId, payload.brandingThemeId);
 
           if (resolvedBrandingThemeId) {
-            console.log(`[XERO INVOICE] ✓ Resolved "${payload.brandingThemeId}" → ${resolvedBrandingThemeId}`);
+            logger.info("XERO_INVOICES", "Resolved branding theme", {
+              name: payload.brandingThemeId,
+              guid: resolvedBrandingThemeId
+            });
           } else {
-            console.warn(`[XERO INVOICE] ⚠️ Branding theme "${payload.brandingThemeId}" not found, will omit from invoice`);
+            logger.warn("XERO_INVOICES", "Branding theme not found, will omit from invoice", {
+              brandingThemeId: payload.brandingThemeId
+            });
             resolvedBrandingThemeId = undefined;
           }
         } else {
-          console.log(`[XERO INVOICE] ✓ Branding theme is already a GUID: ${payload.brandingThemeId}`);
+          logger.info("XERO_INVOICES", "Branding theme is already a GUID", {
+            brandingThemeId: payload.brandingThemeId
+          });
         }
       } catch (error: any) {
-        console.warn(`[XERO INVOICE] ⚠️ Failed to resolve branding theme, will omit: ${error.message}`);
+        logger.warn("XERO_INVOICES", "Failed to resolve branding theme, will omit", {
+          error: error as any
+        } as any);
         resolvedBrandingThemeId = undefined;
       }
     }
@@ -210,16 +220,18 @@ export async function POST(request: NextRequest) {
     };
 
     // 6. Create invoice in Xero
-    console.log("[XERO INVOICE] Creating invoice in Xero...");
+    logger.info("XERO_INVOICES", "Creating invoice in Xero...");
     let invoice;
     try {
       invoice = await createXeroInvoice(tenantId, accessToken, resolvedPayload);
-      console.log(`[XERO INVOICE] ✓ Invoice created successfully`);
-      console.log(`[XERO INVOICE] Invoice ID: ${invoice.InvoiceID}`);
-      console.log(`[XERO INVOICE] Invoice Number: ${invoice.InvoiceNumber}`);
-      console.log(`[XERO INVOICE] Total: ${invoice.Total} ${invoice.CurrencyCode}`);
+      logger.info("XERO_INVOICES", "Invoice created successfully", {
+        invoiceId: invoice.InvoiceID,
+        invoiceNumber: invoice.InvoiceNumber,
+        total: invoice.Total,
+        currency: invoice.CurrencyCode
+      });
     } catch (error: any) {
-      console.error("[XERO INVOICE] ❌ Failed to create invoice:", error.message);
+      logger.error("XERO_INVOICES", "Failed to create invoice", { error: error as any });
 
       // Check if it's an auth error
       if (error.message.includes("401") || error.message.includes("403")) {
@@ -254,8 +266,7 @@ export async function POST(request: NextRequest) {
     };
 
     const duration = Date.now() - startTime;
-    console.log(`[XERO INVOICE] ✓✓✓ Invoice creation completed in ${duration}ms`);
-    console.log(`[XERO INVOICE] Response:`, response);
+    logger.info("XERO_INVOICES", "Invoice creation completed", { duration_ms: duration, response: response as any });
 
     // 8. Sync sale to Make.com/Airtable (non-blocking)
     // Get user details for shopper name
@@ -264,7 +275,7 @@ export async function POST(request: NextRequest) {
       const user = await clerkClient().users.getUser(userId);
       shopperName = user.fullName || user.firstName || user.emailAddresses[0]?.emailAddress || "Unknown";
     } catch (error) {
-      console.warn("[XERO INVOICE] Could not fetch user details for shopper name:", error);
+      logger.warn("XERO_INVOICES", "Could not fetch user details for shopper name", { error: error as any });
     }
 
     // Build and send sale payload - ALWAYS sync to Make.com (19 fields)
@@ -352,14 +363,14 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      console.log("[XATA] ✓ Sale synced to Xata database");
+      logger.info("XATA", "Sale synced to Xata database");
     } catch (err) {
-      console.error("[XATA] ⚠️ Sync failed (non-critical):", err);
+      logger.error("XATA", "Sync failed (non-critical)", { error: err as any } as any);
     }
 
     return NextResponse.json(response);
   } catch (error: any) {
-    console.error("[XERO INVOICE] ❌ Fatal error:", error);
+    logger.error("XERO_INVOICES", "Fatal error", { error: error as any } as any);
     return NextResponse.json(
       { error: "Internal server error", details: error.message },
       { status: 500 }

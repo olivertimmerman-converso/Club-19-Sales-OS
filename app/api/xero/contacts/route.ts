@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getValidTokens } from "@/lib/xero-auth";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     const { userId } = await auth();
 
     if (!userId) {
-      console.error("[XERO CONTACTS] ❌ Unauthorized request");
+      logger.error("XERO_CONTACTS", "Unauthorized request");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ contacts: [] });
     }
 
-    console.log(`[XERO CONTACTS] Searching for: "${query}" (user: ${userId})`);
+    logger.info("XERO_CONTACTS", "Searching for contacts", { query, userId });
 
     // 3. Get valid Xero OAuth tokens (auto-refreshes if needed)
     let accessToken: string;
@@ -54,9 +55,9 @@ export async function GET(request: NextRequest) {
       const tokens = await getValidTokens(userId);
       accessToken = tokens.accessToken;
       tenantId = tokens.tenantId;
-      console.log(`[XERO CONTACTS] ✓ Valid tokens obtained for tenant: ${tenantId}`);
+      logger.info("XERO_CONTACTS", "Valid tokens obtained", { tenantId });
     } catch (error: any) {
-      console.error("[XERO CONTACTS] ❌ Failed to get Xero tokens:", error.message);
+      logger.error("XERO_CONTACTS", "Failed to get Xero tokens", { error });
       return NextResponse.json(
         {
           error: "Xero not connected",
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
     const encodedWhere = encodeURIComponent(whereClause);
     const xeroUrl = `https://api.xero.com/api.xro/2.0/Contacts?where=${encodedWhere}`;
 
-    console.log(`[XERO CONTACTS] Calling Xero API with filter: ${whereClause}`);
+    logger.info("XERO_CONTACTS", "Calling Xero API", { whereClause });
 
     // 5. Call Xero API
     const response = await fetch(xeroUrl, {
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[XERO CONTACTS] ❌ Xero API error:", {
+      logger.error("XERO_CONTACTS", "Xero API error", {
         status: response.status,
         statusText: response.statusText,
         error: errorText,
@@ -123,11 +124,14 @@ export async function GET(request: NextRequest) {
     }));
 
     const duration = Date.now() - startTime;
-    console.log(`[XERO CONTACTS] ✓✓✓ Found ${contacts.length} contacts in ${duration}ms`);
+    logger.info("XERO_CONTACTS", "Found contacts", {
+      count: contacts.length,
+      duration,
+    });
 
     return NextResponse.json({ contacts });
   } catch (error: any) {
-    console.error("[XERO CONTACTS] ❌ Fatal error:", error);
+    logger.error("XERO_CONTACTS", "Fatal error", { error });
     return NextResponse.json(
       { error: "Internal server error", details: error.message },
       { status: 500 }

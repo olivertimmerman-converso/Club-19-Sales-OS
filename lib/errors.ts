@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { toErrorObject } from "./types/error";
+import * as logger from "./logger";
 
 /**
  * Base application error with additional context
@@ -154,7 +155,7 @@ export function errorResponse(
   defaultMessage: string = "An error occurred"
 ): NextResponse {
   // Log the error
-  console.error("[errorResponse]", error);
+  logger.error("ERRORS", "Error response generated", { error: error as any } as any);
 
   // Handle AppError instances
   if (isAppError(error)) {
@@ -196,10 +197,11 @@ export function errorResponse(
 export function handleApiError(error: unknown, context: string): NextResponse {
   const errorObj = toErrorObject(error);
 
-  console.error(`[API Error] ${context}:`, errorObj.message);
-  if (errorObj.stack) {
-    console.error("Stack:", errorObj.stack);
-  }
+  logger.error("ERRORS", "API Error", {
+    context,
+    message: errorObj.message,
+    stack: errorObj.stack
+  });
 
   return errorResponse(error, `Failed to process request: ${context}`);
 }

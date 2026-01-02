@@ -5,6 +5,8 @@
  * based on commissionable margin, commission bands, and admin overrides.
  */
 
+import * as logger from './logger';
+
 export interface CommissionInput {
   commissionable_margin: number;
   introducer?: {
@@ -91,9 +93,7 @@ export async function calculateCommission(
       result.admin_override_notes = sale.admin_override_notes;
     }
 
-    console.log(
-      `[COMMISSION ENGINE] Using admin override: ${commissionPercent}%`
-    );
+    logger.info('COMMISSIONS', `Using admin override: ${commissionPercent}%`);
   }
   // Otherwise, use commission band
   else if (
@@ -101,9 +101,7 @@ export async function calculateCommission(
     typeof sale.commission_band.commission_percent === "number"
   ) {
     commissionPercent = sale.commission_band.commission_percent;
-    console.log(
-      `[COMMISSION ENGINE] Using commission band: ${commissionPercent}%`
-    );
+    logger.info('COMMISSIONS', `Using commission band: ${commissionPercent}%`);
   }
   // No commission percentage available
   else {
@@ -118,9 +116,7 @@ export async function calculateCommission(
   const commissionAmount = roundTo2dp(margin * (commissionPercent / 100));
   result.commission_amount = commissionAmount;
 
-  console.log(
-    `[COMMISSION ENGINE] Commission amount: £${commissionAmount} (${commissionPercent}% of £${margin})`
-  );
+  logger.info('COMMISSIONS', `Commission amount: £${commissionAmount} (${commissionPercent}% of £${margin})`);
 
   // STEP 4: Split commission between introducer and shopper
   let introducerSharePercent = 0;
@@ -138,14 +134,10 @@ export async function calculateCommission(
     );
     shopperCommission = roundTo2dp(commissionAmount - introducerCommission);
 
-    console.log(
-      `[COMMISSION ENGINE] Introducer split: £${introducerCommission} (${introducerSharePercent}%)`
-    );
-    console.log(`[COMMISSION ENGINE] Shopper split: £${shopperCommission}`);
+    logger.info('COMMISSIONS', `Introducer split: £${introducerCommission} (${introducerSharePercent}%)`);
+    logger.info('COMMISSIONS', `Shopper split: £${shopperCommission}`);
   } else {
-    console.log(
-      `[COMMISSION ENGINE] No introducer - 100% to shopper: £${shopperCommission}`
-    );
+    logger.info('COMMISSIONS', `No introducer - 100% to shopper: £${shopperCommission}`);
   }
 
   // STEP 5: Set final result values

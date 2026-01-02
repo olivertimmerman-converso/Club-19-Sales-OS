@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getXataClient } from "@/src/xata";
 import { getMonthDateRange } from "@/lib/dateUtils";
 import { auth } from "@clerk/nextjs/server";
+import * as logger from "@/lib/logger";
 
 const xata = getXataClient();
 
@@ -144,7 +145,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error exporting monthly sales:", error);
+    logger.error("EXPORT", "Error exporting monthly sales", { error: error as any });
     return NextResponse.json(
       { error: "Failed to export sales data" },
       { status: 500 }

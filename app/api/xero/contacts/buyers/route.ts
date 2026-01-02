@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getAllXeroContacts } from "@/lib/xero-contacts-cache";
 import { searchBuyers } from "@/lib/search";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,7 +35,7 @@ interface NormalizedContact {
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  console.log("[XERO BUYER SEARCH] === API Route Started ===");
+  logger.info("XERO_CONTACTS", "Buyer search API route started");
 
   // 0. Rate limiting
   const rateLimitResponse = withRateLimit(request, RATE_LIMITS.contacts);
@@ -45,10 +46,12 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Authenticate user
     const { userId } = await auth();
-    console.log(`[XERO BUYER SEARCH] User ID: ${userId || "NOT AUTHENTICATED"}`);
+    logger.info("XERO_CONTACTS", "Buyer search request", {
+      userId: userId || "NOT AUTHENTICATED",
+    });
 
     if (!userId) {
-      console.error("[XERO BUYER SEARCH] ❌ Unauthorized request");
+      logger.error("XERO_CONTACTS", "Unauthorized buyer search request");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -58,22 +61,26 @@ export async function GET(request: NextRequest) {
     // 2. Get search query
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("query");
-    console.log(`[XERO BUYER SEARCH] Query parameter: "${query}"`);
+    logger.info("XERO_CONTACTS", "Buyer search query received", { query });
 
     if (!query || query.length < 2) {
-      console.log(`[XERO BUYER SEARCH] Query too short (${query?.length || 0} chars), returning empty`);
+      logger.info("XERO_CONTACTS", "Query too short, returning empty", {
+        queryLength: query?.length || 0,
+      });
       return NextResponse.json({ contacts: [] });
     }
 
-    console.log(`[XERO BUYER SEARCH] Searching for: "${query}" (user: ${userId})`);
+    logger.info("XERO_CONTACTS", "Searching for buyers", { query, userId });
 
     // 3. Get all contacts from cache (or fetch if needed)
     let allContacts;
     try {
       allContacts = await getAllXeroContacts(userId);
-      console.log(`[XERO BUYER SEARCH] Loaded ${allContacts.length} total contacts from cache`);
+      logger.info("XERO_CONTACTS", "Loaded contacts from cache", {
+        count: allContacts.length,
+      });
     } catch (error: any) {
-      console.error("[XERO BUYER SEARCH] ❌ Failed to fetch contacts:", error.message);
+      logger.error("XERO_CONTACTS", "Failed to fetch contacts", { error });
 
       // Check if it's an auth error
       if (error.message.includes("Xero") || error.message.includes("token")) {
@@ -98,19 +105,23 @@ export async function GET(request: NextRequest) {
     const results = searchBuyers(query, allContacts, 15);
     const searchDuration = Date.now() - searchStartTime;
 
-    console.log(`[XERO BUYER SEARCH] Fuzzy search completed in ${searchDuration}ms`);
-    console.log(`[XERO BUYER SEARCH] Results after fuzzy matching: ${results.length}`);
+    logger.info("XERO_CONTACTS", "Fuzzy search completed", {
+      duration: searchDuration,
+      resultCount: results.length,
+    });
 
     // 5. Log detailed match information
     if (results.length > 0) {
-      console.log(`[XERO BUYER SEARCH] Top matches:`);
-      results.slice(0, 5).forEach((result, idx) => {
-        console.log(
-          `  ${idx + 1}. "${result.contact.name}" (score: ${result.score}, field: ${result.matchedField})`
-        );
+      logger.info("XERO_CONTACTS", "Top buyer matches found", {
+        topMatches: results.slice(0, 5).map((result, idx) => ({
+          rank: idx + 1,
+          name: result.contact.name,
+          score: result.score,
+          field: result.matchedField,
+        })),
       });
     } else {
-      console.log(`[XERO BUYER SEARCH] No buyer matches found for query: "${query}"`);
+      logger.info("XERO_CONTACTS", "No buyer matches found", { query });
     }
 
     // 6. Convert to UI format
@@ -123,11 +134,14 @@ export async function GET(request: NextRequest) {
     }));
 
     const totalDuration = Date.now() - startTime;
-    console.log(`[XERO BUYER SEARCH] ✓✓✓ Returning ${contacts.length} buyer contacts in ${totalDuration}ms`);
+    logger.info("XERO_CONTACTS", "Returning buyer contacts", {
+      count: contacts.length,
+      duration: totalDuration,
+    });
 
     return NextResponse.json({ contacts });
   } catch (error: any) {
-    console.error("[XERO BUYER SEARCH] ❌ Fatal error:", error);
+    logger.error("XERO_CONTACTS", "Fatal error in buyer search", { error });
     return NextResponse.json(
       { error: "Internal server error", details: error.message },
       { status: 500 }

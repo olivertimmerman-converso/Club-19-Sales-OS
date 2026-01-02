@@ -12,6 +12,7 @@ import { getXataClient } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
 import { getUserRole } from "@/lib/getUserRole";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -45,7 +46,7 @@ interface ErrorGroupsSummary {
 // ============================================================================
 
 export async function GET(req: NextRequest) {
-  console.log("[ERROR GROUPS API] GET request received");
+  logger.info("ERROR_GROUPS", "GET request received");
 
   // Rate limiting
   const rateLimitResponse = withRateLimit(req, RATE_LIMITS.general);
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
     // STEP 1: Check authentication and authorization
     const { userId } = await auth();
     if (!userId) {
-      console.error("[ERROR GROUPS API] ❌ Unauthorized - no userId");
+      logger.error("ERROR_GROUPS", "Unauthorized - no userId");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -66,23 +67,23 @@ export async function GET(req: NextRequest) {
 
     const role = await getUserRole();
     if (!role || (role !== "admin" && role !== "superadmin" && role !== "finance")) {
-      console.error(`[ERROR GROUPS API] ❌ Forbidden - insufficient permissions (role: ${role})`);
+      logger.error("ERROR_GROUPS", "Forbidden - insufficient permissions", { role });
       return NextResponse.json(
         { error: "Forbidden", message: "Admin/Finance access required" },
         { status: 403 }
       );
     }
 
-    console.log(`[ERROR GROUPS API] ✓ Authorized (role: ${role})`);
+    logger.info("ERROR_GROUPS", "Authorized", { role });
 
     // STEP 2: Fetch all errors with minimal fields
-    console.log("[ERROR GROUPS API] Fetching errors...");
+    logger.info("ERROR_GROUPS", "Fetching errors...");
 
     const errors = await xata()
       .db.Errors.select(["id", "error_type", "error_group", "severity", "resolved"])
       .getMany();
 
-    console.log(`[ERROR GROUPS API] ✓ Found ${errors.length} errors`);
+    logger.info("ERROR_GROUPS", `Found ${errors.length} errors`);
 
     // STEP 3: Compute summaries
     let total_errors = errors.length;
@@ -119,12 +120,12 @@ export async function GET(req: NextRequest) {
       errors_by_severity,
     };
 
-    console.log(`[ERROR GROUPS API] ✅ Computed error groups summary`);
+    logger.info("ERROR_GROUPS", "Computed error groups summary");
 
     // STEP 5: Return response
     return NextResponse.json(summary);
   } catch (error: any) {
-    console.error("[ERROR GROUPS API] ❌ Failed to fetch error groups:", error);
+    logger.error("ERROR_GROUPS", "Failed to fetch error groups", { error });
 
     return NextResponse.json(
       {

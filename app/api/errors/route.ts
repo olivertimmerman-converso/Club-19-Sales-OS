@@ -12,6 +12,7 @@ import { getXataClient } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
 import { getUserRole } from "@/lib/getUserRole";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -33,7 +34,7 @@ function xata() {
 // ============================================================================
 
 export async function GET(req: NextRequest) {
-  console.log("[ERRORS API] GET request received");
+  logger.info("ERRORS", "GET request received");
 
   // STEP 0: Rate limiting
   const rateLimitResponse = withRateLimit(req, RATE_LIMITS.errors);
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
     // STEP 1: Check authentication and authorization
     const { userId } = await auth();
     if (!userId) {
-      console.error("[ERRORS API] ❌ Unauthorized - no userId");
+      logger.error("ERRORS", "Unauthorized - no userId");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -54,14 +55,14 @@ export async function GET(req: NextRequest) {
 
     const role = await getUserRole();
     if (!role || (role !== "admin" && role !== "superadmin" && role !== "finance")) {
-      console.error(`[ERRORS API] ❌ Forbidden - insufficient permissions (role: ${role})`);
+      logger.error("ERRORS", "Forbidden - insufficient permissions", { role });
       return NextResponse.json(
         { error: "Forbidden", message: "Admin access required" },
         { status: 403 }
       );
     }
 
-    console.log(`[ERRORS API] ✓ Authorized (role: ${role})`);
+    logger.info("ERRORS", "Authorized", { role });
 
     // STEP 2: Parse query parameters
     const { searchParams } = new URL(req.url);
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
     const resolved = searchParams.get("resolved");
     const triggeredBy = searchParams.get("triggeredBy");
 
-    console.log("[ERRORS API] Filters:", {
+    logger.info("ERRORS", "Filters applied", {
       type,
       severity,
       saleId,
@@ -131,7 +132,7 @@ export async function GET(req: NextRequest) {
     // STEP 3: Fetch errors
     const errors = await query.sort("timestamp", "desc").getMany();
 
-    console.log(`[ERRORS API] ✅ Found ${errors.length} errors`);
+    logger.info("ERRORS", `Found ${errors.length} errors`);
 
     // STEP 4: Return response
     return NextResponse.json({
@@ -139,7 +140,7 @@ export async function GET(req: NextRequest) {
       count: errors.length,
     });
   } catch (error: any) {
-    console.error("[ERRORS API] ❌ Failed to fetch errors:", error);
+    logger.error("ERRORS", "Failed to fetch errors", { error });
 
     return NextResponse.json(
       {

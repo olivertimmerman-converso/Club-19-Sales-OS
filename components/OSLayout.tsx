@@ -9,31 +9,32 @@ import { getUserRole } from "@/lib/getUserRole";
 import { Sidebar } from "./Sidebar";
 import { OSNav } from "./OSNav";
 import { ErrorFallback } from "./ErrorFallback";
+import * as logger from '@/lib/logger';
 
 interface OSLayoutProps {
   children: React.ReactNode;
 }
 
 export async function OSLayout({ children }: OSLayoutProps) {
-  console.log("[OSLayout] 🏗️  Starting SSR layout render");
+  logger.info('UI', 'Starting SSR layout render');
 
   let role;
   let hasError = false;
 
   try {
-    console.log("[OSLayout] 📋 Calling getUserRole()");
+    logger.info('UI', 'Calling getUserRole');
     role = await getUserRole();
-    console.log(`[OSLayout] ✅ Role resolved: "${role}"`);
+    logger.info('UI', 'Role resolved', { role });
   } catch (error) {
     hasError = true;
-    console.error("[OSLayout] ❌ Failed to get user role:", error);
-    console.error("[OSLayout] 🔄 Rendering error state");
+    logger.error('UI', 'Failed to get user role', { error: error as any } as any);
+    logger.info('UI', 'Rendering error state');
 
     // Render error fallback (client component with button)
     return <ErrorFallback />;
   }
 
-  console.log("[OSLayout] 🎨 Rendering layout with role:", role);
+  logger.info('UI', 'Rendering layout with role', { role });
 
   return (
     <div className="flex h-screen bg-gray-50">

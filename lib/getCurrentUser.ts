@@ -6,6 +6,7 @@
 
 import "server-only";
 import { auth, clerkClient } from "@clerk/nextjs/server";
+import * as logger from './logger';
 
 export interface CurrentUser {
   userId: string;
@@ -46,7 +47,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       email: user.emailAddresses[0]?.emailAddress || null,
     };
   } catch (error) {
-    console.error("[getCurrentUser] Error fetching user:", error);
+    logger.error('AUTH', 'Error fetching user', { error: error as any } as any);
     return null;
   }
 }

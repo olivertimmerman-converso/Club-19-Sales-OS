@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
+import * as logger from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -29,7 +30,7 @@ export async function GET() {
       message: "Copy this userId and set it as XERO_SYSTEM_USER_ID in your .env.local file",
     });
   } catch (error) {
-    console.error("[DEBUG MY-USER-ID] Error:", error);
+    logger.error("DEBUG", "Failed to get user ID", { error: error as any });
     return NextResponse.json({
       error: "Failed to get user ID",
     }, { status: 500 });

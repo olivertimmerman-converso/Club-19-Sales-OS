@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getXataClient } from "@/src/xata";
+import * as logger from "@/lib/logger";
 
 const xata = getXataClient();
 
@@ -22,17 +23,16 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get("q") || "";
 
-    console.log(`[SUPPLIER SEARCH] Query: "${query}"`);
+    logger.info('SUPPLIER_SEARCH', 'Search query received', { query });
 
     // If no query, return empty results
     if (!query.trim()) {
-      console.log('[SUPPLIER SEARCH] Empty query, returning empty array');
+      logger.info('SUPPLIER_SEARCH', 'Empty query, returning empty array');
       return NextResponse.json([]);
     }
 
     // Search Suppliers by name (case-insensitive, partial match)
     // Note: Xata's $contains is case-sensitive, we should use $iContains for case-insensitive
-    console.log(`[SUPPLIER SEARCH] Searching with $iContains filter`);
     const suppliers = await xata.db.Suppliers.filter({
       name: { $iContains: query },
     })
@@ -43,10 +43,11 @@ export async function GET(request: NextRequest) {
     // Limit to first 20 results for autocomplete
     const limitedSuppliers = suppliers.slice(0, 20);
 
-    console.log(`[SUPPLIER SEARCH] Found ${suppliers.length} total results, returning first ${limitedSuppliers.length}`);
-    if (limitedSuppliers.length > 0) {
-      console.log(`[SUPPLIER SEARCH] First 3 results:`, limitedSuppliers.slice(0, 3).map(s => s.name));
-    }
+    logger.info('SUPPLIER_SEARCH', 'Search completed', {
+      totalResults: suppliers.length,
+      returnedResults: limitedSuppliers.length,
+      firstThree: limitedSuppliers.slice(0, 3).map(s => s.name)
+    });
 
     // Format response for autocomplete
     const results = limitedSuppliers.map((supplier) => ({
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(results);
   } catch (error) {
-    console.error("[SUPPLIER SEARCH] Error searching suppliers:", error);
+    logger.error("SUPPLIER_SEARCH", "Error searching suppliers", { error: error as any });
     return NextResponse.json(
       { error: "Failed to search suppliers" },
       { status: 500 }

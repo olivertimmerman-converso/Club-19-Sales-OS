@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getXataClient } from "@/src/xata";
 import { getUserRole } from "@/lib/getUserRole";
+import * as logger from "@/lib/logger";
 
 const xata = getXataClient();
 
@@ -30,14 +31,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("[MIGRATION] Starting legacy suppliers migration...");
+    logger.info('SUPPLIER_MIGRATION', 'Starting legacy suppliers migration');
 
     // Get all legacy suppliers
     const legacySuppliers = await xata.db.legacy_suppliers
       .select(["id", "supplier_clean", "trade_count"])
       .getAll();
 
-    console.log(`[MIGRATION] Found ${legacySuppliers.length} legacy suppliers`);
+    logger.info('SUPPLIER_MIGRATION', 'Found legacy suppliers', {
+      count: legacySuppliers.length
+    });
 
     let migrated = 0;
     let skipped = 0;
@@ -46,7 +49,9 @@ export async function POST(request: NextRequest) {
     // Migrate each legacy supplier
     for (const legacy of legacySuppliers) {
       if (!legacy.supplier_clean || !legacy.supplier_clean.trim()) {
-        console.log(`[MIGRATION] Skipping legacy supplier ${legacy.id} - no supplier_clean value`);
+        logger.info('SUPPLIER_MIGRATION', 'Skipping legacy supplier - no supplier_clean value', {
+          legacyId: legacy.id
+        });
         skipped++;
         continue;
       }
@@ -60,7 +65,9 @@ export async function POST(request: NextRequest) {
         }).getFirst();
 
         if (existing) {
-          console.log(`[MIGRATION] Skipping "${supplierName}" - already exists in Suppliers table`);
+          logger.info('SUPPLIER_MIGRATION', 'Skipping - already exists in Suppliers table', {
+            supplierName
+          });
           skipped++;
           continue;
         }
@@ -70,15 +77,22 @@ export async function POST(request: NextRequest) {
           name: supplierName,
         });
 
-        console.log(`[MIGRATION] ✓ Migrated "${supplierName}"`);
+        logger.info('SUPPLIER_MIGRATION', 'Migrated supplier', { supplierName });
         migrated++;
       } catch (error) {
-        console.error(`[MIGRATION] Error migrating "${supplierName}":`, error);
+        logger.error('SUPPLIER_MIGRATION', 'Error migrating supplier', {
+          supplierName,
+          error: error as any
+        });
         errors.push(`${supplierName}: ${error instanceof Error ? error.message : "Unknown error"}`);
       }
     }
 
-    console.log(`[MIGRATION] Complete: ${migrated} migrated, ${skipped} skipped, ${errors.length} errors`);
+    logger.info('SUPPLIER_MIGRATION', 'Migration complete', {
+      migrated,
+      skipped,
+      errorCount: errors.length
+    });
 
     return NextResponse.json({
       success: true,
@@ -89,7 +103,7 @@ export async function POST(request: NextRequest) {
       message: `Migration complete: ${migrated} suppliers migrated, ${skipped} skipped`,
     });
   } catch (error) {
-    console.error("[MIGRATION] Error:", error);
+    logger.error('SUPPLIER_MIGRATION', 'Migration error', { error: error as any });
     return NextResponse.json(
       { error: "Internal server error", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }

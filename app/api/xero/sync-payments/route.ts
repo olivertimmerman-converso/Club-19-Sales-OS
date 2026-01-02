@@ -18,6 +18,7 @@ import { updateSalePaymentStatusFromXero } from "@/lib/xata-sales";
 import { getValidTokens } from "@/lib/xero-auth";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY } from "@/lib/error-types";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -39,7 +40,7 @@ function xata() {
 // ============================================================================
 
 export async function GET(req: NextRequest) {
-  console.log("[XERO SYNC] Starting payment sync cron job");
+  logger.info("XERO_SYNC", "Starting payment sync cron job");
 
   // STEP 0: Rate limiting
   const rateLimitResponse = withRateLimit(req, RATE_LIMITS.xeroSync);
@@ -56,7 +57,9 @@ export async function GET(req: NextRequest) {
       })
       .getMany();
 
-    console.log(`[XERO SYNC] Found ${sales.length} invoiced sales to check`);
+    logger.info("XERO_SYNC", "Found invoiced sales to check", {
+      count: sales.length,
+    });
 
     if (sales.length === 0) {
       return NextResponse.json({
@@ -71,7 +74,7 @@ export async function GET(req: NextRequest) {
     // Use system admin user for cron token access
     const systemUserId = process.env.XERO_SYSTEM_USER_ID;
     if (!systemUserId || systemUserId === "FILL_ME") {
-      console.error("[XERO SYNC] ❌ XERO_SYSTEM_USER_ID not configured or is placeholder");
+      logger.error("XERO_SYNC", "XERO_SYSTEM_USER_ID not configured or is placeholder");
       return NextResponse.json(
         { error: "System user not configured" },
         { status: 500 }
@@ -80,7 +83,7 @@ export async function GET(req: NextRequest) {
 
     const tokens = await getValidTokens(systemUserId);
     if (!tokens) {
-      console.error("[XERO SYNC] ❌ No valid Xero tokens available");
+      logger.error("XERO_SYNC", "No valid Xero tokens available");
       return NextResponse.json(
         { error: "Xero authentication failed" },
         { status: 401 }
@@ -98,15 +101,16 @@ export async function GET(req: NextRequest) {
 
         // Skip sales without Xero invoice ID
         if (!sale.xero_invoice_id) {
-          console.warn(
-            `[XERO SYNC] ⚠️ Sale ${sale.id} missing xero_invoice_id - skipping`
-          );
+          logger.warn("XERO_SYNC", "Sale missing xero_invoice_id - skipping", {
+            saleId: sale.id,
+          });
           continue;
         }
 
-        console.log(
-          `[XERO SYNC] Checking invoice ${sale.xero_invoice_number} (${sale.xero_invoice_id})`
-        );
+        logger.info("XERO_SYNC", "Checking invoice", {
+          invoiceNumber: sale.xero_invoice_number,
+          invoiceId: sale.xero_invoice_id,
+        });
 
         // Fetch invoice from Xero
         const invoiceResponse = await fetch(
@@ -121,9 +125,10 @@ export async function GET(req: NextRequest) {
         );
 
         if (!invoiceResponse.ok) {
-          console.error(
-            `[XERO SYNC] ❌ Failed to fetch invoice ${sale.xero_invoice_id}: ${invoiceResponse.status}`
-          );
+          logger.error("XERO_SYNC", "Failed to fetch invoice", {
+            invoiceId: sale.xero_invoice_id,
+            status: invoiceResponse.status,
+          });
 
           // Log error
           await xata().db.Errors.create({
@@ -157,16 +162,18 @@ export async function GET(req: NextRequest) {
         const invoice = invoiceData.Invoices?.[0];
 
         if (!invoice) {
-          console.error(
-            `[XERO SYNC] ❌ Invoice ${sale.xero_invoice_id} not found in Xero response`
-          );
+          logger.error("XERO_SYNC", "Invoice not found in Xero response", {
+            invoiceId: sale.xero_invoice_id,
+          });
           errorCount++;
           continue;
         }
 
-        console.log(
-          `[XERO SYNC] Invoice ${invoice.InvoiceNumber} - Status: ${invoice.Status}, AmountDue: ${invoice.AmountDue}`
-        );
+        logger.info("XERO_SYNC", "Invoice fetched", {
+          invoiceNumber: invoice.InvoiceNumber,
+          status: invoice.Status,
+          amountDue: invoice.AmountDue,
+        });
 
         // Check if invoice is paid
         const isPaid =
@@ -174,9 +181,9 @@ export async function GET(req: NextRequest) {
           (invoice.AmountDue !== undefined && invoice.AmountDue === 0);
 
         if (!isPaid) {
-          console.log(
-            `[XERO SYNC] Invoice ${invoice.InvoiceNumber} not paid yet - skipping`
-          );
+          logger.info("XERO_SYNC", "Invoice not paid yet - skipping", {
+            invoiceNumber: invoice.InvoiceNumber,
+          });
           continue;
         }
 
@@ -188,14 +195,16 @@ export async function GET(req: NextRequest) {
         });
 
         if (result.success) {
-          console.log(
-            `[XERO SYNC] ✅ Sale ${sale.id} marked as paid for invoice ${invoice.InvoiceNumber}`
-          );
+          logger.info("XERO_SYNC", "Sale marked as paid", {
+            saleId: sale.id,
+            invoiceNumber: invoice.InvoiceNumber,
+          });
           updatedCount++;
         } else {
-          console.error(
-            `[XERO SYNC] ❌ Failed to update sale ${sale.id}: ${result.error}`
-          );
+          logger.error("XERO_SYNC", "Failed to update sale", {
+            saleId: sale.id,
+            error: result.error,
+          });
           errorCount++;
 
           // Log error
@@ -221,7 +230,10 @@ export async function GET(req: NextRequest) {
           });
         }
       } catch (err: any) {
-        console.error(`[XERO SYNC] ❌ Error processing sale ${sale.id}:`, err);
+        logger.error("XERO_SYNC", "Error processing sale", {
+          saleId: sale.id,
+          error: err as any,
+        });
         errorCount++;
 
         // Log error but continue processing other sales
@@ -247,7 +259,7 @@ export async function GET(req: NextRequest) {
             resolved_notes: null,
           });
         } catch (logErr) {
-          console.error("[XERO SYNC] ❌ Failed to log error:", logErr);
+          logger.error("XERO_SYNC", "Failed to log error", { error: logErr as any } as any);
         }
       }
     }
@@ -259,13 +271,15 @@ export async function GET(req: NextRequest) {
       timestamp: new Date().toISOString(),
     };
 
-    console.log(
-      `[XERO SYNC] ✅ Sync complete: ${updatedCount} updated, ${errorCount} errors out of ${checkedCount} checked`
-    );
+    logger.info("XERO_SYNC", "Sync complete", {
+      updated: updatedCount,
+      errors: errorCount,
+      checked: checkedCount,
+    });
 
     return NextResponse.json(summary);
   } catch (error: any) {
-    console.error("[XERO SYNC] ❌ Fatal error:", error);
+    logger.error("XERO_SYNC", "Fatal error", { error: error as any });
 
     // Log fatal error
     try {
@@ -288,7 +302,7 @@ export async function GET(req: NextRequest) {
         resolved_notes: null,
       });
     } catch (logErr) {
-      console.error("[XERO SYNC] ❌ Failed to log fatal error:", logErr);
+      logger.error("XERO_SYNC", "Failed to log fatal error", { error: logErr as any });
     }
 
     return NextResponse.json(

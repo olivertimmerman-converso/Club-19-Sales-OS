@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getXataClient } from "@/src/xata";
+import * as logger from "@/lib/logger";
 
 const xata = getXataClient();
 
@@ -59,6 +60,11 @@ export async function POST(request: NextRequest) {
       email: email?.trim() || null,
     });
 
+    logger.info('SUPPLIER_CREATE', 'Created new supplier', {
+      id: supplier.id,
+      name: supplier.name
+    });
+
     return NextResponse.json(
       {
         success: true,
@@ -71,7 +77,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error creating supplier:", error);
+    logger.error("SUPPLIER_CREATE", "Error creating supplier", { error: error as any });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

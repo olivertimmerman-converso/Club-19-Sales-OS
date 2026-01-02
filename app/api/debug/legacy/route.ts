@@ -5,18 +5,19 @@
 
 import { NextResponse } from "next/server";
 import { xata } from "@/lib/xata-sales";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  console.log("[DEBUG LEGACY] Starting query...");
+  logger.info("DEBUG", "Starting legacy_trades query");
 
   try {
     // Direct query to legacy_trades
-    console.log("[DEBUG LEGACY] Querying legacy_trades table...");
+    logger.info("DEBUG", "Querying legacy_trades table");
     const trades = await xata().db.legacy_trades.getAll();
 
-    console.log(`[DEBUG LEGACY] Query returned ${trades.length} records`);
+    logger.info("DEBUG", "Query returned records", { count: trades.length });
 
     // Get first 3 records
     const sample = trades.slice(0, 3).map(t => ({
@@ -34,8 +35,10 @@ export async function GET() {
     const totalSales = trades.reduce((sum, t) => sum + (t.sell_price || 0), 0);
     const totalMargin = trades.reduce((sum, t) => sum + (t.margin || 0), 0);
 
-    console.log(`[DEBUG LEGACY] Total sales: £${totalSales}`);
-    console.log(`[DEBUG LEGACY] Total margin: £${totalMargin}`);
+    logger.info("DEBUG", "Legacy trades totals calculated", {
+      totalSales,
+      totalMargin
+    });
 
     return NextResponse.json({
       success: true,
@@ -45,7 +48,7 @@ export async function GET() {
       sample,
     });
   } catch (error) {
-    console.error("[DEBUG LEGACY] Error:", error);
+    logger.error("DEBUG", "Error querying legacy_trades", { error: error as any });
     return NextResponse.json(
       {
         success: false,

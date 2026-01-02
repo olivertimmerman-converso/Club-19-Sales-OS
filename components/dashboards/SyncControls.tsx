@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
+import * as logger from '@/lib/logger';
 
 interface SyncResult {
   success: boolean;
@@ -36,7 +37,7 @@ export function SyncControls({ onSyncComplete }: { onSyncComplete?: () => void }
         setTimeout(() => onSyncComplete(), 1000);
       }
     } catch (err) {
-      console.error('[SYNC CONTROLS] Invoice sync error:', err);
+      logger.error('DASHBOARD', 'Invoice sync error', { err: err as any } as any);
       setLastResult({ success: false, error: 'Sync failed' });
     } finally {
       setSyncing(false);
@@ -58,7 +59,7 @@ export function SyncControls({ onSyncComplete }: { onSyncComplete?: () => void }
         setTimeout(() => onSyncComplete(), 1000);
       }
     } catch (err) {
-      console.error('[SYNC CONTROLS] Payment sync error:', err);
+      logger.error('DASHBOARD', 'Payment sync error', { err: err as any } as any);
       setLastResult({ success: false, error: 'Sync failed' });
     } finally {
       setSyncing(false);

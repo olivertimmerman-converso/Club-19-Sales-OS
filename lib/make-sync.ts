@@ -5,6 +5,7 @@
  * This enables commission tracking, reporting, and deal management.
  */
 
+import * as logger from './logger';
 import { SalePayload } from "@/lib/types/sale";
 
 /**
@@ -44,11 +45,11 @@ const MAKE_WEBHOOK_URL = "https://hook.eu2.make.com/o4z51g88wep546r1bkx7wo7ck224
  */
 export async function syncSaleToMake(payload: SalePayload): Promise<void> {
   const startTime = Date.now();
-  console.log("[MAKE SYNC] === Syncing sale to Make.com ===");
-  console.log("[MAKE SYNC] Sale Reference:", payload.saleReference);
-  console.log("[MAKE SYNC] Buyer:", payload.buyerName);
-  console.log("[MAKE SYNC] Supplier:", payload.supplierName);
-  console.log("[MAKE SYNC] Amount:", `${payload.currency} ${payload.saleAmount}`);
+  logger.info('MAKE', 'Syncing sale to Make.com');
+  logger.info('MAKE', `Sale Reference: ${payload.saleReference}`);
+  logger.info('MAKE', `Buyer: ${payload.buyerName}`);
+  logger.info('MAKE', `Supplier: ${payload.supplierName}`);
+  logger.info('MAKE', `Amount: ${payload.currency} ${payload.saleAmount}`);
 
   try {
     const response = await fetch(MAKE_WEBHOOK_URL, {
@@ -63,10 +64,12 @@ export async function syncSaleToMake(payload: SalePayload): Promise<void> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[MAKE SYNC] ❌ Failed to sync sale to Make:");
-      console.error(`[MAKE SYNC] Status: ${response.status} ${response.statusText}`);
-      console.error(`[MAKE SYNC] Response: ${errorText}`);
-      console.error(`[MAKE SYNC] Duration: ${duration}ms`);
+      logger.error('MAKE', 'Failed to sync sale to Make', {
+        status: response.status,
+        statusText: response.statusText,
+        response: errorText,
+        duration: `${duration}ms`
+      });
       return; // Don't throw - just log the error
     }
 
@@ -74,19 +77,17 @@ export async function syncSaleToMake(payload: SalePayload): Promise<void> {
     let responseData;
     try {
       responseData = await response.json();
-      console.log("[MAKE SYNC] ✓✓✓ Sale synced successfully to Make.com");
-      console.log(`[MAKE SYNC] Duration: ${duration}ms`);
-      console.log("[MAKE SYNC] Response:", responseData);
+      logger.info('MAKE', `Sale synced successfully (${duration}ms)`, responseData);
     } catch {
       // Response might not be JSON, that's okay
-      console.log("[MAKE SYNC] ✓✓✓ Sale synced successfully to Make.com");
-      console.log(`[MAKE SYNC] Duration: ${duration}ms`);
+      logger.info('MAKE', `Sale synced successfully (${duration}ms)`);
     }
   } catch (error: any) {
     const duration = Date.now() - startTime;
-    console.error("[MAKE SYNC] ❌ Error syncing sale to Make:");
-    console.error(`[MAKE SYNC] Error: ${error.message || error}`);
-    console.error(`[MAKE SYNC] Duration: ${duration}ms`);
+    logger.error('MAKE', 'Error syncing sale to Make', {
+      error: error.message || error,
+      duration: `${duration}ms`
+    });
     // Don't throw - just log the error
   }
 }

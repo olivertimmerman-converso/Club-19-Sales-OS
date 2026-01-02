@@ -5,6 +5,8 @@
  * Validates all required environment variables on startup
  */
 
+import * as logger from './logger';
+
 /**
  * Required environment variables for the application
  */
@@ -61,11 +63,11 @@ export function validateEnvironmentVariables(): void {
       "Replace any 'FILL_ME' placeholders with actual values.",
     ].join("\n");
 
-    console.error(errorMessage);
+    logger.error('ENV', errorMessage);
     throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
   }
 
-  console.log("✅ All required environment variables are set");
+  logger.info('ENV', "All required environment variables are set");
 }
 
 /**

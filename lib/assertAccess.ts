@@ -12,6 +12,7 @@ import {
   isRouteReadOnly,
   canAccessLegacy as canAccessLegacyRoute,
 } from "./permissions";
+import * as logger from "./logger";
 
 /**
  * Check if a role can access a specific route
@@ -21,14 +22,14 @@ import {
  * @returns true if access granted, false otherwise
  */
 export function canAccessRoute_Deprecated(pathname: string, role: StaffRole): boolean {
-  console.log(`[RBAC] 🔐 Checking access: pathname="${pathname}", role="${role}"`);
+  logger.info("AUTH", "Checking access", { pathname, role });
 
   const hasAccess = canAccessRoute(role, pathname);
 
   if (hasAccess) {
-    console.log(`[RBAC] ✅ GRANTED: ${role} can access "${pathname}"`);
+    logger.info("AUTH", "Access GRANTED", { role, pathname });
   } else {
-    console.log(`[RBAC] ❌ DENIED: ${role} cannot access "${pathname}"`);
+    logger.info("AUTH", "Access DENIED", { role, pathname });
   }
 
   return hasAccess;
@@ -47,14 +48,14 @@ export { canAccessRoute };
  * @throws Redirect to /unauthorised if access denied
  */
 export function assertAccess(pathname: string, role: StaffRole): void {
-  console.log(`[assertAccess] 🔒 Asserting access for role="${role}" to pathname="${pathname}"`);
+  logger.info("AUTH", "Asserting access", { role, pathname });
 
   if (!canAccessRoute(role, pathname)) {
-    console.error(`[assertAccess] 🚫 ACCESS DENIED - Redirecting to /unauthorised`);
+    logger.error("AUTH", "ACCESS DENIED - Redirecting to /unauthorised", { role, pathname });
     redirect("/unauthorised");
   }
 
-  console.log(`[assertAccess] ✅ Access granted`);
+  logger.info("AUTH", "Access granted", { role, pathname });
 }
 
 /**
@@ -74,15 +75,15 @@ export function canAccessLegacy(role: StaffRole): boolean {
  * @throws Redirect to /unauthorised if access denied
  */
 export function assertLegacyAccess(role: StaffRole): void {
-  console.log(`[assertLegacyAccess] 🔐 Checking legacy access for role="${role}"`);
+  logger.info("AUTH", "Checking legacy access", { role });
 
   if (!canAccessLegacy(role)) {
-    console.error(`[assertLegacyAccess] ❌ DENIED - Role "${role}" cannot access legacy dashboards`);
-    console.error(`[assertLegacyAccess] 🚫 Redirecting to /unauthorised`);
+    logger.error("AUTH", "DENIED - Role cannot access legacy dashboards", { role });
+    logger.error("AUTH", "Redirecting to /unauthorised", { role });
     redirect("/unauthorised");
   }
 
-  console.log(`[assertLegacyAccess] ✅ Legacy access granted`);
+  logger.info("AUTH", "Legacy access granted", { role });
 }
 
 /**

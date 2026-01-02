@@ -6,6 +6,7 @@
  */
 
 import { getXataClient } from "@/src/xata";
+import * as logger from './logger';
 
 // ============================================================================
 // CLIENT SINGLETON
@@ -39,7 +40,7 @@ export async function resolveError(
   adminEmail: string,
   notes?: string
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(`[ERROR TOOLS] Resolving error ${errorId} by ${adminEmail}`);
+  logger.info('ERRORS', `Resolving error ${errorId} by ${adminEmail}`);
 
   try {
     await xata().db.Errors.update(errorId, {
@@ -49,11 +50,11 @@ export async function resolveError(
       resolved_notes: notes || undefined,
     });
 
-    console.log(`[ERROR TOOLS] ✅ Error ${errorId} resolved`);
+    logger.info('ERRORS', `Error ${errorId} resolved`);
 
     return { success: true };
   } catch (err: any) {
-    console.error(`[ERROR TOOLS] ❌ Failed to resolve error:`, err);
+    logger.error('ERRORS', 'Failed to resolve error', err);
     return {
       success: false,
       error: `Failed to resolve error: ${err.message || err}`,
@@ -73,7 +74,7 @@ export async function resolveError(
 export async function clearSaleErrorFlag(
   saleId: string
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(`[ERROR TOOLS] Clearing error flag for sale ${saleId}`);
+  logger.info('ERRORS', `Clearing error flag for sale ${saleId}`);
 
   try {
     await xata().db.Sales.update(saleId, {
@@ -81,11 +82,11 @@ export async function clearSaleErrorFlag(
       error_message: [],
     });
 
-    console.log(`[ERROR TOOLS] ✅ Sale ${saleId} error flag cleared`);
+    logger.info('ERRORS', `Sale ${saleId} error flag cleared`);
 
     return { success: true };
   } catch (err: any) {
-    console.error(`[ERROR TOOLS] ❌ Failed to clear sale error flag:`, err);
+    logger.error('ERRORS', 'Failed to clear sale error flag', err);
     return {
       success: false,
       error: `Failed to clear sale error flag: ${err.message || err}`,
@@ -107,7 +108,7 @@ export async function resolveAllErrorsForSale(
   saleId: string,
   adminEmail: string
 ): Promise<{ success: boolean; resolvedIds: string[]; error?: string }> {
-  console.log(`[ERROR TOOLS] Resolving all errors for sale ${saleId}`);
+  logger.info('ERRORS', `Resolving all errors for sale ${saleId}`);
 
   try {
     // Find all unresolved errors for this sale
@@ -118,9 +119,7 @@ export async function resolveAllErrorsForSale(
       })
       .getMany();
 
-    console.log(
-      `[ERROR TOOLS] Found ${unresolvedErrors.length} unresolved errors for sale ${saleId}`
-    );
+    logger.info('ERRORS', `Found ${unresolvedErrors.length} unresolved errors for sale ${saleId}`);
 
     const resolvedIds: string[] = [];
 
@@ -135,22 +134,18 @@ export async function resolveAllErrorsForSale(
       if (result.success) {
         resolvedIds.push(error.id);
       } else {
-        console.warn(
-          `[ERROR TOOLS] ⚠️ Failed to resolve error ${error.id}: ${result.error}`
-        );
+        logger.warn('ERRORS', `Failed to resolve error ${error.id}: ${result.error}`);
       }
     }
 
-    console.log(
-      `[ERROR TOOLS] ✅ Resolved ${resolvedIds.length}/${unresolvedErrors.length} errors`
-    );
+    logger.info('ERRORS', `Resolved ${resolvedIds.length}/${unresolvedErrors.length} errors`);
 
     return {
       success: true,
       resolvedIds,
     };
   } catch (err: any) {
-    console.error(`[ERROR TOOLS] ❌ Failed to resolve sale errors:`, err);
+    logger.error('ERRORS', 'Failed to resolve sale errors', err);
     return {
       success: false,
       resolvedIds: [],
@@ -168,7 +163,7 @@ export async function resolveAllErrorsForSale(
 export async function getErrorCountsByType(): Promise<
   Record<string, number>
 > {
-  console.log(`[ERROR TOOLS] Getting error counts by type`);
+  logger.info('ERRORS', 'Getting error counts by type');
 
   try {
     const errors = await xata().db.Errors.getMany();
@@ -180,11 +175,11 @@ export async function getErrorCountsByType(): Promise<
       counts[type] = (counts[type] || 0) + 1;
     }
 
-    console.log(`[ERROR TOOLS] ✅ Error counts:`, counts);
+    logger.info('ERRORS', 'Error counts', counts);
 
     return counts;
   } catch (err: any) {
-    console.error(`[ERROR TOOLS] ❌ Failed to get error counts:`, err);
+    logger.error('ERRORS', 'Failed to get error counts', err);
     return {};
   }
 }
@@ -202,10 +197,7 @@ export async function getUnresolvedErrorCount(): Promise<number> {
 
     return errors.length;
   } catch (err: any) {
-    console.error(
-      `[ERROR TOOLS] ❌ Failed to get unresolved error count:`,
-      err
-    );
+    logger.error('ERRORS', 'Failed to get unresolved error count', err);
     return 0;
   }
 }

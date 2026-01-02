@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getXataClient } from "@/src/xata";
 import { getUserRole } from "@/lib/getUserRole";
+import * as logger from "@/lib/logger";
 
 const xata = getXataClient();
 
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error creating shopper:", error);
+    logger.error("SHOPPERS", "Error creating shopper", { error: error as any });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

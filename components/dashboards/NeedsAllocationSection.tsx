@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import * as logger from '@/lib/logger';
 
 interface Sale {
   id: string;
@@ -58,7 +59,7 @@ export function NeedsAllocationSection({ sales, shoppers, onAllocated }: NeedsAl
         setTimeout(() => onAllocated(), 1000);
       }
     } catch (err) {
-      console.error('[NEEDS ALLOCATION] Allocation error:', err);
+      logger.error('DASHBOARD', 'Allocation error', { err: err as any, saleId, shopperId } as any);
       setError(err instanceof Error ? err.message : 'Allocation failed');
     } finally {
       setAllocating(null);

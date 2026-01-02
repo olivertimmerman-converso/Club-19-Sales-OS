@@ -5,6 +5,7 @@
  * Branding themes are needed to map display names to GUIDs for invoice creation.
  */
 
+import * as logger from './logger';
 import { getValidTokens } from "./xero-auth";
 
 export interface BrandingTheme {
@@ -38,12 +39,12 @@ setInterval(() => {
     if (now - entry.fetchedAt > CACHE_TTL_MS) {
       themesCache.delete(userId);
       removedCount++;
-      console.log(`[XERO BRANDING CLEANUP] Removed expired cache for user: ${userId}`);
+      logger.info('XERO', `Branding cache cleanup: Removed expired cache for user ${userId}`);
     }
   }
 
   if (removedCount > 0) {
-    console.log(`[XERO BRANDING CLEANUP] ✓ Cleaned up ${removedCount} expired cache entries`);
+    logger.info('XERO', `Branding cache cleanup: Cleaned up ${removedCount} expired cache entries`);
   }
 }, CACHE_TTL_MS);
 
@@ -55,7 +56,7 @@ setInterval(() => {
  */
 async function fetchBrandingThemesFromXero(userId: string): Promise<BrandingTheme[]> {
   const startTime = Date.now();
-  console.log("[XERO BRANDING] === Fetching branding themes from Xero ===");
+  logger.info('XERO', 'Fetching branding themes from Xero');
 
   // Get valid OAuth tokens
   let accessToken: string;
@@ -65,15 +66,15 @@ async function fetchBrandingThemesFromXero(userId: string): Promise<BrandingThem
     const tokens = await getValidTokens(userId);
     accessToken = tokens.accessToken;
     tenantId = tokens.tenantId;
-    console.log(`[XERO BRANDING] ✓ Valid tokens obtained for tenant: ${tenantId}`);
+    logger.info('XERO', `Valid tokens obtained for tenant: ${tenantId}`);
   } catch (error: any) {
-    console.error("[XERO BRANDING] ❌ Failed to get tokens:", error.message);
+    logger.error('XERO', `Failed to get tokens: ${error.message}`);
     throw error;
   }
 
   // Call Xero API
   const xeroUrl = "https://api.xero.com/api.xro/2.0/BrandingThemes";
-  console.log(`[XERO BRANDING] Fetching from: ${xeroUrl}`);
+  logger.info('XERO', `Fetching from: ${xeroUrl}`);
 
   const response = await fetch(xeroUrl, {
     method: "GET",
@@ -84,11 +85,11 @@ async function fetchBrandingThemesFromXero(userId: string): Promise<BrandingThem
     },
   });
 
-  console.log(`[XERO BRANDING] Response status: ${response.status}`);
+  logger.info('XERO', `Response status: ${response.status}`);
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("[XERO BRANDING] ❌ Xero API error:", {
+    logger.error('XERO', 'Xero API error', {
       status: response.status,
       error: errorText,
     });
@@ -99,11 +100,11 @@ async function fetchBrandingThemesFromXero(userId: string): Promise<BrandingThem
   const themes = data.BrandingThemes || [];
 
   const duration = Date.now() - startTime;
-  console.log(`[XERO BRANDING] ✓✓✓ Fetched ${themes.length} branding themes in ${duration}ms`);
+  logger.info('XERO', `Fetched ${themes.length} branding themes in ${duration}ms`);
 
   // Log themes for debugging
   themes.forEach((theme) => {
-    console.log(`[XERO BRANDING]   - "${theme.Name}" → ${theme.BrandingThemeID}`);
+    logger.info('XERO', `  - "${theme.Name}" → ${theme.BrandingThemeID}`);
   });
 
   return themes;
@@ -125,12 +126,12 @@ export async function getBrandingThemes(userId: string): Promise<BrandingTheme[]
   const cached = themesCache.get(userId);
   if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
     const age = Math.round((now - cached.fetchedAt) / 1000);
-    console.log(`[XERO BRANDING] ✓ Using cached themes (${cached.themes.length} themes, ${age}s old)`);
+    logger.info('XERO', `Using cached themes (${cached.themes.length} themes, ${age}s old)`);
     return cached.themes;
   }
 
   // Cache miss or expired - fetch fresh data
-  console.log("[XERO BRANDING] Cache miss or expired, fetching fresh data...");
+  logger.info('XERO', 'Cache miss or expired, fetching fresh data...');
   const themes = await fetchBrandingThemesFromXero(userId);
 
   // Store in cache
@@ -155,11 +156,11 @@ export async function getBrandingThemeId(userId: string, themeName: string): Pro
   const theme = themes.find((t) => t.Name === themeName);
 
   if (theme) {
-    console.log(`[XERO BRANDING] ✓ Resolved "${themeName}" → ${theme.BrandingThemeID}`);
+    logger.info('XERO', `Resolved "${themeName}" → ${theme.BrandingThemeID}`);
     return theme.BrandingThemeID;
   }
 
-  console.warn(`[XERO BRANDING] ⚠️ Branding theme not found: "${themeName}"`);
+  logger.warn('XERO', `Branding theme not found: "${themeName}"`);
   return undefined;
 }
 
@@ -168,7 +169,7 @@ export async function getBrandingThemeId(userId: string, themeName: string): Pro
  */
 export function clearBrandingThemesCache(userId: string): void {
   themesCache.delete(userId);
-  console.log(`[XERO BRANDING] Cleared cache for user: ${userId}`);
+  logger.info('XERO', `Cleared cache for user: ${userId}`);
 }
 
 /**
@@ -176,5 +177,5 @@ export function clearBrandingThemesCache(userId: string): void {
  */
 export function clearAllBrandingThemesCaches(): void {
   themesCache.clear();
-  console.log("[XERO BRANDING] Cleared all caches");
+  logger.info('XERO', 'Cleared all caches');
 }

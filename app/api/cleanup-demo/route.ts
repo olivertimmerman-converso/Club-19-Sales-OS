@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserRole } from "@/lib/getUserRole";
 import { XataClient } from "@/src/xata";
+import * as logger from "@/lib/logger";
 
 const xata = new XataClient();
 
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("[cleanup-demo] Starting cleanup...");
+    logger.info("CLEANUP", "Starting cleanup...");
 
     const summary = {
       salesDeleted: 0,
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
       await xata.db.Sales.delete(sale.id);
       summary.salesDeleted++;
     }
-    console.log(`[cleanup-demo] Deleted ${summary.salesDeleted} demo sales`);
+    logger.info("CLEANUP", "Deleted demo sales", { count: summary.salesDeleted });
 
     // 2. Delete demo Shoppers (Hope and MC)
     const demoShoppers = await xata.db.Shoppers
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       await xata.db.Shoppers.delete(shopper.id);
       summary.shoppersDeleted++;
     }
-    console.log(`[cleanup-demo] Deleted ${summary.shoppersDeleted} demo shoppers`);
+    logger.info("CLEANUP", "Deleted demo shoppers", { count: summary.shoppersDeleted });
 
     // 3. Delete demo Buyers (except Bettina Looney)
     const demoBuyers = await xata.db.Buyers
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
       await xata.db.Buyers.delete(buyer.id);
       summary.buyersDeleted++;
     }
-    console.log(`[cleanup-demo] Deleted ${summary.buyersDeleted} demo buyers`);
+    logger.info("CLEANUP", "Deleted demo buyers", { count: summary.buyersDeleted });
 
     // 4. Delete demo Suppliers
     const demoSuppliers = await xata.db.Suppliers
@@ -81,9 +82,9 @@ export async function POST(request: NextRequest) {
       await xata.db.Suppliers.delete(supplier.id);
       summary.suppliersDeleted++;
     }
-    console.log(`[cleanup-demo] Deleted ${summary.suppliersDeleted} demo suppliers`);
+    logger.info("CLEANUP", "Deleted demo suppliers", { count: summary.suppliersDeleted });
 
-    console.log("[cleanup-demo] Cleanup complete!", summary);
+    logger.info("CLEANUP", "Cleanup complete", summary);
 
     return NextResponse.json({
       success: true,
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("[cleanup-demo] Error:", error);
+    logger.error("CLEANUP", "Failed to cleanup demo data", { error: error as any });
     return NextResponse.json(
       {
         error: "Failed to cleanup demo data",

@@ -25,6 +25,7 @@ import {
   sanitizeOptional,
 } from "./sanitize";
 import { calculateSaleEconomics as calculateEconomics } from "./economics";
+import * as logger from "./logger";
 
 // ============================================================================
 // CLIENT SINGLETON
@@ -310,7 +311,7 @@ export async function createSaleFromAppPayload(
   payload: CreateSalePayload
 ): Promise<SalesRecord> {
   // A) SANITIZE ALL USER INPUT
-  console.log("[XATA SALES] Sanitizing input...");
+  logger.info("XATA", "Sanitizing input");
 
   const sanitizedPayload: CreateSalePayload = {
     ...payload,
@@ -335,24 +336,24 @@ export async function createSaleFromAppPayload(
   };
 
   // B) RESOLVE RELATIONAL TABLES
-  console.log("[XATA SALES] Resolving relationships...");
+  logger.info("XATA", "Resolving relationships");
 
   const shopper = await getOrCreateShopperByName(sanitizedPayload.shopperName);
-  console.log(`[XATA SALES] ✓ Shopper: ${shopper.name} (${shopper.id})`);
+  logger.info("XATA", "Shopper resolved", { name: shopper.name, id: shopper.id });
 
   const buyer = await getOrCreateBuyer(
     sanitizedPayload.buyerName,
     sanitizedPayload.buyerEmail,
     sanitizedPayload.buyerXeroId
   );
-  console.log(`[XATA SALES] ✓ Buyer: ${buyer.name} (${buyer.id})`);
+  logger.info("XATA", "Buyer resolved", { name: buyer.name, id: buyer.id });
 
   const supplier = await getOrCreateSupplier(
     sanitizedPayload.supplierName,
     sanitizedPayload.supplierEmail,
     sanitizedPayload.supplierXeroId
   );
-  console.log(`[XATA SALES] ✓ Supplier: ${supplier.name} (${supplier.id})`);
+  logger.info("XATA", "Supplier resolved", { name: supplier.name, id: supplier.id });
 
   let introducer: IntroducersRecord | null = null;
   if (sanitizedPayload.introducerName) {
@@ -360,15 +361,15 @@ export async function createSaleFromAppPayload(
       sanitizedPayload.introducerName,
       sanitizedPayload.introducerCommission
     );
-    console.log(`[XATA SALES] ✓ Introducer: ${introducer.name} (${introducer.id})`);
+    logger.info("XATA", "Introducer resolved", { name: introducer.name, id: introducer.id });
   }
 
   // VALIDATION) RUN VALIDATION CHECKS
-  console.log("[XATA SALES] Running validation checks...");
+  logger.info("XATA", "Running validation checks");
   const validation = validateSaleInput(sanitizedPayload);
 
   // B) COMPUTE ECONOMICS
-  console.log("[XATA SALES] Computing economics...");
+  logger.info("XATA", "Computing economics");
 
   const economics = calculateSaleEconomics({
     sale_amount_inc_vat: sanitizedPayload.sale_amount_inc_vat,
@@ -377,23 +378,24 @@ export async function createSaleFromAppPayload(
     shipping_cost: sanitizedPayload.shipping_cost || 0,
   });
 
-  console.log(`[XATA SALES] ✓ Gross margin: ${economics.gross_margin.toFixed(2)}`);
-  console.log(
-    `[XATA SALES] ✓ Commissionable margin: ${economics.commissionable_margin.toFixed(2)}`
-  );
+  logger.info("XATA", "Economics calculated", {
+    grossMargin: economics.gross_margin.toFixed(2),
+    commissionableMargin: economics.commissionable_margin.toFixed(2)
+  });
 
   // Find commission band based on commissionable margin
   const commissionBand = await getCommissionBandForMargin(
     economics.commissionable_margin
   );
   if (commissionBand) {
-    console.log(
-      `[XATA SALES] ✓ Commission band: ${commissionBand.band_type} (${commissionBand.commission_percent}%)`
-    );
+    logger.info("XATA", "Commission band found", {
+      bandType: commissionBand.band_type,
+      commissionPercent: commissionBand.commission_percent
+    });
   }
 
   // C) CALCULATE COMMISSION
-  console.log("[XATA SALES] Calculating commission...");
+  logger.info("XATA", "Calculating commission");
 
   const commissionResult = await calculateCommission({
     commissionable_margin: economics.commissionable_margin,
@@ -407,28 +409,22 @@ export async function createSaleFromAppPayload(
     admin_override_notes: sanitizedPayload.admin_override_notes ?? null,
   });
 
-  console.log(
-    `[XATA SALES] ✓ Commission amount: £${commissionResult.commission_amount}`
-  );
-  console.log(
-    `[XATA SALES] ✓ Shopper commission: £${commissionResult.commission_split_shopper}`
-  );
-  if (commissionResult.commission_split_introducer > 0) {
-    console.log(
-      `[XATA SALES] ✓ Introducer commission: £${commissionResult.commission_split_introducer}`
-    );
-  }
+  logger.info("XATA", "Commission calculated", {
+    commissionAmount: commissionResult.commission_amount,
+    shopperCommission: commissionResult.commission_split_shopper,
+    introducerCommission: commissionResult.commission_split_introducer
+  });
 
   // Check for commission calculation errors
   const hasCommissionErrors = commissionResult.errors.length > 0;
   if (hasCommissionErrors) {
-    console.error(
-      `[XATA SALES] ⚠️ Commission errors: ${commissionResult.errors.join("; ")}`
-    );
+    logger.error("XATA", "Commission calculation errors", {
+      errors: commissionResult.errors.join("; ")
+    });
   }
 
   // D) INSERT INTO XATA SALES TABLE
-  console.log("[XATA SALES] Creating sale record...");
+  logger.info("XATA", "Creating sale record");
 
   const sale = await xata().db.Sales.create({
     // Core identifiers
@@ -506,7 +502,7 @@ export async function createSaleFromAppPayload(
     internal_notes: sanitizedPayload.internal_notes || "",
   });
 
-  console.log(`[XATA SALES] ✅ Sale created: ${sale.id}`);
+  logger.info("XATA", "Sale created", { saleId: sale.id });
 
   // E) ECONOMICS SANITY WARNINGS (Story 5)
   // Check for suspicious margin patterns based on buyer type
@@ -537,9 +533,9 @@ export async function createSaleFromAppPayload(
           resolved_at: null,
           resolved_notes: null,
         });
-        console.log(`[XATA SALES] ⚠️ Economics sanity warning logged: End client low margin`);
+        logger.warn("XATA", "Economics sanity warning logged: End client low margin");
       } catch (err) {
-        console.error(`[XATA SALES] ❌ Failed to log economics warning:`, err);
+        logger.error("XATA", "Failed to log economics warning", { error: err as any } as any);
       }
     }
 
@@ -567,9 +563,9 @@ export async function createSaleFromAppPayload(
           resolved_at: null,
           resolved_notes: null,
         });
-        console.log(`[XATA SALES] ⚠️ Economics sanity warning logged: B2B high margin`);
+        logger.warn("XATA", "Economics sanity warning logged: B2B high margin");
       } catch (err) {
-        console.error(`[XATA SALES] ❌ Failed to log economics warning:`, err);
+        logger.error("XATA", "Failed to log economics warning", { error: err as any } as any);
       }
     }
   }
@@ -601,9 +597,9 @@ export async function createSaleFromAppPayload(
         resolved_at: null,
         resolved_notes: null,
       });
-      console.log(`[XATA SALES] ⚠️ Commission error logged to Errors table`);
+      logger.warn("XATA", "Commission error logged to Errors table");
     } catch (err) {
-      console.error(`[XATA SALES] ❌ Failed to log commission error:`, err);
+      logger.error("XATA", "Failed to log commission error", { error: err as any } as any);
     }
   }
 
@@ -647,9 +643,9 @@ export async function createSaleFromAppPayload(
         resolved_notes: null,
       });
 
-      console.log(`[XATA SALES] ⚠️ Validation errors logged to Errors table`);
+      logger.warn("XATA", "Validation errors logged to Errors table");
     } catch (err) {
-      console.error(`[XATA SALES] ❌ Failed to log validation errors:`, err);
+      logger.error("XATA", "Failed to log validation errors", { error: err as any } as any);
     }
   }
 
@@ -707,18 +703,18 @@ export async function syncInvoiceAndAppDataToXata(params: {
   formData: AppFormData;
 }): Promise<SalesRecord | null> {
   try {
-    console.log("[XATA SALES] Starting invoice sync...");
-    console.log("[XATA] Incoming Xero invoice:", params.xeroInvoice);
-    console.log("[XATA] Incoming form data:", params.formData);
+    logger.info("XATA", "Starting invoice sync");
+    logger.debug("XATA", "Incoming Xero invoice", { invoice: params.xeroInvoice as any });
+    logger.debug("XATA", "Incoming form data", { formData: params.formData as any });
 
     // Validate required fields
     if (!params.xeroInvoice.InvoiceNumber) {
-      console.warn("[XATA] Missing InvoiceNumber — aborting sync.");
+      logger.warn("XATA", "Missing InvoiceNumber, aborting sync");
       return null;
     }
 
     if (!params.formData.shopperName) {
-      console.warn("[XATA] Missing shopperName — aborting sync.");
+      logger.warn("XATA", "Missing shopperName, aborting sync");
       return null;
     }
 
@@ -765,10 +761,10 @@ export async function syncInvoiceAndAppDataToXata(params: {
 
     const sale = await createSaleFromAppPayload(payload);
 
-    console.log("[XATA SALES] ✅ Invoice sync complete");
+    logger.info("XATA", "Invoice sync complete");
     return sale;
   } catch (error) {
-    console.error("[XATA SALES] ❌ Invoice sync failed (non-fatal):", error);
+    logger.error("XATA", "Invoice sync failed (non-fatal)", { error: error as any } as any);
     // Don't throw - log and continue
     return null;
   }
@@ -840,16 +836,16 @@ export async function lockCommissionsUpToDate(date: Date): Promise<number> {
 export async function findSaleByInvoiceNumber(
   invoiceNumber: string
 ): Promise<SalesRecord | null> {
-  console.log(`[XATA SALES] Looking up sale by invoice number: ${invoiceNumber}`);
+  logger.info("XATA", "Looking up sale by invoice number", { invoiceNumber });
 
   const sale = await xata()
     .db.Sales.filter({ xero_invoice_number: invoiceNumber })
     .getFirst();
 
   if (sale) {
-    console.log(`[XATA SALES] ✓ Found sale: ${sale.id}`);
+    logger.info("XATA", "Found sale", { saleId: sale.id });
   } else {
-    console.warn(`[XATA SALES] ⚠️ No sale found for invoice: ${invoiceNumber}`);
+    logger.warn("XATA", "No sale found for invoice", { invoiceNumber });
   }
 
   return sale as SalesRecord | null;
@@ -869,9 +865,7 @@ export async function updateSalePaymentStatusFromXero(
   saleId: string,
   invoice: { Status?: string; AmountDue?: number; PaidDate?: string }
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(
-    `[XATA SALES] Updating payment status for sale ${saleId} from Xero invoice`
-  );
+  logger.info("XATA", "Updating payment status for sale from Xero invoice", { saleId });
 
   // Validate invoice is paid
   const isPaid =
@@ -880,7 +874,7 @@ export async function updateSalePaymentStatusFromXero(
 
   if (!isPaid) {
     const error = `Invoice not marked as paid (Status: ${invoice.Status}, AmountDue: ${invoice.AmountDue})`;
-    console.warn(`[XATA SALES] ⚠️ ${error}`);
+    logger.warn("XATA", error);
     return { success: false, error };
   }
 
@@ -890,7 +884,7 @@ export async function updateSalePaymentStatusFromXero(
     try {
       xeroPaymentDate = new Date(invoice.PaidDate);
     } catch (err) {
-      console.warn(`[XATA SALES] ⚠️ Invalid PaidDate format: ${invoice.PaidDate}`);
+      logger.warn("XATA", "Invalid PaidDate format", { paidDate: invoice.PaidDate });
     }
   }
 
@@ -903,9 +897,9 @@ export async function updateSalePaymentStatusFromXero(
   });
 
   if (result.success) {
-    console.log(`[XATA SALES] ✅ Sale ${saleId} transitioned to "paid"`);
+    logger.info("XATA", "Sale transitioned to paid", { saleId });
   } else {
-    console.error(`[XATA SALES] ❌ Failed to transition sale: ${result.error}`);
+    logger.error("XATA", "Failed to transition sale", { saleId, error: result.error });
   }
 
   return result;

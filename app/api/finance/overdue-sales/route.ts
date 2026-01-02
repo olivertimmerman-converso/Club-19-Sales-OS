@@ -17,6 +17,7 @@ import {
   computePaymentFlags,
   computeOverdueFlags,
 } from "@/lib/sales-summary-helpers";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -68,7 +69,7 @@ interface OverdueSalesResponse {
 // ============================================================================
 
 export async function GET(req: NextRequest) {
-  console.log("[FINANCE][OVERDUE-SALES] GET request received");
+  logger.info("OVERDUE_SALES", "GET request received");
 
   // Rate limiting
   const rateLimitResponse = withRateLimit(req, RATE_LIMITS.general);
@@ -80,7 +81,7 @@ export async function GET(req: NextRequest) {
     // STEP 1: Check authentication and authorization
     const { userId } = await auth();
     if (!userId) {
-      console.error("[FINANCE][OVERDUE-SALES] ❌ Unauthorized - no userId");
+      logger.error("OVERDUE_SALES", "Unauthorized - no userId");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -89,17 +90,17 @@ export async function GET(req: NextRequest) {
 
     const role = await getUserRole();
     if (!role || (role !== "admin" && role !== "superadmin" && role !== "finance")) {
-      console.error(`[FINANCE][OVERDUE-SALES] ❌ Forbidden - insufficient permissions (role: ${role})`);
+      logger.error("OVERDUE_SALES", "Forbidden - insufficient permissions", { role });
       return NextResponse.json(
         { error: "Forbidden", message: "Admin/Finance access required" },
         { status: 403 }
       );
     }
 
-    console.log(`[FINANCE][OVERDUE-SALES] ✓ Authorized (role: ${role})`);
+    logger.info("OVERDUE_SALES", "Authorized", { role });
 
     // STEP 2: Fetch all sales with required fields
-    console.log("[FINANCE][OVERDUE-SALES] Fetching sales...");
+    logger.info("OVERDUE_SALES", "Fetching sales...");
 
     const sales = await xata()
       .db.Sales.select([
@@ -113,10 +114,10 @@ export async function GET(req: NextRequest) {
       ])
       .getMany();
 
-    console.log(`[FINANCE][OVERDUE-SALES] ✓ Found ${sales.length} sales`);
+    logger.info("OVERDUE_SALES", `Found ${sales.length} sales`);
 
     // STEP 3: Filter for overdue sales and compute flags
-    console.log("[FINANCE][OVERDUE-SALES] Computing overdue flags...");
+    logger.info("OVERDUE_SALES", "Computing overdue flags...");
 
     const overdueSales: OverdueSale[] = [];
 
@@ -141,11 +142,11 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    console.log(`[FINANCE][OVERDUE-SALES] ✓ Found ${overdueSales.length} overdue sales`);
+    logger.info("OVERDUE_SALES", `Found ${overdueSales.length} overdue sales`);
 
     // STEP 4: Fetch errors for overdue sales
     if (overdueSales.length > 0) {
-      console.log("[FINANCE][OVERDUE-SALES] Fetching errors for overdue sales...");
+      logger.info("OVERDUE_SALES", "Fetching errors for overdue sales...");
 
       const overdueSaleIds = overdueSales.map((s) => s.sale_id);
 
@@ -163,7 +164,7 @@ export async function GET(req: NextRequest) {
         ])
         .getMany();
 
-      console.log(`[FINANCE][OVERDUE-SALES] ✓ Found ${errors.length} errors`);
+      logger.info("OVERDUE_SALES", `Found ${errors.length} errors`);
 
       // Group errors by sale_id
       const errorsBySale = new Map<string, any[]>();
@@ -196,11 +197,11 @@ export async function GET(req: NextRequest) {
       overdue_sales: overdueSales,
     };
 
-    console.log(`[FINANCE][OVERDUE-SALES] ✅ Returning ${overdueSales.length} overdue sales`);
+    logger.info("OVERDUE_SALES", `Returning ${overdueSales.length} overdue sales`);
 
     return NextResponse.json(response);
   } catch (error: any) {
-    console.error("[FINANCE][OVERDUE-SALES] ❌ Failed to fetch overdue sales:", error);
+    logger.error("OVERDUE_SALES", "Failed to fetch overdue sales", { error });
 
     return NextResponse.json(
       {

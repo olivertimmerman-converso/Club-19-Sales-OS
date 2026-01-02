@@ -9,6 +9,7 @@
 
 import { getValidTokens } from "./xero-auth";
 import { ExtendedContact, ContactPerson } from "./search";
+import * as logger from "./logger";
 
 interface XeroContactPerson {
   FirstName?: string;
@@ -59,7 +60,7 @@ setInterval(() => {
     if (now - entry.fetchedAt > CACHE_TTL_MS) {
       contactsCache.delete(userId);
       removedCount++;
-      console.log(`[XERO CACHE CLEANUP] Removed expired contacts cache for user: ${userId}`);
+      logger.info("XERO_CACHE", "Removed expired contacts cache for user", { userId });
     }
   }
 
@@ -68,12 +69,12 @@ setInterval(() => {
     if (now - entry.fetchedAt > CACHE_TTL_MS) {
       supplierCache.delete(userId);
       removedCount++;
-      console.log(`[XERO CACHE CLEANUP] Removed expired supplier cache for user: ${userId}`);
+      logger.info("XERO_CACHE", "Removed expired supplier cache for user", { userId });
     }
   }
 
   if (removedCount > 0) {
-    console.log(`[XERO CACHE CLEANUP] ✓ Cleaned up ${removedCount} expired cache entries`);
+    logger.info("XERO_CACHE", "Cleaned up expired cache entries", { count: removedCount });
   }
 }, CACHE_TTL_MS);
 
@@ -142,12 +143,12 @@ function getSystemUserId(): string {
  */
 async function fetchAllContactsFromXero(userId: string): Promise<ExtendedContact[]> {
   const startTime = Date.now();
-  console.log("[XERO CACHE] === Fetching ALL contacts from Xero ===");
-  console.log(`[XERO CACHE] Requesting user: ${userId}`);
+  logger.info("XERO_CACHE", "Fetching ALL contacts from Xero");
+  logger.info("XERO_CACHE", "Requesting user", { userId });
 
   // Get valid OAuth tokens from system user (organization owner)
   const systemUserId = getSystemUserId();
-  console.log(`[XERO CACHE] Using system user for Xero auth: ${systemUserId}`);
+  logger.info("XERO_CACHE", "Using system user for Xero auth", { systemUserId });
 
   let accessToken: string;
   let tenantId: string;
@@ -156,9 +157,9 @@ async function fetchAllContactsFromXero(userId: string): Promise<ExtendedContact
     const tokens = await getValidTokens(systemUserId);
     accessToken = tokens.accessToken;
     tenantId = tokens.tenantId;
-    console.log(`[XERO CACHE] ✓ Valid tokens obtained for tenant: ${tenantId}`);
+    logger.info("XERO_CACHE", "Valid tokens obtained for tenant", { tenantId });
   } catch (error: any) {
-    console.error("[XERO CACHE] ❌ Failed to get tokens:", error.message);
+    logger.error("XERO_CACHE", "Failed to get tokens", { error: error.message });
     throw error;
   }
 
@@ -168,7 +169,7 @@ async function fetchAllContactsFromXero(userId: string): Promise<ExtendedContact
 
   while (hasMorePages) {
     const xeroUrl = `https://api.xero.com/api.xro/2.0/Contacts?page=${page}`;
-    console.log(`[XERO CACHE] Fetching page ${page}...`);
+    logger.info("XERO_CACHE", "Fetching page", { page });
 
     const response = await fetch(xeroUrl, {
       method: "GET",
@@ -182,7 +183,8 @@ async function fetchAllContactsFromXero(userId: string): Promise<ExtendedContact
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[XERO CACHE] ❌ Xero API error on page ${page}:`, {
+      logger.error("XERO_CACHE", "Xero API error on page", {
+        page,
         status: response.status,
         error: errorText,
       });
@@ -192,7 +194,7 @@ async function fetchAllContactsFromXero(userId: string): Promise<ExtendedContact
     const data: XeroContactsResponse = await response.json();
     const contacts = data.Contacts || [];
 
-    console.log(`[XERO CACHE] Page ${page}: ${contacts.length} contacts`);
+    logger.info("XERO_CACHE", "Page fetched", { page, count: contacts.length });
 
     if (contacts.length === 0) {
       hasMorePages = false;
@@ -205,13 +207,16 @@ async function fetchAllContactsFromXero(userId: string): Promise<ExtendedContact
 
     // Safety limit: max 100 pages (10,000 contacts)
     if (page > 100) {
-      console.warn("[XERO CACHE] ⚠️ Reached page limit (100), stopping pagination");
+      logger.warn("XERO_CACHE", "Reached page limit (100), stopping pagination");
       hasMorePages = false;
     }
   }
 
   const duration = Date.now() - startTime;
-  console.log(`[XERO CACHE] ✓✓✓ Fetched ${allContacts.length} total contacts in ${duration}ms`);
+  logger.info("XERO_CACHE", "Fetched all contacts", {
+    totalContacts: allContacts.length,
+    durationMs: duration
+  });
 
   return allContacts;
 }
@@ -232,12 +237,15 @@ export async function getAllXeroContacts(userId: string): Promise<ExtendedContac
   const cached = contactsCache.get(userId);
   if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
     const age = Math.round((now - cached.fetchedAt) / 1000);
-    console.log(`[XERO CACHE] ✓ Using cached contacts (${cached.contacts.length} contacts, ${age}s old)`);
+    logger.info("XERO_CACHE", "Using cached contacts", {
+      count: cached.contacts.length,
+      ageSeconds: age
+    });
     return cached.contacts;
   }
 
   // Cache miss or expired - fetch fresh data
-  console.log("[XERO CACHE] Cache miss or expired, fetching fresh data...");
+  logger.info("XERO_CACHE", "Cache miss or expired, fetching fresh data");
   const contacts = await fetchAllContactsFromXero(userId);
 
   // Store in cache
@@ -269,18 +277,24 @@ export async function getSupplierContacts(userId: string): Promise<ExtendedConta
   const cached = supplierCache.get(userId);
   if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
     const age = Math.round((now - cached.fetchedAt) / 1000);
-    console.log(`[XERO SUPPLIER CACHE] ✓ Using cached suppliers (${cached.contacts.length} suppliers, ${age}s old)`);
+    logger.info("XERO_CACHE", "Using cached suppliers", {
+      count: cached.contacts.length,
+      ageSeconds: age
+    });
     return cached.contacts;
   }
 
   // Cache miss or expired - fetch all contacts and filter to suppliers
-  console.log("[XERO SUPPLIER CACHE] Cache miss or expired, fetching and filtering suppliers...");
+  logger.info("XERO_CACHE", "Supplier cache miss or expired, fetching and filtering suppliers");
   const allContacts = await getAllXeroContacts(userId);
 
   // Filter to suppliers only (uses pre-computed isSupplier flag)
   const suppliers = allContacts.filter((contact) => contact.isSupplier);
 
-  console.log(`[XERO SUPPLIER CACHE] Filtered ${suppliers.length} suppliers from ${allContacts.length} total contacts`);
+  logger.info("XERO_CACHE", "Filtered suppliers", {
+    supplierCount: suppliers.length,
+    totalContacts: allContacts.length
+  });
 
   // Store in supplier cache
   supplierCache.set(userId, {
@@ -297,7 +311,7 @@ export async function getSupplierContacts(userId: string): Promise<ExtendedConta
  */
 export function clearContactsCache(userId: string): void {
   contactsCache.delete(userId);
-  console.log(`[XERO CACHE] Cleared cache for user: ${userId}`);
+  logger.info("XERO_CACHE", "Cleared cache for user", { userId });
 }
 
 /**
@@ -306,5 +320,5 @@ export function clearContactsCache(userId: string): void {
 export function clearAllContactsCaches(): void {
   contactsCache.clear();
   supplierCache.clear();
-  console.log("[XERO CACHE] Cleared all caches (contacts + suppliers)");
+  logger.info("XERO_CACHE", "Cleared all caches (contacts + suppliers)");
 }

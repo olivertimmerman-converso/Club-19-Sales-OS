@@ -5,6 +5,7 @@ import { useTrade } from "@/contexts/TradeContext";
 import { fetchXeroBuyers, NormalizedContact } from "@/lib/xero";
 import { PaymentMethod, TaxRegime, BuyerType } from "@/lib/types/invoice";
 import { COUNTRIES, POPULAR_COUNTRIES } from "@/lib/constants";
+import * as logger from '@/lib/logger';
 
 // Xata Supplier type
 interface XataSupplier {
@@ -123,13 +124,13 @@ export function StepSupplierBuyer() {
         const data = await response.json();
 
         if (!data.connected) {
-          console.log("[BUYER SEARCH] Xero not connected, showing banner");
+          logger.info('TRADE_UI', 'Xero not connected, showing banner');
           setXeroError("Please connect your Xero account to search contacts");
         } else {
-          console.log("[BUYER SEARCH] Xero already connected");
+          logger.info('TRADE_UI', 'Xero already connected');
         }
       } catch (error) {
-        console.error("[BUYER SEARCH] Failed to check Xero connection:", error);
+        logger.error('TRADE_UI', 'Failed to check Xero connection', { error: error as any });
       }
     };
 
@@ -191,18 +192,18 @@ export function StepSupplierBuyer() {
             // Show "no results" or "create new" option
             if (results.length === 0) {
               setSupplierNoResults(true);
-              console.log(`[SUPPLIER SEARCH] No suppliers found for "${query}"`);
+              logger.info('TRADE_UI', 'No suppliers found for query', { query });
             } else {
               setSupplierNoResults(false);
             }
           } catch (error: any) {
             // Ignore AbortError - it just means we cancelled the request
             if (error.name === 'AbortError') {
-              console.log('[SUPPLIER SEARCH] Request cancelled');
+              logger.info('TRADE_UI', 'Supplier search request cancelled');
               return;
             }
 
-            console.error("[SUPPLIER SEARCH] Xata supplier search failed:", error);
+            logger.error('TRADE_UI', 'Xata supplier search failed', { error: error as any } as any);
             setSupplierDropdownResults([]);
             setSupplierNoResults(false);
           } finally {
@@ -269,7 +270,7 @@ export function StepSupplierBuyer() {
         selectSupplier(data.supplier);
       }
     } catch (error) {
-      console.error("[SUPPLIER CREATE] Failed to create supplier:", error);
+      logger.error('TRADE_UI', 'Failed to create supplier', { error: error as any } as any);
     } finally {
       setLoadingSuppliers(false);
     }
@@ -301,11 +302,11 @@ export function StepSupplierBuyer() {
         } catch (error: any) {
           // Ignore AbortError - it just means we cancelled the request
           if (error.name === 'AbortError') {
-            console.log('[BUYER SEARCH] Request cancelled');
+            logger.info('TRADE_UI', 'Buyer search request cancelled');
             return;
           }
 
-          console.error("[BUYER SEARCH] Xero buyer search failed:", error);
+          logger.error('TRADE_UI', 'Xero buyer search failed', { error: error as any } as any);
           setBuyerDropdownResults([]);
           // Only show error if it's a connection issue
           if (error.message && error.message.includes("Xero not connected")) {

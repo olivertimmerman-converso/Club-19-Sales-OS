@@ -15,6 +15,7 @@ import { getUserRole } from "@/lib/getUserRole";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import { transitionSaleStatus } from "@/lib/deal-lifecycle";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY, ERROR_GROUPS } from "@/lib/error-types";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -54,7 +55,7 @@ interface LockPaidSalesResponse {
 // ============================================================================
 
 export async function POST(req: NextRequest) {
-  console.log("[FINANCE][LOCK-PAID-SALES] POST request received");
+  logger.info("FINANCE", "POST request received - lock paid sales");
 
   // Rate limiting
   const rateLimitResponse = withRateLimit(req, RATE_LIMITS.general);
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
     // STEP 1: Check authentication and authorization
     const { userId } = await auth();
     if (!userId) {
-      console.error("[FINANCE][LOCK-PAID-SALES] ❌ Unauthorized - no userId");
+      logger.error("FINANCE", "Unauthorized - no userId");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     const role = await getUserRole();
     if (!role || (role !== "admin" && role !== "superadmin" && role !== "finance")) {
-      console.error(`[FINANCE][LOCK-PAID-SALES] ❌ Forbidden - insufficient permissions (role: ${role})`);
+      logger.error("FINANCE", "Forbidden - insufficient permissions", { role });
       return NextResponse.json(
         { error: "Forbidden", message: "Admin/Finance access required" },
         { status: 403 }
@@ -87,20 +88,20 @@ export async function POST(req: NextRequest) {
     const user = await client.users.getUser(userId);
     const adminUserEmail = user.emailAddresses[0]?.emailAddress || "unknown@system.local";
 
-    console.log(`[FINANCE][LOCK-PAID-SALES] ✓ Authorized (role: ${role}, email: ${adminUserEmail})`);
+    logger.info("FINANCE", "Authorized", { role, email: adminUserEmail });
 
     // STEP 2: Fetch all sales with status = "paid"
-    console.log("[FINANCE][LOCK-PAID-SALES] Fetching paid sales...");
+    logger.info("FINANCE", "Fetching paid sales...");
 
     const paidSales = await xata()
       .db.Sales.filter({ status: "paid" })
       .select(["id", "sale_reference", "status"])
       .getMany();
 
-    console.log(`[FINANCE][LOCK-PAID-SALES] ✓ Found ${paidSales.length} paid sales`);
+    logger.info("FINANCE", `Found ${paidSales.length} paid sales`);
 
     if (paidSales.length === 0) {
-      console.log("[FINANCE][LOCK-PAID-SALES] ✅ No paid sales to lock");
+      logger.info("FINANCE", "No paid sales to lock");
       return NextResponse.json({
         total_paid: 0,
         total_locked: 0,
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest) {
     }
 
     // STEP 3: Transition each sale from "paid" → "locked"
-    console.log("[FINANCE][LOCK-PAID-SALES] Processing transitions...");
+    logger.info("FINANCE", "Processing transitions...");
 
     const results: LockResult[] = [];
     let total_locked = 0;
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
 
     for (const sale of paidSales) {
       try {
-        console.log(`[FINANCE][LOCK-PAID-SALES] Processing sale: ${sale.id} (${sale.sale_reference})`);
+        logger.info("FINANCE", "Processing sale", { saleId: sale.id, saleReference: sale.sale_reference });
 
         const transitionResult = await transitionSaleStatus({
           saleId: sale.id,
@@ -134,7 +135,7 @@ export async function POST(req: NextRequest) {
             sale_reference: sale.sale_reference || "",
             status: "locked",
           });
-          console.log(`[FINANCE][LOCK-PAID-SALES] ✓ Locked: ${sale.sale_reference}`);
+          logger.info("FINANCE", "Sale locked", { saleReference: sale.sale_reference });
         } else {
           total_failed++;
           results.push({
@@ -143,7 +144,10 @@ export async function POST(req: NextRequest) {
             status: "failed",
             error: transitionResult.error || "Unknown error",
           });
-          console.error(`[FINANCE][LOCK-PAID-SALES] ❌ Failed: ${sale.sale_reference} - ${transitionResult.error}`);
+          logger.error("FINANCE", "Failed to lock sale", {
+            saleReference: sale.sale_reference,
+            error: transitionResult.error
+          });
 
           // Log error to Errors table
           try {
@@ -168,7 +172,7 @@ export async function POST(req: NextRequest) {
               resolved_notes: null,
             });
           } catch (logErr) {
-            console.error(`[FINANCE][LOCK-PAID-SALES] ❌ Failed to log error for sale ${sale.id}:`, logErr);
+            logger.error("FINANCE", "Failed to log error", { saleId: sale.id, error: logErr as any });
           }
         }
       } catch (saleErr: any) {
@@ -179,7 +183,7 @@ export async function POST(req: NextRequest) {
           status: "failed",
           error: saleErr.message || "Unexpected error",
         });
-        console.error(`[FINANCE][LOCK-PAID-SALES] ❌ Exception for sale ${sale.id}:`, saleErr);
+        logger.error("FINANCE", "Exception processing sale", { saleId: sale.id, error: saleErr });
       }
     }
 
@@ -191,11 +195,14 @@ export async function POST(req: NextRequest) {
       results,
     };
 
-    console.log(`[FINANCE][LOCK-PAID-SALES] ✅ Complete - Locked: ${total_locked}, Failed: ${total_failed}`);
+    logger.info("FINANCE", "Complete - lock paid sales", {
+      locked: total_locked,
+      failed: total_failed
+    });
 
     return NextResponse.json(response);
   } catch (error: any) {
-    console.error("[FINANCE][LOCK-PAID-SALES] ❌ Unexpected error:", error);
+    logger.error("FINANCE", "Unexpected error", { error });
 
     return NextResponse.json(
       {

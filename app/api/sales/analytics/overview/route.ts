@@ -19,6 +19,7 @@ import {
   computeMarginMetrics,
   computeAuthenticityRisk,
 } from "@/lib/sales-summary-helpers";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -70,7 +71,7 @@ interface AnalyticsOverview {
 // ============================================================================
 
 export async function GET(req: NextRequest) {
-  console.log("[ANALYTICS OVERVIEW API] GET request received");
+  logger.info("ANALYTICS", "GET request received");
 
   // Rate limiting
   const rateLimitResponse = withRateLimit(req, RATE_LIMITS.general);
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
     // STEP 1: Check authentication and authorization
     const { userId } = await auth();
     if (!userId) {
-      console.error("[ANALYTICS OVERVIEW API] ❌ Unauthorized - no userId");
+      logger.error("ANALYTICS", "Unauthorized - no userId");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -91,17 +92,17 @@ export async function GET(req: NextRequest) {
 
     const role = await getUserRole();
     if (!role || (role !== "admin" && role !== "superadmin" && role !== "finance")) {
-      console.error(`[ANALYTICS OVERVIEW API] ❌ Forbidden - insufficient permissions (role: ${role})`);
+      logger.error("ANALYTICS", "Forbidden - insufficient permissions", { role });
       return NextResponse.json(
         { error: "Forbidden", message: "Admin/Finance access required" },
         { status: 403 }
       );
     }
 
-    console.log(`[ANALYTICS OVERVIEW API] ✓ Authorized (role: ${role})`);
+    logger.info("ANALYTICS", "Authorized", { role });
 
     // STEP 2: Fetch all sales
-    console.log("[ANALYTICS OVERVIEW API] Fetching sales...");
+    logger.info("ANALYTICS", "Fetching sales...");
 
     const sales = await xata()
       .db.Sales.select([
@@ -117,19 +118,19 @@ export async function GET(req: NextRequest) {
       ])
       .getMany();
 
-    console.log(`[ANALYTICS OVERVIEW API] ✓ Found ${sales.length} sales`);
+    logger.info("ANALYTICS", "Found sales", { count: sales.length });
 
     // STEP 3: Fetch all errors
-    console.log("[ANALYTICS OVERVIEW API] Fetching errors...");
+    logger.info("ANALYTICS", "Fetching errors...");
 
     const errors = await xata()
       .db.Errors.select(["id", "error_group"])
       .getMany();
 
-    console.log(`[ANALYTICS OVERVIEW API] ✓ Found ${errors.length} errors`);
+    logger.info("ANALYTICS", "Found errors", { count: errors.length });
 
     // STEP 4: Compute KPIs
-    console.log("[ANALYTICS OVERVIEW API] Computing KPIs...");
+    logger.info("ANALYTICS", "Computing KPIs...");
 
     let total_revenue_inc_vat = 0;
     let total_buy_cost = 0;
@@ -216,12 +217,12 @@ export async function GET(req: NextRequest) {
       errors_by_group,
     };
 
-    console.log(`[ANALYTICS OVERVIEW API] ✅ Computed analytics`);
+    logger.info("ANALYTICS", "Computed analytics");
 
     // STEP 6: Return response
     return NextResponse.json(overview);
   } catch (error: any) {
-    console.error("[ANALYTICS OVERVIEW API] ❌ Failed to compute analytics:", error);
+    logger.error("ANALYTICS", "Failed to compute analytics", { error });
 
     return NextResponse.json(
       {

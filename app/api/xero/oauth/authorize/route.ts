@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -8,25 +9,25 @@ export const dynamic = "force-dynamic";
  * Initiates Xero OAuth 2.0 flow by redirecting user to Xero login
  */
 export async function GET(request: NextRequest) {
-  console.log("[XERO AUTHORIZE] Initiating OAuth flow");
+  logger.info("XERO_OAUTH", "Initiating OAuth flow");
 
   try {
     // 1. Verify user is authenticated
     const { userId } = await auth();
 
     if (!userId) {
-      console.error("[XERO AUTHORIZE] No userId - user not authenticated");
+      logger.error("XERO_OAUTH", "No userId - user not authenticated");
       return NextResponse.redirect(new URL("/sign-in", request.url));
     }
 
-    console.log(`[XERO AUTHORIZE] User authenticated: ${userId}`);
+    logger.info("XERO_OAUTH", "User authenticated", { userId });
 
     // 2. Validate environment configuration
     const clientId = process.env.NEXT_PUBLIC_XERO_CLIENT_ID;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
     if (!clientId || !appUrl) {
-      console.error("[XERO AUTHORIZE] Missing environment variables:", {
+      logger.error("XERO_OAUTH", "Missing environment variables", {
         hasClientId: !!clientId,
         hasAppUrl: !!appUrl,
       });
@@ -47,12 +48,12 @@ export async function GET(request: NextRequest) {
     authUrl.searchParams.append("scope", scope);
     authUrl.searchParams.append("state", state);
 
-    console.log(`[XERO AUTHORIZE] Redirecting to Xero with redirect_uri: ${redirectUri}`);
+    logger.info("XERO_OAUTH", "Redirecting to Xero", { redirectUri });
 
     // 4. Redirect to Xero
     return NextResponse.redirect(authUrl.toString());
   } catch (error: any) {
-    console.error("[XERO AUTHORIZE] Fatal error:", error);
+    logger.error("XERO_OAUTH", "Fatal error", { error });
     return NextResponse.redirect(
       new URL("/trade/new?xero_error=authorize_failed", request.url)
     );

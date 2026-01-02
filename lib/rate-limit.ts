@@ -10,6 +10,8 @@
  * - External rate limiting service
  */
 
+import * as logger from './logger';
+
 interface RateLimitConfig {
   windowMs: number; // Time window in milliseconds
   maxRequests: number; // Max requests per window
@@ -124,9 +126,7 @@ export function checkRateLimit(
   const success = entry.count <= config.maxRequests;
   const remaining = Math.max(0, config.maxRequests - entry.count);
 
-  console.log(
-    `[RATE LIMIT] ${clientId.split(":")[0]} - ${entry.count}/${config.maxRequests} (${success ? "✓" : "✗ BLOCKED"})`
-  );
+  logger.info('RATE_LIMIT', `${clientId.split(":")[0]} - ${entry.count}/${config.maxRequests} (${success ? "✓" : "✗ BLOCKED"})`);
 
   return {
     success,
@@ -157,9 +157,7 @@ export function withRateLimit(
   const result = checkRateLimit(request, config);
 
   if (!result.success) {
-    console.error(
-      `[RATE LIMIT] ❌ Request blocked - limit exceeded (${result.limit} requests per ${config.windowMs}ms)`
-    );
+    logger.error('RATE_LIMIT', `Request blocked - limit exceeded (${result.limit} requests per ${config.windowMs}ms)`);
 
     return new Response(
       JSON.stringify({
@@ -208,5 +206,5 @@ export function resetRateLimit(request: Request, config: RateLimitConfig): void 
   const clientId = getClientIdentifier(request);
   const key = `${clientId}:${config.windowMs}:${config.maxRequests}`;
   rateLimitStore.delete(key);
-  console.log(`[RATE LIMIT] Reset for client: ${clientId.split(":")[0]}`);
+  logger.info('RATE_LIMIT', `Reset for client: ${clientId.split(":")[0]}`);
 }

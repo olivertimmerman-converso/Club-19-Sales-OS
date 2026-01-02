@@ -13,6 +13,7 @@ import { getXataClient } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
 import { getUserRole } from "@/lib/getUserRole";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
+import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -45,7 +46,7 @@ export async function POST(
 ) {
   const { id: errorId } = await params;
 
-  console.log(`[ERROR RESOLUTION API] POST request for error ${errorId}`);
+  logger.info("ERRORS", "POST request for error resolution", { errorId });
 
   // STEP 0: Rate limiting
   const rateLimitResponse = withRateLimit(req, RATE_LIMITS.errors);
@@ -57,7 +58,7 @@ export async function POST(
     // STEP 1: Check authentication and authorization
     const { userId } = await auth();
     if (!userId) {
-      console.error("[ERROR RESOLUTION API] ❌ Unauthorized - no userId");
+      logger.error("ERRORS", "Unauthorized - no userId");
       return NextResponse.json(
         { error: "Unauthorized", message: "Please sign in" },
         { status: 401 }
@@ -66,14 +67,14 @@ export async function POST(
 
     const role = await getUserRole();
     if (!role || (role !== "admin" && role !== "superadmin")) {
-      console.error(`[ERROR RESOLUTION API] ❌ Forbidden - insufficient permissions (role: ${role})`);
+      logger.error("ERRORS", "Forbidden - insufficient permissions", { role });
       return NextResponse.json(
         { error: "Forbidden", message: "Admin access required" },
         { status: 403 }
       );
     }
 
-    console.log(`[ERROR RESOLUTION API] ✓ Authorized (role: ${role})`);
+    logger.info("ERRORS", "Authorized for error resolution", { role });
 
     // STEP 2: Parse request body
     const body: ResolveErrorRequest = await req.json();
@@ -88,15 +89,16 @@ export async function POST(
       );
     }
 
-    console.log(
-      `[ERROR RESOLUTION API] Admin: ${adminEmail}, Clear flag: ${shouldClearFlag}`
-    );
+    logger.info("ERRORS", "Error resolution request details", {
+      adminEmail,
+      shouldClearFlag
+    });
 
     // STEP 2: Fetch the error to get the sale ID
     const error = await xata().db.Errors.read(errorId);
 
     if (!error) {
-      console.error(`[ERROR RESOLUTION API] ❌ Error ${errorId} not found`);
+      logger.error("ERRORS", "Error record not found", { errorId });
       return NextResponse.json({ error: "Error not found" }, { status: 404 });
     }
 
@@ -106,25 +108,27 @@ export async function POST(
     const resolveResult = await resolveError(errorId, adminEmail, notes);
 
     if (!resolveResult.success) {
-      console.error(
-        `[ERROR RESOLUTION API] ❌ Failed to resolve error: ${resolveResult.error}`
-      );
+      logger.error("ERRORS", "Failed to resolve error", {
+        errorId,
+        error: resolveResult.error
+      });
       return NextResponse.json(
         { error: resolveResult.error },
         { status: 500 }
       );
     }
 
-    console.log(`[ERROR RESOLUTION API] ✅ Error ${errorId} resolved`);
+    logger.info("ERRORS", "Error resolved successfully", { errorId });
 
     // STEP 4: Optionally clear sale error flag
     if (shouldClearFlag && saleId) {
       const clearResult = await clearSaleErrorFlag(saleId);
 
       if (!clearResult.success) {
-        console.warn(
-          `[ERROR RESOLUTION API] ⚠️ Failed to clear sale error flag: ${clearResult.error}`
-        );
+        logger.warn("ERRORS", "Failed to clear sale error flag", {
+          saleId,
+          error: clearResult.error
+        });
         // Don't fail the request if clearing flag fails
         return NextResponse.json({
           success: true,
@@ -134,9 +138,7 @@ export async function POST(
         });
       }
 
-      console.log(
-        `[ERROR RESOLUTION API] ✅ Sale ${saleId} error flag cleared`
-      );
+      logger.info("ERRORS", "Sale error flag cleared", { saleId });
 
       return NextResponse.json({
         success: true,
@@ -152,7 +154,10 @@ export async function POST(
       errorCleared: false,
     });
   } catch (error: any) {
-    console.error("[ERROR RESOLUTION API] ❌ Failed to resolve error:", error);
+    logger.error("ERRORS", "Failed to resolve error", {
+      error,
+      message: error.message
+    });
 
     return NextResponse.json(
       {

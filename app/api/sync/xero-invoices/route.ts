@@ -12,6 +12,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getUserRole } from '@/lib/getUserRole';
 import { getXataClient } from '@/src/xata';
 import { getValidTokens } from '@/lib/xero-auth';
+import * as logger from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,12 +25,12 @@ function safeDate(dateValue: any): Date | null {
   try {
     const date = new Date(dateValue);
     if (isNaN(date.getTime())) {
-      console.warn(`[XERO SYNC] Invalid date value: ${dateValue}`);
+      logger.warn('XERO_SYNC', 'Invalid date value', { dateValue });
       return null;
     }
     return date;
   } catch (err) {
-    console.error(`[XERO SYNC] Error parsing date ${dateValue}:`, err);
+    logger.error('XERO_SYNC', 'Error parsing date', { dateValue, error: err as any });
     return null;
   }
 }
@@ -43,7 +44,7 @@ function safeISOString(dateValue: any): string | null {
   try {
     return date.toISOString();
   } catch (err) {
-    console.error(`[XERO SYNC] Error converting to ISO string:`, err);
+    logger.error('XERO_SYNC', 'Error converting to ISO string', { error: err as any });
     return null;
   }
 }
@@ -81,42 +82,41 @@ interface XeroInvoicesResponse {
 
 export async function POST() {
   const startTime = Date.now();
-  console.log('[XERO SYNC] === Starting Xero invoice sync ===');
+  logger.info('XERO_SYNC', 'Starting Xero invoice sync');
 
   try {
     // 1. Auth check - superadmin, operations, or founder only
     const { userId } = await auth();
     if (!userId) {
-      console.error('[XERO SYNC] ❌ Unauthorized - no userId');
+      logger.error('XERO_SYNC', 'Unauthorized - no userId');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const role = await getUserRole();
-    console.log(`[XERO SYNC] User role: ${role}`);
+    logger.info('XERO_SYNC', 'User role check', { role });
 
     if (!['superadmin', 'operations', 'founder'].includes(role || '')) {
-      console.error(`[XERO SYNC] ❌ Forbidden - role ${role} not allowed`);
+      logger.error('XERO_SYNC', 'Forbidden - insufficient role', { role });
       return NextResponse.json({ error: 'Forbidden - requires superadmin, operations, or founder role' }, { status: 403 });
     }
 
     // 2. Get system user's Xero tokens
     const systemUserId = process.env.XERO_SYSTEM_USER_ID;
     if (!systemUserId || systemUserId === 'FILL_ME') {
-      console.error('[XERO SYNC] ❌ XERO_SYSTEM_USER_ID not configured');
+      logger.error('XERO_SYNC', 'XERO_SYSTEM_USER_ID not configured');
       return NextResponse.json({
         error: 'XERO_SYSTEM_USER_ID not configured. Please set environment variable.'
       }, { status: 500 });
     }
 
-    console.log(`[XERO SYNC] Using system user: ${systemUserId}`);
+    logger.info('XERO_SYNC', 'Using system user', { systemUserId });
 
     const tokens = await getValidTokens(systemUserId);
-    console.log('[XERO SYNC] ✓ Got valid Xero tokens');
+    logger.info('XERO_SYNC', 'Got valid Xero tokens');
 
     // 3. Fetch all invoices from Xero with pagination
     const statusFilter = 'AUTHORISED,PAID,SUBMITTED';
-    console.log(`[XERO SYNC] Status filter: ${statusFilter}`);
-    console.log(`[XERO SYNC] Fetching ALL historical invoices (with pagination)...`);
+    logger.info('XERO_SYNC', 'Fetching invoices with pagination', { statusFilter });
 
     const allInvoices: XeroInvoice[] = [];
     let page = 1;
@@ -125,7 +125,7 @@ export async function POST() {
     while (hasMorePages) {
       const xeroUrl = `https://api.xero.com/api.xro/2.0/Invoices?Statuses=${statusFilter}&page=${page}`;
 
-      console.log(`[XERO SYNC] Fetching page ${page}...`);
+      logger.info('XERO_SYNC', 'Fetching page', { page });
 
       const xeroResponse = await fetch(xeroUrl, {
         headers: {
@@ -137,7 +137,7 @@ export async function POST() {
 
       if (!xeroResponse.ok) {
         const errorText = await xeroResponse.text();
-        console.error('[XERO SYNC] ❌ Xero API error:', xeroResponse.status, errorText);
+        logger.error('XERO_SYNC', 'Xero API error', { status: xeroResponse.status, details: errorText });
         return NextResponse.json({
           error: 'Xero API error',
           details: errorText
@@ -147,7 +147,7 @@ export async function POST() {
       const xeroData: XeroInvoicesResponse = await xeroResponse.json();
       const invoices = xeroData.Invoices || [];
 
-      console.log(`[XERO SYNC] Page ${page}: Fetched ${invoices.length} invoices`);
+      logger.info('XERO_SYNC', 'Page fetched', { page, count: invoices.length });
 
       if (invoices.length === 0) {
         hasMorePages = false;
@@ -158,7 +158,7 @@ export async function POST() {
     }
 
     const invoices = allInvoices;
-    console.log(`[XERO SYNC] ✓ Total invoices fetched: ${invoices.length} (across ${page - 1} pages)`);
+    logger.info('XERO_SYNC', 'All invoices fetched', { total: invoices.length, pages: page - 1 });
 
     // 4. Process each invoice
     const xata = getXataClient();
@@ -171,12 +171,18 @@ export async function POST() {
       try {
         // Only process ACCREC (sales) invoices, not ACCPAY (bills)
         if (invoice.Type !== 'ACCREC') {
-          console.log(`[XERO SYNC] Skipping ${invoice.InvoiceNumber} - Type is ${invoice.Type} (not ACCREC)`);
+          logger.info('XERO_SYNC', 'Skipping non-ACCREC invoice', {
+            invoiceNumber: invoice.InvoiceNumber,
+            type: invoice.Type
+          });
           skippedCount++;
           continue;
         }
 
-        console.log(`[XERO SYNC] Processing invoice ${invoice.InvoiceNumber} (${invoice.Status})`);
+        logger.info('XERO_SYNC', 'Processing invoice', {
+          invoiceNumber: invoice.InvoiceNumber,
+          status: invoice.Status
+        });
 
         // Check if invoice already exists
         const existing = await xata.db.Sales.filter({
@@ -186,14 +192,18 @@ export async function POST() {
         if (existing) {
           // Update status if changed
           if (existing.invoice_status !== invoice.Status) {
-            console.log(`[XERO SYNC] Updating ${invoice.InvoiceNumber}: ${existing.invoice_status} → ${invoice.Status}`);
+            logger.info('XERO_SYNC', 'Updating invoice status', {
+              invoiceNumber: invoice.InvoiceNumber,
+              oldStatus: existing.invoice_status,
+              newStatus: invoice.Status
+            });
             await xata.db.Sales.update(existing.id, {
               invoice_status: invoice.Status,
               invoice_paid_date: invoice.Status === 'PAID' ? new Date() : null,
             });
             updatedCount++;
           } else {
-            console.log(`[XERO SYNC] No change for ${invoice.InvoiceNumber}`);
+            logger.info('XERO_SYNC', 'No change for invoice', { invoiceNumber: invoice.InvoiceNumber });
             skippedCount++;
           }
         } else {
@@ -203,17 +213,26 @@ export async function POST() {
           const lineItems = invoice.LineItems || [];
           const firstItem = lineItems[0] || {};
 
-          console.log(`[XERO SYNC] Creating new sale for ${invoice.InvoiceNumber} - Client: ${contactName}`);
+          logger.info('XERO_SYNC', 'Creating new sale', {
+            invoiceNumber: invoice.InvoiceNumber,
+            contactName
+          });
 
           // Safely parse dates
           const saleDate = safeDate(invoice.Date);
           const dueDate = safeDate(invoice.DueDate);
 
           if (!saleDate) {
-            console.warn(`[XERO SYNC] Invoice ${invoice.InvoiceNumber} has invalid sale date: ${invoice.Date}`);
+            logger.warn('XERO_SYNC', 'Invalid sale date', {
+              invoiceNumber: invoice.InvoiceNumber,
+              dateValue: invoice.Date
+            });
           }
           if (invoice.DueDate && !dueDate) {
-            console.warn(`[XERO SYNC] Invoice ${invoice.InvoiceNumber} has invalid due date: ${invoice.DueDate}`);
+            logger.warn('XERO_SYNC', 'Invalid due date', {
+              invoiceNumber: invoice.InvoiceNumber,
+              dateValue: invoice.DueDate
+            });
           }
 
           // Try to find or create buyer
@@ -222,15 +241,15 @@ export async function POST() {
           }).getFirst();
 
           if (buyer) {
-            console.log(`[XERO SYNC] Found existing buyer: ${buyer.name}`);
+            logger.info('XERO_SYNC', 'Found existing buyer', { buyerName: buyer.name });
           } else {
             // Create new buyer record
-            console.log(`[XERO SYNC] Creating new buyer: ${contactName}`);
+            logger.info('XERO_SYNC', 'Creating new buyer', { contactName });
             buyer = await xata.db.Buyers.create({
               name: contactName,
               xero_contact_id: invoice.Contact?.ContactID || null,
             });
-            console.log(`[XERO SYNC] ✓ Created buyer: ${buyer.name} (${buyer.id})`);
+            logger.info('XERO_SYNC', 'Created buyer', { buyerName: buyer.name, buyerId: buyer.id });
           }
 
           const currentDate = new Date();
@@ -242,13 +261,13 @@ export async function POST() {
             xero_invoice_number: invoice.InvoiceNumber,
             invoice_status: invoice.Status,
             sale_date: saleDate || currentDate, // Fallback to current date if invalid
-            // invoice_due_date: dueDate, // TODO: Column exists in schema but not accepted by Xata yet
+            invoice_due_date: dueDate,
             sale_amount_inc_vat: total,
             sale_amount_ex_vat: invoice.SubTotal || (total / 1.2), // Use SubTotal or assume 20% VAT
             currency: 'GBP',
             needs_allocation: true, // Requires shopper assignment
             buyer: buyer ? buyer.id : null,
-            // buyer_name: contactName, // TODO: Column exists in schema but not accepted by Xata yet
+            buyer_name: contactName,
             brand: 'Unknown',
             category: 'Unknown',
             item_title: firstItem.Description || 'Imported from Xero',
@@ -258,11 +277,14 @@ export async function POST() {
             internal_notes: importNotes,
           });
           newCount++;
-          console.log(`[XERO SYNC] ✓ Created new sale for ${invoice.InvoiceNumber}`);
+          logger.info('XERO_SYNC', 'Created new sale', { invoiceNumber: invoice.InvoiceNumber });
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        console.error(`[XERO SYNC] ❌ Error processing invoice ${invoice.InvoiceNumber}:`, err);
+        logger.error('XERO_SYNC', 'Error processing invoice', {
+          invoiceNumber: invoice.InvoiceNumber || invoice.InvoiceID,
+          error: err as any
+        });
         errors.push({
           invoiceNumber: invoice.InvoiceNumber || invoice.InvoiceID,
           error: errorMessage
@@ -271,8 +293,13 @@ export async function POST() {
     }
 
     const duration = Date.now() - startTime;
-    console.log(`[XERO SYNC] ✓✓✓ Sync completed in ${duration}ms`);
-    console.log(`[XERO SYNC] Summary: ${newCount} new, ${updatedCount} updated, ${skippedCount} skipped, ${errors.length} errors`);
+    logger.info('XERO_SYNC', 'Sync completed', {
+      duration: `${duration}ms`,
+      new: newCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      errors: errors.length
+    });
 
     return NextResponse.json({
       success: true,
@@ -288,7 +315,7 @@ export async function POST() {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[XERO SYNC] ❌ Fatal error:', error);
+    logger.error('XERO_SYNC', 'Fatal error during sync', { error: error as any });
     return NextResponse.json({
       error: 'Sync failed',
       details: errorMessage

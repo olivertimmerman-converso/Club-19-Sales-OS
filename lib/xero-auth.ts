@@ -1,3 +1,4 @@
+import * as logger from './logger';
 import { clerkClient } from "@clerk/nextjs/server";
 
 /**
@@ -40,17 +41,17 @@ interface XeroTokenResponse {
  * @throws Error if Xero is not connected
  */
 export async function getTokens(userId: string): Promise<XeroTokens> {
-  console.log(`[XERO AUTH] Getting tokens for user: ${userId}`);
+  logger.info('XERO_AUTH', `Getting tokens for user: ${userId}`);
 
   const user = await clerkClient.users.getUser(userId);
   const meta = user.privateMetadata as XeroMetadata;
 
   if (!meta.xero?.accessToken || !meta.xero?.refreshToken || !meta.xero?.tenantId) {
-    console.error("[XERO AUTH] ❌ Xero not connected - missing tokens in metadata");
+    logger.error('XERO_AUTH', 'Xero not connected - missing tokens in metadata');
     throw new Error("Xero not connected. Please connect your Xero account.");
   }
 
-  console.log(`[XERO AUTH] ✓ Tokens found for tenant: ${meta.xero.tenantId}`);
+  logger.info('XERO_AUTH', `Tokens found for tenant: ${meta.xero.tenantId}`);
 
   return {
     accessToken: meta.xero.accessToken,
@@ -65,7 +66,7 @@ export async function getTokens(userId: string): Promise<XeroTokens> {
  * Save Xero tokens to Clerk metadata
  */
 export async function saveTokens(userId: string, tokens: XeroTokens): Promise<void> {
-  console.log(`[XERO AUTH] Saving tokens for user: ${userId}`);
+  logger.info('XERO_AUTH', `Saving tokens for user: ${userId}`);
 
   await clerkClient.users.updateUser(userId, {
     privateMetadata: {
@@ -80,7 +81,7 @@ export async function saveTokens(userId: string, tokens: XeroTokens): Promise<vo
     },
   });
 
-  console.log(`[XERO AUTH] ✓ Tokens saved successfully`);
+  logger.info('XERO_AUTH', 'Tokens saved successfully');
 }
 
 /**
@@ -89,7 +90,7 @@ export async function saveTokens(userId: string, tokens: XeroTokens): Promise<vo
  * @throws Error if refresh fails
  */
 export async function refreshTokens(userId: string): Promise<XeroTokens> {
-  console.log(`[XERO AUTH] Refreshing tokens for user: ${userId}`);
+  logger.info('XERO_AUTH', `Refreshing tokens for user: ${userId}`);
 
   // Get current tokens
   const currentTokens = await getTokens(userId);
@@ -99,12 +100,12 @@ export async function refreshTokens(userId: string): Promise<XeroTokens> {
   const clientSecret = process.env.XERO_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    console.error("[XERO AUTH] ❌ Missing Xero OAuth configuration");
+    logger.error('XERO_AUTH', 'Missing Xero OAuth configuration');
     throw new Error("Xero OAuth configuration missing on server");
   }
 
   try {
-    console.log("[XERO AUTH] Calling Xero token refresh endpoint...");
+    logger.info('XERO_AUTH', 'Calling Xero token refresh endpoint...');
     const refreshResponse = await fetch("https://identity.xero.com/connect/token", {
       method: "POST",
       headers: {
@@ -120,7 +121,7 @@ export async function refreshTokens(userId: string): Promise<XeroTokens> {
 
     if (!refreshResponse.ok) {
       const errorText = await refreshResponse.text();
-      console.error("[XERO AUTH] ❌ Token refresh failed:", {
+      logger.error('XERO_AUTH', 'Token refresh failed', {
         status: refreshResponse.status,
         error: errorText,
       });
@@ -136,7 +137,7 @@ export async function refreshTokens(userId: string): Promise<XeroTokens> {
     const newTokenData: XeroTokenResponse = await refreshResponse.json();
     const newExpiresAt = Date.now() + newTokenData.expires_in * 1000;
 
-    console.log(`[XERO AUTH] ✓ Token refreshed successfully (expires in ${newTokenData.expires_in}s)`);
+    logger.info('XERO_AUTH', `Token refreshed successfully (expires in ${newTokenData.expires_in}s)`);
 
     // Create new tokens object
     const newTokens: XeroTokens = {
@@ -152,7 +153,7 @@ export async function refreshTokens(userId: string): Promise<XeroTokens> {
 
     return newTokens;
   } catch (error: any) {
-    console.error("[XERO AUTH] ❌ Token refresh error:", error);
+    logger.error('XERO_AUTH', 'Token refresh error', { error: error as any } as any);
     throw error;
   }
 }
@@ -166,7 +167,7 @@ export async function refreshTokens(userId: string): Promise<XeroTokens> {
  * @throws Error if Xero is not connected or refresh fails
  */
 export async function getValidTokens(userId: string): Promise<XeroTokens> {
-  console.log(`[XERO AUTH] Getting valid tokens for user: ${userId}`);
+  logger.info('XERO_AUTH', `Getting valid tokens for user: ${userId}`);
 
   // Get current tokens
   const tokens = await getTokens(userId);
@@ -176,18 +177,18 @@ export async function getValidTokens(userId: string): Promise<XeroTokens> {
   const expiresIn = tokens.expiresAt - now;
   const needsRefresh = expiresIn < 60_000; // 60 seconds
 
-  console.log(`[XERO AUTH] Token status:`, {
+  logger.info('XERO_AUTH', 'Token status', {
     expiresIn: Math.floor(expiresIn / 1000) + "s",
     needsRefresh,
   });
 
   if (!needsRefresh) {
-    console.log("[XERO AUTH] ✓ Token still valid, using existing token");
+    logger.info('XERO_AUTH', 'Token still valid, using existing token');
     return tokens;
   }
 
   // Token expired or about to expire, refresh it
-  console.log("[XERO AUTH] Token expiring soon, refreshing...");
+  logger.info('XERO_AUTH', 'Token expiring soon, refreshing...');
   return await refreshTokens(userId);
 }
 
@@ -204,10 +205,10 @@ export async function hasXeroConnection(userId: string): Promise<boolean> {
       meta.xero?.refreshToken &&
       meta.xero?.tenantId
     );
-    console.log(`[XERO AUTH] Connection check for ${userId}: ${hasConnection}`);
+    logger.info('XERO_AUTH', `Connection check for ${userId}: ${hasConnection}`);
     return hasConnection;
   } catch (error) {
-    console.error("[XERO AUTH] Error checking connection:", error);
+    logger.error('XERO_AUTH', 'Error checking connection', { error: error as any });
     return false;
   }
 }
@@ -217,7 +218,7 @@ export async function hasXeroConnection(userId: string): Promise<boolean> {
  * Useful for "Disconnect" button in UI
  */
 export async function disconnectXero(userId: string): Promise<void> {
-  console.log(`[XERO AUTH] Disconnecting Xero for user: ${userId}`);
+  logger.info('XERO_AUTH', `Disconnecting Xero for user: ${userId}`);
 
   await clerkClient.users.updateUser(userId, {
     privateMetadata: {
@@ -225,5 +226,5 @@ export async function disconnectXero(userId: string): Promise<void> {
     },
   });
 
-  console.log(`[XERO AUTH] ✓ Xero disconnected successfully`);
+  logger.info('XERO_AUTH', 'Xero disconnected successfully');
 }

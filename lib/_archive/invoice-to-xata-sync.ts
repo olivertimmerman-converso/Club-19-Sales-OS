@@ -4,6 +4,7 @@
  * Syncs invoice data from the Trade Invoice wizard to Xata database
  */
 
+import * as logger from '../logger';
 import {
   createSale,
   findOrCreateShopper,
@@ -65,28 +66,28 @@ export interface InvoiceDataForSync {
  */
 export async function syncInvoiceToXata(data: InvoiceDataForSync) {
   try {
-    console.log("[XATA SYNC] Starting sync for invoice:", data.invoiceNumber);
+    logger.info('XERO_SYNC', `Starting sync for invoice: ${data.invoiceNumber}`);
 
     // Step 1: Find or create Shopper
     const shopper = await findOrCreateShopper(data.shopperName, {
       email: data.shopperEmail,
       active: true,
     });
-    console.log("[XATA SYNC] ✓ Shopper:", shopper.name, `(${shopper.id})`);
+    logger.info('XERO_SYNC', `Shopper: ${shopper.name} (${shopper.id})`);
 
     // Step 2: Find or create Buyer
     const buyer = await findOrCreateBuyer(data.buyerName, {
       email: data.buyerEmail,
       xero_contact_id: data.buyerXeroId,
     });
-    console.log("[XATA SYNC] ✓ Buyer:", buyer.name, `(${buyer.id})`);
+    logger.info('XERO_SYNC', `Buyer: ${buyer.name} (${buyer.id})`);
 
     // Step 3: Find or create Supplier
     const supplier = await findOrCreateSupplier(data.supplierName, {
       email: data.supplierEmail,
       xero_contact_id: data.supplierXeroId,
     });
-    console.log("[XATA SYNC] ✓ Supplier:", supplier.name, `(${supplier.id})`);
+    logger.info('XERO_SYNC', `Supplier: ${supplier.name} (${supplier.id})`);
 
     // Step 4: Create Sale record
     const saleInput: CreateSaleInput = {
@@ -131,9 +132,9 @@ export async function syncInvoiceToXata(data: InvoiceDataForSync) {
     };
 
     const sale = await createSale(saleInput);
-    console.log("[XATA SYNC] ✓ Sale created:", sale.id);
+    logger.info('XERO_SYNC', `Sale created: ${sale.id}`);
 
-    console.log("[XATA SYNC] ✅ Sync complete for invoice:", data.invoiceNumber);
+    logger.info('XERO_SYNC', `Sync complete for invoice: ${data.invoiceNumber}`);
 
     return {
       success: true,
@@ -143,7 +144,7 @@ export async function syncInvoiceToXata(data: InvoiceDataForSync) {
       supplier,
     };
   } catch (error) {
-    console.error("[XATA SYNC] ❌ Sync failed:", error);
+    logger.error('XERO_SYNC', 'Sync failed', error);
     throw error;
   }
 }
@@ -174,9 +175,9 @@ export async function updateSaleInXata(
       invoice_paid_date: updates.invoicePaidDate,
     });
 
-    console.log("[XATA SYNC] ✓ Sale updated:", saleId);
+    logger.info('XERO_SYNC', `Sale updated: ${saleId}`);
   } catch (error) {
-    console.error("[XATA SYNC] ❌ Update failed:", error);
+    logger.error('XERO_SYNC', 'Update failed', error);
     throw error;
   }
 }

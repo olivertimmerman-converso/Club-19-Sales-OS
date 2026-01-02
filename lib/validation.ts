@@ -9,6 +9,7 @@
 
 import type { CreateSalePayload } from "./xata-sales";
 import { calculateExVat } from "./economics";
+import * as logger from './logger';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -40,7 +41,7 @@ export function validateSaleInput(input: CreateSalePayload): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  console.log("[VALIDATION] Starting sale input validation");
+  logger.info('VALIDATION', 'Starting sale input validation');
 
   // =========================================================================
   // 1) REQUIRED FIELD CHECKS
@@ -258,15 +259,15 @@ export function validateSaleInput(input: CreateSalePayload): ValidationResult {
   // =========================================================================
 
   if (errors.length > 0) {
-    console.error(`[VALIDATION] ❌ Found ${errors.length} errors:`, errors);
+    logger.error('VALIDATION', `Found ${errors.length} errors`, errors);
   }
 
   if (warnings.length > 0) {
-    console.warn(`[VALIDATION] ⚠️ Found ${warnings.length} warnings:`, warnings);
+    logger.warn('VALIDATION', `Found ${warnings.length} warnings`, warnings);
   }
 
   if (errors.length === 0 && warnings.length === 0) {
-    console.log("[VALIDATION] ✓ All checks passed");
+    logger.info('VALIDATION', 'All checks passed');
   }
 
   return { errors, warnings };

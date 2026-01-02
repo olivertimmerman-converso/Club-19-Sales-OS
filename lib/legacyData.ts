@@ -9,6 +9,7 @@
  */
 
 import { xata } from "@/lib/xata-sales";
+import * as logger from "./logger";
 
 // Legacy tables are now active in Xata
 const LEGACY_TABLES_EXIST = true;
@@ -92,34 +93,34 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
   }
 
   try {
-    console.log("[legacyData] 🚀 getLegacySummary called");
-    console.log("[legacyData] 📊 Shopper filter:", shopper || "(all)");
-    console.log("[legacyData] 🗄️  Database URL:", (xata() as any).options?.databaseURL);
+    logger.info("LEGACY_DATA", "getLegacySummary called");
+    logger.info("LEGACY_DATA", "Shopper filter", { shopper: shopper || "(all)" } as any);
+    logger.debug("LEGACY_DATA", "Database URL", { url: (xata() as any).options?.databaseURL } as any);
 
     // Build filter
     const filter = shopper ? { source: shopper } : {};
-    console.log("[legacyData] 🔍 Query filter:", JSON.stringify(filter));
+    logger.debug("LEGACY_DATA", "Query filter", { filter });
 
     // Get all trades
-    console.log("[legacyData] 📡 Fetching trades from legacy_trades table");
+    logger.info("LEGACY_DATA", "Fetching trades from legacy_trades table");
     const trades: any[] = await xata().db.legacy_trades
       .filter(filter)
       .select(["sell_price", "margin", "trade_date"])
       .getAll();
 
-    console.log(`[legacyData] ✅ Trades query returned: ${trades.length} records`);
+    logger.info("LEGACY_DATA", "Trades query returned", { count: trades.length });
     if (trades.length > 0) {
-      console.log("[legacyData] 📋 Sample trade:", trades[0]);
+      logger.debug("LEGACY_DATA", "Sample trade", { trade: trades[0] });
     }
 
     // Get unique counts
-    console.log("[legacyData] 📡 Fetching clients from legacy_clients table");
+    logger.info("LEGACY_DATA", "Fetching clients from legacy_clients table");
     const clients: any[] = await xata().db.legacy_clients.getAll();
-    console.log(`[legacyData] ✅ Clients query returned: ${clients.length} records`);
+    logger.info("LEGACY_DATA", "Clients query returned", { count: clients.length });
 
-    console.log("[legacyData] 📡 Fetching suppliers from legacy_suppliers table");
+    logger.info("LEGACY_DATA", "Fetching suppliers from legacy_suppliers table");
     const suppliers: any[] = await xata().db.legacy_suppliers.getAll();
-    console.log(`[legacyData] ✅ Suppliers query returned: ${suppliers.length} records`);
+    logger.info("LEGACY_DATA", "Suppliers query returned", { count: suppliers.length });
 
     const totalSales = trades.reduce((sum: number, t: any) => sum + (t.sell_price || 0), 0);
     const totalMargin = trades.reduce((sum: number, t: any) => sum + (t.margin || 0), 0);
@@ -144,17 +145,16 @@ export async function getLegacySummary(shopper?: "Hope" | "MC"): Promise<LegacyS
       },
     };
 
-    console.log("[legacyData] 📊 Summary calculated:", summary);
-    console.log("[legacyData] ✅ getLegacySummary complete");
+    logger.info("LEGACY_DATA", "Summary calculated", { summary });
+    logger.info("LEGACY_DATA", "getLegacySummary complete");
     return summary;
   } catch (error) {
-    console.error("[legacyData] ❌ Error in getLegacySummary:", error);
-    console.error("[legacyData] 📊 Error details:", {
+    logger.error("LEGACY_DATA", "Error in getLegacySummary", {
       name: error instanceof Error ? error.name : "Unknown",
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
-    });
-    console.log("[legacyData] 🔄 Returning empty summary due to error");
+    } as any);
+    logger.info("LEGACY_DATA", "Returning empty summary due to error");
     return {
       totalSales: 0,
       totalMargin: 0,
@@ -198,13 +198,13 @@ export async function getLegacyMonthlySales(shopper?: "Hope" | "MC"): Promise<Mo
           // Fallback: try to convert to Date
           const date = new Date(trade.trade_date);
           if (isNaN(date.getTime())) {
-            console.warn('[getLegacyMonthlySales] Invalid trade_date:', trade.trade_date);
+            logger.warn("LEGACY_DATA", "Invalid trade_date in getLegacyMonthlySales", { trade_date: trade.trade_date });
             return;
           }
           month = date.toISOString().substring(0, 7);
         }
       } catch (err) {
-        console.error('[getLegacyMonthlySales] Error processing trade_date:', err);
+        logger.error("LEGACY_DATA", "Error processing trade_date in getLegacyMonthlySales", { error: err as any } as any);
         return;
       }
 
@@ -225,7 +225,7 @@ export async function getLegacyMonthlySales(shopper?: "Hope" | "MC"): Promise<Mo
       }))
       .sort((a, b) => a.month.localeCompare(b.month));
   } catch (error) {
-    console.error("[getLegacyMonthlySales] Error:", error);
+    logger.error("LEGACY_DATA", "Error in getLegacyMonthlySales", { error: error as any } as any);
     return [];
   }
 }
@@ -267,7 +267,7 @@ export async function getLegacyByCategory(shopper?: "Hope" | "MC"): Promise<Cate
       .sort((a, b) => b.sales - a.sales)
       .slice(0, 10); // Top 10
   } catch (error) {
-    console.error("[getLegacyByCategory] Error:", error);
+    logger.error("LEGACY_DATA", "Error in getLegacyByCategory", { error: error as any } as any);
     return [];
   }
 }
@@ -309,7 +309,7 @@ export async function getLegacyBySupplier(shopper?: "Hope" | "MC"): Promise<Supp
       .sort((a, b) => b.sales - a.sales)
       .slice(0, 10); // Top 10
   } catch (error) {
-    console.error("[getLegacyBySupplier] Error:", error);
+    logger.error("LEGACY_DATA", "Error in getLegacyBySupplier", { error: error as any } as any);
     return [];
   }
 }
@@ -351,7 +351,7 @@ export async function getTopLegacyClients(shopper?: "Hope" | "MC"): Promise<Clie
       .sort((a, b) => b.sales - a.sales)
       .slice(0, 10); // Top 10
   } catch (error) {
-    console.error("[getTopLegacyClients] Error:", error);
+    logger.error("LEGACY_DATA", "Error in getTopLegacyClients", { error: error as any } as any);
     return [];
   }
 }
@@ -410,7 +410,7 @@ export async function getRecentLegacyTrades(
       source: record.source || "",
     }));
   } catch (error) {
-    console.error("[getRecentLegacyTrades] Error:", error);
+    logger.error("LEGACY_DATA", "Error in getRecentLegacyTrades", { error: error as any } as any);
     return [];
   }
 }
@@ -462,7 +462,7 @@ export async function getReviewFlags(): Promise<ReviewFlags> {
       })),
     };
   } catch (error) {
-    console.error("[getReviewFlags] Error:", error);
+    logger.error("LEGACY_DATA", "Error in getReviewFlags", { error: error as any } as any);
     return {
       clientsRequiringReview: 0,
       suppliersRequiringReview: 0,
