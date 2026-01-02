@@ -28,7 +28,8 @@
       "Bash(wait)",
       "Bash(XATA_BRANCH=main XATA_API_KEY=\"xau_bsxtJS0755dKdgH2vAwhhRsuiDCytkJB1\" XATA_DATABASE_URL=\"https://Oliver-Timmerman-s-workspace-d3730u.eu-central-1.xata.sh/db/Club19SalesOS\" node:*)",
       "Bash(XATA_BRANCH=main XATA_API_KEY=\"xau_bsxtJS0755dKdgH2vAwhhRsuiDCytkJB1\" XATA_DATABASE_URL=\"https://Oliver-Timmerman-s-workspace-d3730u.eu-central-1.xata.sh/db/Club19SalesOS\" npx tsx:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
