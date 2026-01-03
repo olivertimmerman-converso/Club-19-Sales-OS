@@ -82,7 +82,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-[#F3DFA2]/20">
-            <div className="flex items-center gap-3">
+            <Link href="/staff/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
               {/* Club 19 Logo */}
               <div className="relative h-10 w-10 shrink-0 rounded-full overflow-hidden bg-white/5">
                 <Image
@@ -103,7 +103,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   SALES OS
                 </div>
               </div>
-            </div>
+            </Link>
             <button
               onClick={onClose}
               className="lg:hidden text-[#F3DFA2] hover:text-white transition-colors"

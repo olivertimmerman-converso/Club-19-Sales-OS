@@ -50,7 +50,7 @@ export function Sidebar({ role }: SidebarProps) {
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
       {/* Logo / Brand */}
       <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200">
-        <div className="flex items-center gap-3">
+        <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
           {/* Club 19 Circular Wordmark */}
           <div className="relative h-10 w-10 shrink-0">
             <Image
@@ -71,7 +71,7 @@ export function Sidebar({ role }: SidebarProps) {
               SALES OS
             </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Navigation */}
