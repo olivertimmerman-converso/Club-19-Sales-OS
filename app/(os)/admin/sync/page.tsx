@@ -26,6 +26,7 @@ export default async function SyncPage() {
       ]
     })
     .select(["*", "buyer.name"])
+    .sort("sale_date", "desc")
     .getAll();
 
   // Fetch shoppers
