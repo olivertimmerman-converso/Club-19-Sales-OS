@@ -105,6 +105,7 @@ const tables = [
       { name: "buyer_type", type: "text" },
       { name: "needs_allocation", type: "bool", defaultValue: "false" },
       { name: "source", type: "text" },
+      { name: "deleted_at", type: "datetime" },
     ],
     revLinks: [{ column: "sale", table: "Errors" }],
   },
