@@ -33,13 +33,14 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
   const [allocated, setAllocated] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
-  const syncInvoices = async () => {
+  const syncInvoices = async (fullSync = false) => {
     setSyncing(true);
     setSyncType('invoices');
     setSyncResult(null);
     setError(null);
     try {
-      const res = await fetch('/api/sync/xero-invoices', { method: 'POST' });
+      const url = fullSync ? '/api/sync/xero-invoices?full=true' : '/api/sync/xero-invoices';
+      const res = await fetch(url, { method: 'POST' });
       const data = await res.json();
       setSyncResult(data);
       if (data.success) {
@@ -149,12 +150,25 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
         <h2 className="text-lg font-semibold mb-4 text-gray-900">Sync Controls</h2>
         <div className="flex items-center gap-3 flex-wrap">
           <button
-            onClick={syncInvoices}
+            onClick={() => syncInvoices(false)}
             disabled={syncing}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             <RefreshCw className={`w-4 h-4 ${syncing && syncType === 'invoices' ? 'animate-spin' : ''}`} />
-            {syncing && syncType === 'invoices' ? 'Syncing...' : 'Sync Invoices from Xero'}
+            {syncing && syncType === 'invoices' ? 'Syncing...' : 'Sync Invoices (60 days)'}
+          </button>
+
+          <button
+            onClick={() => {
+              if (confirm('Full sync will fetch ALL invoices from Xero history and update dates on existing records. This may take several minutes. Continue?')) {
+                syncInvoices(true);
+              }
+            }}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-300 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncing && syncType === 'invoices' ? 'animate-spin' : ''}`} />
+            Full Historical Sync
           </button>
 
           <button
