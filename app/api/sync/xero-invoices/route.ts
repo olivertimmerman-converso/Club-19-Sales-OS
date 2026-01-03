@@ -80,9 +80,14 @@ interface XeroInvoicesResponse {
   Invoices: XeroInvoice[];
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const startTime = Date.now();
-  logger.info('XERO_SYNC', 'Starting Xero invoice sync');
+
+  // Check for full sync query parameter
+  const url = new URL(request.url);
+  const fullSync = url.searchParams.get('full') === 'true';
+
+  logger.info('XERO_SYNC', 'Starting Xero invoice sync', { fullSync });
 
   try {
     // 1. Auth check - superadmin, operations, or founder only
@@ -116,14 +121,22 @@ export async function POST() {
 
     // 3. Fetch all invoices from Xero with pagination
     // Include ALL statuses (DRAFT, SUBMITTED, AUTHORISED, PAID, etc.)
-    // Only fetch invoices from last 60 days to improve performance
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-    const dateFilter = `Date>=DateTime(${sixtyDaysAgo.getFullYear()},${sixtyDaysAgo.getMonth() + 1},${sixtyDaysAgo.getDate()})`;
+    // Conditional date filter based on fullSync parameter
+    let dateFilter = '';
+    let fromDate = null;
+
+    if (!fullSync) {
+      // Only fetch invoices from last 60 days (default)
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+      dateFilter = `Date>=DateTime(${sixtyDaysAgo.getFullYear()},${sixtyDaysAgo.getMonth() + 1},${sixtyDaysAgo.getDate()})`;
+      fromDate = sixtyDaysAgo.toISOString();
+    }
 
     logger.info('XERO_SYNC', 'Fetching invoices with pagination', {
-      dateFilter,
-      from: sixtyDaysAgo.toISOString()
+      fullSync,
+      dateFilter: dateFilter || 'NONE (fetching all invoices)',
+      from: fromDate || 'ALL TIME'
     });
 
     const allInvoices: XeroInvoice[] = [];
@@ -131,7 +144,10 @@ export async function POST() {
     let hasMorePages = true;
 
     while (hasMorePages) {
-      const xeroUrl = `https://api.xero.com/api.xro/2.0/Invoices?where=${encodeURIComponent(dateFilter)}&page=${page}`;
+      // Build URL with conditional date filter
+      const xeroUrl = dateFilter
+        ? `https://api.xero.com/api.xro/2.0/Invoices?where=${encodeURIComponent(dateFilter)}&page=${page}`
+        : `https://api.xero.com/api.xro/2.0/Invoices?page=${page}`;
 
       logger.info('XERO_SYNC', 'Fetching page', { page });
 
@@ -203,20 +219,39 @@ export async function POST() {
         }).getFirst();
 
         if (existing) {
-          // Update status if changed
-          if (existing.invoice_status !== invoice.Status) {
-            logger.info('XERO_SYNC', 'Updating invoice status', {
+          // Update status and/or date if changed
+          const statusChanged = existing.invoice_status !== invoice.Status;
+          const dateChanged = existing.sale_date && invoiceDate && existing.sale_date.getTime() !== invoiceDate.getTime();
+
+          if (statusChanged || dateChanged) {
+            const updates: any = {};
+            if (statusChanged) {
+              updates.invoice_status = invoice.Status;
+              updates.invoice_paid_date = invoice.Status === 'PAID' ? new Date() : null;
+            }
+            if (dateChanged && fullSync) {
+              // Only update dates during full sync to fix historical data
+              updates.sale_date = invoiceDate;
+            }
+
+            logger.info('XERO_SYNC', 'Updating invoice', {
               invoiceNumber: invoice.InvoiceNumber,
+              statusChanged,
+              dateChanged: dateChanged && fullSync,
               oldStatus: existing.invoice_status,
-              newStatus: invoice.Status
+              newStatus: invoice.Status,
+              oldDate: existing.sale_date?.toISOString().split('T')[0],
+              newDate: formattedDate
             });
-            await xata.db.Sales.update(existing.id, {
-              invoice_status: invoice.Status,
-              invoice_paid_date: invoice.Status === 'PAID' ? new Date() : null,
-            });
+
+            await xata.db.Sales.update(existing.id, updates);
             updatedCount++;
           } else {
-            logger.info('XERO_SYNC', 'No change for invoice', { invoiceNumber: invoice.InvoiceNumber });
+            logger.info('XERO_SYNC', 'Skipping - already exists with same data', {
+              invoiceNumber: invoice.InvoiceNumber,
+              status: invoice.Status,
+              date: formattedDate
+            });
             skippedCount++;
           }
         } else {
