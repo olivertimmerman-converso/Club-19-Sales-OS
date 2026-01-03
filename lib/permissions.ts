@@ -147,6 +147,10 @@ export const ROUTE_PERMISSIONS: Record<string, {
     allowedRoles: ["superadmin"],
     description: "System administration",
   },
+  "/admin/deleted-sales": {
+    allowedRoles: ["superadmin"],
+    description: "Deleted Sales (soft-deleted records with restore functionality)",
+  },
 };
 
 // ============================================================================

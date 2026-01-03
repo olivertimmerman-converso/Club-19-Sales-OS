@@ -28,11 +28,13 @@ interface Shopper {
 interface SalesTableClientProps {
   sales: Sale[];
   shoppers: Shopper[];
+  userRole: string | null;
 }
 
-export function SalesTableClient({ sales, shoppers }: SalesTableClientProps) {
+export function SalesTableClient({ sales, shoppers, userRole }: SalesTableClientProps) {
   const router = useRouter();
   const [updating, setUpdating] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleShopperChange = async (saleId: string, shopperId: string) => {
@@ -64,6 +66,34 @@ export function SalesTableClient({ sales, shoppers }: SalesTableClientProps) {
       setError(err instanceof Error ? err.message : 'Failed to update shopper');
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const handleDelete = async (saleId: string) => {
+    if (!confirm('Delete this sale? It can be restored later from the Deleted Sales page.')) {
+      return;
+    }
+
+    setDeleting(saleId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/sales/${saleId}/delete`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete sale');
+      }
+
+      // Refresh the page
+      router.refresh();
+    } catch (err) {
+      console.error('Error deleting sale:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete sale');
+      setDeleting(null);
     }
   };
 
@@ -179,6 +209,11 @@ export function SalesTableClient({ sales, shoppers }: SalesTableClientProps) {
                 >
                   Status
                 </th>
+                {userRole === 'superadmin' && (
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -239,6 +274,17 @@ export function SalesTableClient({ sales, shoppers }: SalesTableClientProps) {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {getStatusBadge(sale.invoice_status)}
                   </td>
+                  {userRole === 'superadmin' && (
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <button
+                        onClick={() => handleDelete(sale.id)}
+                        disabled={deleting === sale.id}
+                        className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deleting === sale.id ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

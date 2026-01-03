@@ -69,7 +69,10 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
       'invoice_status',
     ])
     .filter({
-      source: { $isNot: 'xero_import' }
+      $all: [
+        { source: { $isNot: 'xero_import' } },
+        { deleted_at: { $is: null } }
+      ]
     });
 
   // Apply date range filter
@@ -94,11 +97,16 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
   const ytdSales = await xata.db.Sales
     .select(['sale_amount_inc_vat', 'shopper.id', 'shopper.name'])
     .filter({
-      sale_date: {
-        $ge: ytdStart,
-        $le: now,
-      },
-      source: { $isNot: 'xero_import' }
+      $all: [
+        {
+          sale_date: {
+            $ge: ytdStart,
+            $le: now,
+          }
+        },
+        { source: { $isNot: 'xero_import' } },
+        { deleted_at: { $is: null } }
+      ]
     })
     .getMany({ pagination: { size: 500 } });
   logger.info('DASHBOARD', 'YTD sales fetched', { count: ytdSales.length });

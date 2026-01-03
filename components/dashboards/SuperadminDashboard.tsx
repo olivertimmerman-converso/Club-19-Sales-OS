@@ -39,7 +39,10 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
       'id',
     ])
     .filter({
-      source: { $isNot: 'xero_import' }
+      $all: [
+        { source: { $isNot: 'xero_import' } },
+        { deleted_at: { $is: null } }
+      ]
     });
 
   // Apply date range filter if specified
@@ -73,11 +76,16 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
     const lastMonthSales = await xata.db.Sales
       .select(['sale_amount_inc_vat', 'gross_margin'])
       .filter({
-        sale_date: {
-          $ge: lastMonthStart,
-          $le: lastMonthEnd,
-        },
-        source: { $isNot: 'xero_import' }
+        $all: [
+          {
+            sale_date: {
+              $ge: lastMonthStart,
+              $le: lastMonthEnd,
+            }
+          },
+          { source: { $isNot: 'xero_import' } },
+          { deleted_at: { $is: null } }
+        ]
       })
       .getMany({ pagination: { size: 1000 } });
 

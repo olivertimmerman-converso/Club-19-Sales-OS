@@ -73,6 +73,11 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     href: "/admin/sync",
     icon: "RefreshCw",
   },
+  {
+    label: "Deleted Sales",
+    href: "/admin/deleted-sales",
+    icon: "Trash2",
+  },
 ];
 
 /**

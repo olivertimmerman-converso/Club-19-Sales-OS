@@ -81,11 +81,16 @@ export async function OperationsDashboard({
 
   // Fetch comprehensive sales data for this month (exclude xero_import records)
   const salesQuery = xata.db.Sales.filter({
-    sale_date: {
-      $ge: dateRange.start,
-      $le: dateRange.end,
-    },
-    source: { $isNot: 'xero_import' }
+    $all: [
+      {
+        sale_date: {
+          $ge: dateRange.start,
+          $le: dateRange.end,
+        }
+      },
+      { source: { $isNot: 'xero_import' } },
+      { deleted_at: { $is: null } }
+    ]
   }).select([
     "id",
     "sale_date",
@@ -124,11 +129,16 @@ export async function OperationsDashboard({
   // Limit to 200 for comparison
   const lastMonthSales = await xata.db.Sales
     .filter({
-      sale_date: {
-        $ge: lastMonthStart,
-        $le: lastMonthEnd,
-      },
-      source: { $isNot: 'xero_import' }
+      $all: [
+        {
+          sale_date: {
+            $ge: lastMonthStart,
+            $le: lastMonthEnd,
+          }
+        },
+        { source: { $isNot: 'xero_import' } },
+        { deleted_at: { $is: null } }
+      ]
     })
     .select([
       "sale_amount_inc_vat",
@@ -142,11 +152,16 @@ export async function OperationsDashboard({
   const ytdStart = new Date(dateRange.start.getFullYear(), 0, 1);
   const ytdSales = await xata.db.Sales
     .filter({
-      sale_date: {
-        $ge: ytdStart,
-        $le: dateRange.end,
-      },
-      source: { $isNot: 'xero_import' }
+      $all: [
+        {
+          sale_date: {
+            $ge: ytdStart,
+            $le: dateRange.end,
+          }
+        },
+        { source: { $isNot: 'xero_import' } },
+        { deleted_at: { $is: null } }
+      ]
     })
     .select([
       "sale_amount_inc_vat",
@@ -159,8 +174,11 @@ export async function OperationsDashboard({
   // Fetch recent invoices to calculate outstanding amounts - limit to 500
   const invoices = await xata.db.Sales
     .filter({
-      xero_invoice_number: { $isNot: null },
-      source: { $isNot: 'xero_import' }
+      $all: [
+        { xero_invoice_number: { $isNot: null } },
+        { source: { $isNot: 'xero_import' } },
+        { deleted_at: { $is: null } }
+      ]
     })
     .select([
       "xero_invoice_number",
@@ -201,7 +219,10 @@ export async function OperationsDashboard({
   // Fetch recent sales for buyer analysis - limit to 1000
   const allSalesForBuyers = await xata.db.Sales
     .filter({
-      source: { $isNot: 'xero_import' }
+      $all: [
+        { source: { $isNot: 'xero_import' } },
+        { deleted_at: { $is: null } }
+      ]
     })
     .select(["buyer.id", "sale_date"])
     .sort("sale_date", "asc")

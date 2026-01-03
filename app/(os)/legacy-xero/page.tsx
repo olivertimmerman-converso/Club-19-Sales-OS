@@ -20,7 +20,12 @@ export default async function LegacyXeroPage() {
 
   // Get all Sales records with source='xero_import'
   const xeroImports = await xata.db.Sales
-    .filter({ source: 'xero_import' })
+    .filter({
+      $all: [
+        { source: 'xero_import' },
+        { deleted_at: { $is: null } }
+      ]
+    })
     .select(["*", "buyer.name"])
     .sort('sale_date', 'desc')
     .getAll();

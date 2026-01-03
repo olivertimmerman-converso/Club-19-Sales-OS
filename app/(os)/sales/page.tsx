@@ -53,7 +53,10 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
         'shopper.name',
       ])
       .filter({
-        source: { $isNot: 'xero_import' }
+        $all: [
+          { source: { $isNot: 'xero_import' } },
+          { deleted_at: { $is: null } }
+        ]
       });
 
     // Filter for shoppers - only show their own sales
@@ -192,7 +195,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
           </div>
         </div>
       ) : (
-        <SalesTableClient sales={sales} shoppers={shoppers} />
+        <SalesTableClient sales={sales} shoppers={shoppers} userRole={role} />
       )}
     </div>
   );

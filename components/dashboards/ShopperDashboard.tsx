@@ -77,8 +77,11 @@ export async function ShopperDashboard({
       'buyer.name',
     ])
     .filter({
-      shopper: shopper.id,
-      source: { $isNot: 'xero_import' }
+      $all: [
+        { shopper: shopper.id },
+        { source: { $isNot: 'xero_import' } },
+        { deleted_at: { $is: null } }
+      ]
     });
 
   // Apply date range filter if specified
