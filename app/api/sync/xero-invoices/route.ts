@@ -115,15 +115,23 @@ export async function POST() {
     logger.info('XERO_SYNC', 'Got valid Xero tokens');
 
     // 3. Fetch all invoices from Xero with pagination
-    const statusFilter = 'AUTHORISED,PAID,SUBMITTED';
-    logger.info('XERO_SYNC', 'Fetching invoices with pagination', { statusFilter });
+    // Include ALL statuses (DRAFT, SUBMITTED, AUTHORISED, PAID, etc.)
+    // Only fetch invoices from last 60 days to improve performance
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    const dateFilter = `Date>=DateTime(${sixtyDaysAgo.getFullYear()},${sixtyDaysAgo.getMonth() + 1},${sixtyDaysAgo.getDate()})`;
+
+    logger.info('XERO_SYNC', 'Fetching invoices with pagination', {
+      dateFilter,
+      from: sixtyDaysAgo.toISOString()
+    });
 
     const allInvoices: XeroInvoice[] = [];
     let page = 1;
     let hasMorePages = true;
 
     while (hasMorePages) {
-      const xeroUrl = `https://api.xero.com/api.xro/2.0/Invoices?Statuses=${statusFilter}&page=${page}`;
+      const xeroUrl = `https://api.xero.com/api.xro/2.0/Invoices?where=${encodeURIComponent(dateFilter)}&page=${page}`;
 
       logger.info('XERO_SYNC', 'Fetching page', { page });
 
@@ -179,8 +187,13 @@ export async function POST() {
           continue;
         }
 
+        // Parse invoice date for logging
+        const invoiceDate = safeDate(invoice.Date);
+        const formattedDate = invoiceDate ? invoiceDate.toISOString().split('T')[0] : invoice.Date;
+
         logger.info('XERO_SYNC', 'Processing invoice', {
           invoiceNumber: invoice.InvoiceNumber,
+          date: formattedDate,
           status: invoice.Status
         });
 
@@ -213,20 +226,20 @@ export async function POST() {
           const lineItems = invoice.LineItems || [];
           const firstItem = lineItems[0] || {};
 
-          logger.info('XERO_SYNC', 'Creating new sale', {
-            invoiceNumber: invoice.InvoiceNumber,
-            contactName
-          });
-
           // Safely parse dates
           const saleDate = safeDate(invoice.Date);
           const dueDate = safeDate(invoice.DueDate);
 
           if (!saleDate) {
-            logger.warn('XERO_SYNC', 'Invalid sale date', {
+            logger.error('XERO_SYNC', 'Invalid sale date - skipping invoice', {
               invoiceNumber: invoice.InvoiceNumber,
               dateValue: invoice.Date
             });
+            errors.push({
+              invoiceNumber: invoice.InvoiceNumber,
+              error: `Invalid sale date: ${invoice.Date}`
+            });
+            continue; // Skip this invoice if date is invalid
           }
           if (invoice.DueDate && !dueDate) {
             logger.warn('XERO_SYNC', 'Invalid due date', {
@@ -234,6 +247,13 @@ export async function POST() {
               dateValue: invoice.DueDate
             });
           }
+
+          logger.info('XERO_SYNC', 'Creating new sale', {
+            invoiceNumber: invoice.InvoiceNumber,
+            date: formattedDate,
+            contactName,
+            total
+          });
 
           // Try to find or create buyer
           let buyer = await xata.db.Buyers.filter({
@@ -260,7 +280,7 @@ export async function POST() {
             xero_invoice_id: invoice.InvoiceID,
             xero_invoice_number: invoice.InvoiceNumber,
             invoice_status: invoice.Status,
-            sale_date: saleDate || currentDate, // Fallback to current date if invalid
+            sale_date: saleDate, // Use invoice date from Xero (validated above)
             sale_amount_inc_vat: total,
             sale_amount_ex_vat: invoice.SubTotal || (total / 1.2), // Use SubTotal or assume 20% VAT
             currency: 'GBP',
