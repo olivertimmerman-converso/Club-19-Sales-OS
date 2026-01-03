@@ -27,7 +27,7 @@ interface Props {
 export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
-  const [syncType, setSyncType] = useState<'invoices' | 'payments' | null>(null);
+  const [syncType, setSyncType] = useState<'invoices' | 'payments' | 'force-fix' | null>(null);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [allocating, setAllocating] = useState<string | null>(null);
   const [allocated, setAllocated] = useState<Set<string>>(new Set());
@@ -76,6 +76,30 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
       console.error('[SYNC] Payment sync error:', err);
       setError('Sync failed');
       setSyncResult({ success: false, error: 'Sync failed' });
+    } finally {
+      setSyncing(false);
+      setSyncType(null);
+    }
+  };
+
+  const forceFixDates = async () => {
+    setSyncing(true);
+    setSyncType('force-fix');
+    setSyncResult(null);
+    setError(null);
+    try {
+      const res = await fetch('/api/sync/force-fix-dates', { method: 'POST' });
+      const data = await res.json();
+      setSyncResult(data);
+      if (data.success) {
+        setTimeout(() => router.refresh(), 1000);
+      } else {
+        setError(data.error || 'Force fix failed');
+      }
+    } catch (err) {
+      console.error('[SYNC] Force fix error:', err);
+      setError('Force fix failed');
+      setSyncResult({ success: false, error: 'Force fix failed' });
     } finally {
       setSyncing(false);
       setSyncType(null);
@@ -178,6 +202,19 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
           >
             <RefreshCw className={`w-4 h-4 ${syncing && syncType === 'payments' ? 'animate-spin' : ''}`} />
             {syncing && syncType === 'payments' ? 'Updating...' : 'Update Payment Statuses'}
+          </button>
+
+          <button
+            onClick={() => {
+              if (confirm('⚠️ FORCE FIX: This will fetch ALL invoices from Xero and force-update dates on EVERY matching Sales record, bypassing all conditional logic. This may take 5+ minutes. Continue?')) {
+                forceFixDates();
+              }
+            }}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <RefreshCw className={`w-4 h-4 ${syncing && syncType === 'force-fix' ? 'animate-spin' : ''}`} />
+            {syncing && syncType === 'force-fix' ? 'Fixing Dates...' : '🔧 Fix All Dates (Force)'}
           </button>
 
           {syncResult && (
