@@ -44,7 +44,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
     const monthLabel = formatMonthLabel(monthParam);
     logger.info('DASHBOARD', 'Date range calculated', { dateRange: dateRange as any });
 
-    // Query all sales for the selected month
+    // Query all sales for the selected month (exclude xero_import records)
     let salesQuery = xata.db.Sales
     .select([
       'id',
@@ -67,7 +67,10 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
       'buyer.name',
       'xero_invoice_number',
       'invoice_status',
-    ]);
+    ])
+    .filter({
+      source: { $isNot: 'xero_import' }
+    });
 
   // Apply date range filter
   if (dateRange) {
@@ -95,6 +98,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
         $ge: ytdStart,
         $le: now,
       },
+      source: { $isNot: 'xero_import' }
     })
     .getMany({ pagination: { size: 500 } });
   logger.info('DASHBOARD', 'YTD sales fetched', { count: ytdSales.length });

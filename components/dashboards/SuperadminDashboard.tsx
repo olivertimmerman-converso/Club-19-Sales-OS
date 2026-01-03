@@ -22,7 +22,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
   // Get date range for filtering
   const dateRange = getMonthDateRange(monthParam);
 
-  // Query Sales table for metrics
+  // Query Sales table for metrics (exclude xero_import records)
   let salesQuery = xata.db.Sales
     .select([
       'sale_amount_inc_vat',
@@ -37,7 +37,10 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
       'commission_locked',
       'shopper.name',
       'id',
-    ]);
+    ])
+    .filter({
+      source: { $isNot: 'xero_import' }
+    });
 
   // Apply date range filter if specified
   if (dateRange) {
@@ -74,6 +77,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
           $ge: lastMonthStart,
           $le: lastMonthEnd,
         },
+        source: { $isNot: 'xero_import' }
       })
       .getMany({ pagination: { size: 1000 } });
 

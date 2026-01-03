@@ -103,14 +103,8 @@ const tables = [
       { name: "admin_override_notes", type: "multiple" },
       { name: "xero_payment_date", type: "datetime" },
       { name: "buyer_type", type: "text" },
-      { name: "authenticity_status", type: "text" },
-      { name: "supplier_receipt_attached", type: "bool" },
-      { name: "buyer_name", type: "text" },
-      { name: "supplier_name", type: "text" },
-      { name: "shopper_name", type: "text" },
-      { name: "introducer_name", type: "text" },
-      { name: "invoice_due_date", type: "datetime" },
-      { name: "needs_allocation", type: "bool" },
+      { name: "needs_allocation", type: "bool", defaultValue: "false" },
+      { name: "source", type: "text" },
     ],
     revLinks: [{ column: "sale", table: "Errors" }],
   },
@@ -118,18 +112,12 @@ const tables = [
     name: "Errors",
     columns: [
       { name: "sale", type: "link", link: { table: "Sales" } },
-      { name: "error_type", type: "text" },
       { name: "severity", type: "text" },
       { name: "source", type: "text" },
       { name: "message", type: "multiple" },
-      { name: "metadata", type: "json" },
-      { name: "triggered_by", type: "text" },
       { name: "timestamp", type: "datetime" },
       { name: "resolved", type: "bool" },
       { name: "resolved_by", type: "text" },
-      { name: "resolved_at", type: "datetime" },
-      { name: "resolved_notes", type: "text" },
-      { name: "error_group", type: "text" },
     ],
   },
   {
@@ -143,10 +131,7 @@ const tables = [
       { name: "last_seen", type: "datetime" },
       { name: "trade_count", type: "int" },
     ],
-    revLinks: [
-      { column: "client_id", table: "legacy_trades" },
-      { column: "legacy_client", table: "legacy_trades" },
-    ],
+    revLinks: [{ column: "supplier_id", table: "legacy_trades" }],
   },
   {
     name: "legacy_clients",
@@ -159,36 +144,11 @@ const tables = [
       { name: "trade_count", type: "int" },
       { name: "requires_review", type: "bool" },
     ],
-    revLinks: [
-      { column: "supplier_id", table: "legacy_trades" },
-      { column: "legacy_supplier", table: "legacy_trades" },
-    ],
+    revLinks: [{ column: "client_id", table: "legacy_trades" }],
   },
   {
     name: "legacy_trades",
     columns: [
-      { name: "shopper", type: "text" },
-      { name: "date", type: "datetime" },
-      { name: "client_clean", type: "text" },
-      { name: "supplier_clean", type: "text" },
-      { name: "client_raw", type: "text" },
-      { name: "supplier_raw", type: "text" },
-      { name: "client_status", type: "text" },
-      { name: "supplier_status", type: "text" },
-      { name: "notes", type: "text" },
-      { name: "currency", type: "text" },
-      { name: "flags", type: "multiple" },
-      { name: "requires_review", type: "bool" },
-      {
-        name: "legacy_client",
-        type: "link",
-        link: { table: "legacy_clients" },
-      },
-      {
-        name: "legacy_supplier",
-        type: "link",
-        link: { table: "legacy_suppliers" },
-      },
       { name: "trade_date", type: "datetime" },
       { name: "raw_client", type: "text" },
       { name: "raw_supplier", type: "text" },
@@ -235,14 +195,14 @@ export type SalesRecord = Sales & XataRecord;
 export type Errors = InferredTypes["Errors"];
 export type ErrorsRecord = Errors & XataRecord;
 
-export type legacy_suppliers = InferredTypes["legacy_suppliers"];
-export type legacy_suppliersRecord = legacy_suppliers & XataRecord;
+export type LegacySuppliers = InferredTypes["legacy_suppliers"];
+export type LegacySuppliersRecord = LegacySuppliers & XataRecord;
 
-export type legacy_clients = InferredTypes["legacy_clients"];
-export type legacy_clientsRecord = legacy_clients & XataRecord;
+export type LegacyClients = InferredTypes["legacy_clients"];
+export type LegacyClientsRecord = LegacyClients & XataRecord;
 
-export type legacy_trades = InferredTypes["legacy_trades"];
-export type legacy_tradesRecord = legacy_trades & XataRecord;
+export type LegacyTrades = InferredTypes["legacy_trades"];
+export type LegacyTradesRecord = LegacyTrades & XataRecord;
 
 export type DatabaseSchema = {
   Shoppers: ShoppersRecord;
@@ -252,9 +212,9 @@ export type DatabaseSchema = {
   CommissionBands: CommissionBandsRecord;
   Sales: SalesRecord;
   Errors: ErrorsRecord;
-  legacy_suppliers: legacy_suppliersRecord;
-  legacy_clients: legacy_clientsRecord;
-  legacy_trades: legacy_tradesRecord;
+  legacy_suppliers: LegacySuppliersRecord;
+  legacy_clients: LegacyClientsRecord;
+  legacy_trades: LegacyTradesRecord;
 };
 
 const DatabaseClient = buildClient();

@@ -79,12 +79,13 @@ export async function OperationsDashboard({
   const dateRange = getDateRange(monthParam);
   const monthLabel = getMonthLabel(monthParam);
 
-  // Fetch comprehensive sales data for this month
+  // Fetch comprehensive sales data for this month (exclude xero_import records)
   const salesQuery = xata.db.Sales.filter({
     sale_date: {
       $ge: dateRange.start,
       $le: dateRange.end,
     },
+    source: { $isNot: 'xero_import' }
   }).select([
     "id",
     "sale_date",
@@ -127,6 +128,7 @@ export async function OperationsDashboard({
         $ge: lastMonthStart,
         $le: lastMonthEnd,
       },
+      source: { $isNot: 'xero_import' }
     })
     .select([
       "sale_amount_inc_vat",
@@ -144,6 +146,7 @@ export async function OperationsDashboard({
         $ge: ytdStart,
         $le: dateRange.end,
       },
+      source: { $isNot: 'xero_import' }
     })
     .select([
       "sale_amount_inc_vat",
@@ -157,6 +160,7 @@ export async function OperationsDashboard({
   const invoices = await xata.db.Sales
     .filter({
       xero_invoice_number: { $isNot: null },
+      source: { $isNot: 'xero_import' }
     })
     .select([
       "xero_invoice_number",
@@ -196,6 +200,9 @@ export async function OperationsDashboard({
 
   // Fetch recent sales for buyer analysis - limit to 1000
   const allSalesForBuyers = await xata.db.Sales
+    .filter({
+      source: { $isNot: 'xero_import' }
+    })
     .select(["buyer.id", "sale_date"])
     .sort("sale_date", "asc")
     .getMany({ pagination: { size: 1000 } });

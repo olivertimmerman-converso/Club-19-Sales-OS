@@ -239,6 +239,7 @@ export async function POST(request: NextRequest) {
         sale_reference: saleReference,
         sale_date: new Date(),
         status: 'active',
+        source: 'atelier', // Sales Atelier origin
 
         // Buyer (link to Buyers table) - only if buyer exists
         buyer: buyer?.id || undefined,

@@ -80,7 +80,11 @@ export const ROUTE_PERMISSIONS: Record<string, {
   },
   "/legacy": {
     allowedRoles: ["superadmin", "operations", "admin", "finance"],
-    description: "Legacy data dashboards",
+    description: "Sales Sheet Data (legacy_trades table)",
+  },
+  "/legacy-xero": {
+    allowedRoles: ["superadmin", "operations", "admin", "finance"],
+    description: "Legacy Xero Data (xero_import Sales records)",
   },
   "/trade": {
     allowedRoles: ["superadmin", "founder", "operations", "shopper"],

@@ -265,6 +265,7 @@ export async function POST() {
             sale_amount_inc_vat: total,
             sale_amount_ex_vat: invoice.SubTotal || (total / 1.2), // Use SubTotal or assume 20% VAT
             currency: 'GBP',
+            source: 'xero_import', // Xero sync origin
             needs_allocation: true, // Requires shopper assignment
             buyer: buyer ? buyer.id : null,
             buyer_name: contactName,

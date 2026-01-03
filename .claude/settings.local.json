@@ -33,7 +33,9 @@
       "Bash(npm outdated:*)",
       "Bash(npx depcheck:*)",
       "Bash(npm update:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(openssl rand:*)",
+      "Bash(git rev-list:*)"
     ],
     "deny": [],
     "ask": []

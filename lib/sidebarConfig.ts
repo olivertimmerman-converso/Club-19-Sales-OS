@@ -54,8 +54,13 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "Calculator",
   },
   {
-    label: "Legacy Data",
+    label: "Sales Sheet Data",
     href: "/legacy",
+    icon: "Archive",
+  },
+  {
+    label: "Legacy Xero Data",
+    href: "/legacy-xero",
     icon: "Archive",
   },
   {
@@ -133,8 +138,14 @@ export const sidebarConfig: Record<string, SidebarItem & { roles: StaffRole[] }>
     icon: "Shield",
   },
   legacy: {
-    label: "Legacy Data",
+    label: "Sales Sheet Data",
     href: "/legacy",
+    roles: ["superadmin", "admin", "finance", "operations"],
+    icon: "Archive",
+  },
+  legacyXero: {
+    label: "Legacy Xero Data",
+    href: "/legacy-xero",
     roles: ["superadmin", "admin", "finance", "operations"],
     icon: "Archive",
   },

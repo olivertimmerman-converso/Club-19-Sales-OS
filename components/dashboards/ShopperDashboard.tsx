@@ -76,7 +76,10 @@ export async function ShopperDashboard({
       'commission_paid',
       'buyer.name',
     ])
-    .filter({ shopper: shopper.id });
+    .filter({
+      shopper: shopper.id,
+      source: { $isNot: 'xero_import' }
+    });
 
   // Apply date range filter if specified
   if (dateRange) {

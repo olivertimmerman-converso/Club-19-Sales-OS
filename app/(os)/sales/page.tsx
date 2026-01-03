@@ -35,7 +35,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
     const dateRange = getMonthDateRange(monthParam);
     console.log('[SalesPage] Date range:', dateRange);
 
-    // Query Sales table from Xata - now including shopper.id for the dropdown
+    // Query Sales table from Xata (exclude xero_import records) - now including shopper.id for the dropdown
     let query = xata.db.Sales
       .select([
         'id',
@@ -51,7 +51,10 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
         'buyer.name',
         'shopper.id',
         'shopper.name',
-      ]);
+      ])
+      .filter({
+        source: { $isNot: 'xero_import' }
+      });
 
     // Filter for shoppers - only show their own sales
     if (role === 'shopper') {
