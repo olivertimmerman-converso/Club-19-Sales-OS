@@ -226,26 +226,34 @@ export async function POST(request: Request) {
           const statusChanged = existing.invoice_status !== invoice.Status;
           const dateChanged = existing.sale_date && invoiceDate && existing.sale_date.getTime() !== invoiceDate.getTime();
 
-          if (statusChanged || dateChanged) {
+          // During full sync, update date even if existing date is null
+          const shouldUpdateDate = fullSync && invoiceDate && (
+            !existing.sale_date ||
+            existing.sale_date.getTime() !== invoiceDate.getTime()
+          );
+
+          if (statusChanged || dateChanged || shouldUpdateDate) {
             const updates: any = {};
             if (statusChanged) {
               updates.invoice_status = invoice.Status;
               // Use actual paid date from Xero if available, otherwise null
               updates.invoice_paid_date = invoice.FullyPaidOnDate ? safeDate(invoice.FullyPaidOnDate) : null;
             }
-            if (dateChanged && fullSync) {
-              // Only update dates during full sync to fix historical data
+            if (shouldUpdateDate) {
+              // Update dates during full sync to fix historical data
               updates.sale_date = invoiceDate;
             }
 
             logger.info('XERO_SYNC', 'Updating invoice', {
               invoiceNumber: invoice.InvoiceNumber,
+              fullSync,
               statusChanged,
-              dateChanged: dateChanged && fullSync,
+              shouldUpdateDate,
               oldStatus: existing.invoice_status,
               newStatus: invoice.Status,
-              oldDate: existing.sale_date?.toISOString().split('T')[0],
-              newDate: formattedDate
+              oldDate: existing.sale_date?.toISOString().split('T')[0] || 'null',
+              newDate: formattedDate,
+              updateFields: Object.keys(updates)
             });
 
             await xata.db.Sales.update(existing.id, updates);
