@@ -17,9 +17,9 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const saleId = params.id;
+  const { id: saleId } = await params;
 
   logger.info('SALES_RESTORE', 'Restore request received', { saleId });
 
