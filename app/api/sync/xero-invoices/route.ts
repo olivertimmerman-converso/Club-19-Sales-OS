@@ -18,19 +18,59 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Safely convert a date value to Date object or null
- * Handles invalid dates without throwing errors
+ * Handles Xero's .NET JSON date format: /Date(1731456000000+0000)/
+ * Also handles standard ISO dates and timestamps
  */
 function safeDate(dateValue: unknown): Date | null {
   if (!dateValue) return null;
+
   try {
-    const date = new Date(dateValue as string | number | Date);
-    if (isNaN(date.getTime())) {
-      logger.warn('XERO_SYNC', 'Invalid date value', { dateValue: String(dateValue) });
-      return null;
+    // Handle Xero's .NET JSON date format: /Date(1731456000000+0000)/
+    if (typeof dateValue === 'string') {
+      const match = dateValue.match(/\/Date\((\d+)([+-]\d{4})?\)\//);
+      if (match) {
+        const timestamp = parseInt(match[1], 10);
+        const date = new Date(timestamp);
+        if (!isNaN(date.getTime())) {
+          logger.info('XERO_SYNC', 'Parsed .NET JSON date', {
+            original: dateValue,
+            timestamp,
+            parsed: date.toISOString()
+          });
+          return date;
+        }
+      }
+
+      // Try standard date parsing (ISO 8601, etc.)
+      const parsed = new Date(dateValue);
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
     }
-    return date;
+
+    // Handle if it's already a Date object
+    if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
+      return dateValue;
+    }
+
+    // Handle numeric timestamp
+    if (typeof dateValue === 'number') {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+
+    logger.warn('XERO_SYNC', 'Could not parse date value', {
+      dateValue: String(dateValue),
+      type: typeof dateValue
+    });
+    return null;
   } catch (err) {
-    logger.error('XERO_SYNC', 'Error parsing date', { dateValue: String(dateValue), error: err as any });
+    logger.error('XERO_SYNC', 'Error parsing date', {
+      dateValue: String(dateValue),
+      error: err as any
+    });
     return null;
   }
 }
