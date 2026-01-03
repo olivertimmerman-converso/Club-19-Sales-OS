@@ -32,6 +32,10 @@ interface SalesTableClientProps {
 }
 
 export function SalesTableClient({ sales, shoppers, userRole }: SalesTableClientProps) {
+  console.log('[SalesTableClient] Received userRole:', userRole);
+  console.log('[SalesTableClient] userRole type:', typeof userRole);
+  console.log('[SalesTableClient] Is superadmin?', userRole === 'superadmin');
+
   const router = useRouter();
   const [updating, setUpdating] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -138,6 +142,13 @@ export function SalesTableClient({ sales, shoppers, userRole }: SalesTableClient
 
   return (
     <>
+      {/* Debug indicator - TEMPORARY */}
+      <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm font-medium text-blue-800">
+          DEBUG: Current role = "{userRole}" | Is superadmin? {userRole === 'superadmin' ? 'YES' : 'NO'}
+        </p>
+      </div>
+
       {error && (
         <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-sm font-medium text-red-800">{error}</p>
