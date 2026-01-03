@@ -145,7 +145,7 @@ export function SalesTableClient({ sales, shoppers, userRole }: SalesTableClient
       {/* Debug indicator - TEMPORARY */}
       <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm font-medium text-blue-800">
-          DEBUG: Current role = "{userRole}" | Is superadmin? {userRole === 'superadmin' ? 'YES' : 'NO'}
+          DEBUG: Current role = &quot;{userRole}&quot; | Is superadmin? {userRole === 'superadmin' ? 'YES' : 'NO'}
         </p>
       </div>
 
