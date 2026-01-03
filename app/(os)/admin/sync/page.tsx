@@ -20,7 +20,7 @@ export default async function SyncPage() {
   // Fetch unallocated sales - using wildcard to avoid column selection issues
   const unallocatedRaw = await xata.db.Sales
     .filter({ needs_allocation: true })
-    .select(["*", "buyer.name"])
+    .select(["*", "buyer.name", "buyer_name"])
     .getAll();
 
   // Fetch shoppers
