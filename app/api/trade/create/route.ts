@@ -291,7 +291,8 @@ export async function POST(request: NextRequest) {
         supplier: supplier?.id || undefined,
 
         // Note: Introducer link is NOT set at creation - will be added manually in Sales OS
-        // introducer: null (implicitly null, details added later)
+        // But we do set the has_introducer flag if the checkbox was ticked
+        has_introducer: hasIntroducer,
 
         // Item details (from first item)
         brand: firstItem.brand,

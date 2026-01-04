@@ -106,6 +106,8 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
     commission_paid: sale.commission_paid || false,
     commission_amount: sale.commission_amount || null,
     internal_notes: sale.internal_notes || null,
+    has_introducer: (sale as any).has_introducer || false,
+    introducer_commission: (sale as any).introducer_commission || null,
     buyer: sale.buyer ? {
       id: sale.buyer.id,
       name: sale.buyer.name || 'Unknown',

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getBrandingThemeMapping } from '@/lib/branding-theme-mappings';
@@ -38,9 +38,16 @@ interface Sale {
   shopper: { id: string; name: string } | null;
   supplier: { id: string; name: string } | null;
   introducer: { id: string; name: string } | null;
+  has_introducer: boolean;
+  introducer_commission: number | null;
 }
 
 interface Shopper {
+  id: string;
+  name: string;
+}
+
+interface Introducer {
   id: string;
   name: string;
 }
@@ -112,6 +119,38 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
   const [isFixingVAT, setIsFixingVAT] = useState(false);
   const [fixVATError, setFixVATError] = useState<string | null>(null);
   const [fixVATSuccess, setFixVATSuccess] = useState(false);
+
+  // Introducer management state
+  const [introducers, setIntroducers] = useState<Introducer[]>([]);
+  const [selectedIntroducerId, setSelectedIntroducerId] = useState(sale.introducer?.id || '');
+  const [introducerCommission, setIntroducerCommission] = useState(sale.introducer_commission?.toString() || '');
+  const [showAddNew, setShowAddNew] = useState(false);
+  const [newIntroducerName, setNewIntroducerName] = useState('');
+  const [isLoadingIntroducers, setIsLoadingIntroducers] = useState(false);
+  const [isSavingIntroducer, setIsSavingIntroducer] = useState(false);
+  const [introducerSaveError, setIntroducerSaveError] = useState<string | null>(null);
+  const [introducerSaveSuccess, setIntroducerSaveSuccess] = useState(false);
+
+  // Fetch introducers on mount
+  useEffect(() => {
+    const fetchIntroducers = async () => {
+      setIsLoadingIntroducers(true);
+      try {
+        const response = await fetch('/api/introducers');
+        if (!response.ok) {
+          throw new Error('Failed to fetch introducers');
+        }
+        const data = await response.json();
+        setIntroducers(data);
+      } catch (error) {
+        console.error('Error fetching introducers:', error);
+      } finally {
+        setIsLoadingIntroducers(false);
+      }
+    };
+
+    fetchIntroducers();
+  }, []);
 
   const hasChanges = selectedShopperId !== (sale.shopper?.id || '');
 
@@ -226,6 +265,71 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
       setFixVATError(error instanceof Error ? error.message : 'Failed to fix VAT');
     } finally {
       setIsFixingVAT(false);
+    }
+  };
+
+  const handleSaveIntroducer = async () => {
+    setIsSavingIntroducer(true);
+    setIntroducerSaveError(null);
+    setIntroducerSaveSuccess(false);
+
+    try {
+      let introducerIdToSave = selectedIntroducerId;
+
+      // If "add new" is selected, create the introducer first
+      if (showAddNew && newIntroducerName.trim()) {
+        const createResponse = await fetch('/api/introducers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: newIntroducerName.trim(),
+          }),
+        });
+
+        if (!createResponse.ok) {
+          const errorData = await createResponse.json();
+          throw new Error(errorData.error || 'Failed to create introducer');
+        }
+
+        const newIntroducer = await createResponse.json();
+        introducerIdToSave = newIntroducer.id;
+
+        // Add to local list
+        setIntroducers([...introducers, newIntroducer]);
+        setShowAddNew(false);
+        setNewIntroducerName('');
+      }
+
+      // Save introducer assignment to sale
+      const response = await fetch(`/api/sales/${sale.id}/introducer`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          introducerId: introducerIdToSave || null,
+          introducerCommission: introducerCommission ? parseFloat(introducerCommission) : null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save introducer');
+      }
+
+      setIntroducerSaveSuccess(true);
+
+      // Refresh the page data after a short delay to show success message
+      setTimeout(() => {
+        router.refresh();
+      }, 1500);
+    } catch (error) {
+      console.error('Error saving introducer:', error);
+      setIntroducerSaveError(error instanceof Error ? error.message : 'Failed to save introducer');
+    } finally {
+      setIsSavingIntroducer(false);
     }
   };
 
@@ -669,6 +773,14 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
                   </div>
                 </div>
               </div>
+              {sale.introducer_commission && (
+                <div className="flex justify-between pt-2 border-t border-green-200">
+                  <dt className="text-sm text-green-800">Less Introducer Fee</dt>
+                  <dd className="text-sm font-medium text-red-700">
+                    -{formatCurrency(sale.introducer_commission)}
+                  </dd>
+                </div>
+              )}
               {sale.commissionable_margin && (
                 <div className="flex justify-between pt-2 border-t border-green-200">
                   <dt className="text-sm text-green-800">Commissionable Margin</dt>
@@ -681,24 +793,103 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
           </div>
         </div>
 
-        {/* Referral Partner Card - Only show if introducer exists */}
-        {sale.introducer && (
+        {/* Introducer Management Card - Only show if has_introducer is true OR introducer exists */}
+        {(sale.has_introducer || sale.introducer) && (
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 lg:col-span-2">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Referral Partner</h2>
-            <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-              <dl className="space-y-2">
-                <div>
-                  <dt className="text-sm font-medium text-gray-600">Partner Name</dt>
-                  <dd className="text-base font-semibold text-gray-900 mt-1">
-                    {sale.introducer.name}
-                  </dd>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Introducer</h2>
+
+            {/* Success/Error Messages */}
+            {introducerSaveSuccess && (
+              <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="text-sm font-medium text-green-800">Introducer updated successfully!</p>
+              </div>
+            )}
+            {introducerSaveError && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm font-medium text-red-800">{introducerSaveError}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {/* Introducer Dropdown */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Introducer
+                </label>
+                <select
+                  value={showAddNew ? 'add_new' : selectedIntroducerId}
+                  onChange={(e) => {
+                    if (e.target.value === 'add_new') {
+                      setShowAddNew(true);
+                      setSelectedIntroducerId('');
+                    } else {
+                      setShowAddNew(false);
+                      setSelectedIntroducerId(e.target.value);
+                      setIntroducerSaveError(null);
+                      setIntroducerSaveSuccess(false);
+                    }
+                  }}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                  disabled={isSavingIntroducer || isLoadingIntroducers}
+                >
+                  <option value="">— Select Introducer —</option>
+                  {introducers.map((introducer) => (
+                    <option key={introducer.id} value={introducer.id}>
+                      {introducer.name}
+                    </option>
+                  ))}
+                  <option value="add_new">+ Add New Introducer</option>
+                </select>
+              </div>
+
+              {/* Add New Introducer Input */}
+              {showAddNew && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    New Introducer Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newIntroducerName}
+                    onChange={(e) => setNewIntroducerName(e.target.value)}
+                    placeholder="Enter introducer name..."
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                    disabled={isSavingIntroducer}
+                  />
                 </div>
-                <div className="mt-3 pt-3 border-t border-orange-300">
-                  <p className="text-sm text-gray-600">
-                    Commission amount will be added manually before month-end sign-off
-                  </p>
-                </div>
-              </dl>
+              )}
+
+              {/* Commission Amount */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Commission Amount (£)
+                </label>
+                <input
+                  type="number"
+                  value={introducerCommission}
+                  onChange={(e) => {
+                    setIntroducerCommission(e.target.value);
+                    setIntroducerSaveError(null);
+                    setIntroducerSaveSuccess(false);
+                  }}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                  disabled={isSavingIntroducer}
+                />
+              </div>
+
+              {/* Save Button */}
+              <div>
+                <button
+                  onClick={handleSaveIntroducer}
+                  disabled={isSavingIntroducer || isLoadingIntroducers || (!selectedIntroducerId && !showAddNew)}
+                  className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isSavingIntroducer ? 'Saving...' : 'Save Introducer'}
+                </button>
+              </div>
             </div>
           </div>
         )}
