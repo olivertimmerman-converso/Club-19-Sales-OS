@@ -5,6 +5,7 @@ import { XataClient } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
 import * as logger from "@/lib/logger";
 import { getBrandingThemeMapping } from "@/lib/branding-theme-mappings";
+import { getValidTokens } from "@/lib/xero-auth";
 
 // Initialize Xata client
 const xata = new XataClient();
@@ -31,6 +32,90 @@ async function generateSaleReference(): Promise<string> {
 
   const nextNumber = parseInt(match[1], 10) + 1;
   return `C19-${nextNumber.toString().padStart(4, '0')}`;
+}
+
+/**
+ * Auto-sync Xero invoice details after sale creation
+ * Searches Xero for invoice matching the sale reference and updates the Sales record
+ * Does not throw errors - logs failures and continues
+ */
+async function autoSyncXeroInvoice(saleId: string, saleReference: string): Promise<void> {
+  try {
+    logger.info('AUTO_SYNC', 'Starting auto-sync for sale', { saleId, saleReference });
+
+    // Get system user's Xero tokens
+    const systemUserId = process.env.XERO_SYSTEM_USER_ID;
+    if (!systemUserId || systemUserId === 'FILL_ME') {
+      logger.warn('AUTO_SYNC', 'XERO_SYSTEM_USER_ID not configured - skipping auto-sync');
+      return;
+    }
+
+    // Wait 3 seconds for Xero to process the invoice
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    const tokens = await getValidTokens(systemUserId);
+    logger.info('AUTO_SYNC', 'Got valid Xero tokens');
+
+    // Search for invoice with reference matching sale_reference
+    const searchUrl = `https://api.xero.com/api.xro/2.0/Invoices?where=Reference=="${encodeURIComponent(saleReference)}"`;
+
+    const xeroResponse = await fetch(searchUrl, {
+      headers: {
+        'Authorization': `Bearer ${tokens.accessToken}`,
+        'Xero-Tenant-Id': tokens.tenantId,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!xeroResponse.ok) {
+      const errorText = await xeroResponse.text();
+      logger.error('AUTO_SYNC', 'Xero API error', {
+        status: xeroResponse.status,
+        details: errorText,
+        searchUrl
+      });
+      return;
+    }
+
+    const xeroData: any = await xeroResponse.json();
+    const invoices = xeroData.Invoices || [];
+
+    logger.info('AUTO_SYNC', 'Xero search completed', {
+      saleReference,
+      invoicesFound: invoices.length
+    });
+
+    if (invoices.length === 0) {
+      logger.warn('AUTO_SYNC', 'No invoice found in Xero with reference', { saleReference });
+      return;
+    }
+
+    const invoice = invoices[0]; // Take first match
+
+    // Update sale record with Xero invoice details
+    await xata.db.Sales.update(saleId, {
+      xero_invoice_id: invoice.InvoiceID,
+      xero_invoice_number: invoice.InvoiceNumber,
+      xero_invoice_url: `https://go.xero.com/AccountsReceivable/Edit.aspx?InvoiceID=${invoice.InvoiceID}`,
+      invoice_status: invoice.Status,
+    });
+
+    logger.info('AUTO_SYNC', 'Successfully synced Xero invoice', {
+      saleId,
+      saleReference,
+      xeroInvoiceNumber: invoice.InvoiceNumber,
+      xeroInvoiceId: invoice.InvoiceID,
+      status: invoice.Status
+    });
+  } catch (error) {
+    // Don't throw - just log the error and continue
+    logger.error('AUTO_SYNC', 'Failed to auto-sync Xero invoice', {
+      saleId,
+      saleReference,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+  }
 }
 
 /**
@@ -332,6 +417,15 @@ export async function POST(request: NextRequest) {
         saleId: saleRecord.id,
         saleReference,
         xeroInvoiceNumber: makeData.invoiceNumber
+      });
+
+      // Auto-sync Xero invoice details (non-blocking - logs errors but doesn't fail)
+      // This happens in the background after the response is sent
+      autoSyncXeroInvoice(saleRecord.id, saleReference).catch(err => {
+        logger.error('TRADE_CREATE', 'Auto-sync promise rejected', {
+          saleId: saleRecord.id,
+          error: err instanceof Error ? err.message : 'Unknown error'
+        });
       });
 
       // Return success response with sale ID
