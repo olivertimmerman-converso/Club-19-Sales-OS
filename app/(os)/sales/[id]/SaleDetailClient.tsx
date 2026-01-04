@@ -108,6 +108,11 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState(false);
 
+  // Fix VAT state
+  const [isFixingVAT, setIsFixingVAT] = useState(false);
+  const [fixVATError, setFixVATError] = useState<string | null>(null);
+  const [fixVATSuccess, setFixVATSuccess] = useState(false);
+
   const hasChanges = selectedShopperId !== (sale.shopper?.id || '');
 
   const handleSave = async () => {
@@ -188,6 +193,39 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
       setLinkError(error instanceof Error ? error.message : 'Failed to link Xero invoice');
     } finally {
       setIsLinking(false);
+    }
+  };
+
+  const handleFixVAT = async () => {
+    setIsFixingVAT(true);
+    setFixVATError(null);
+    setFixVATSuccess(false);
+
+    try {
+      const response = await fetch(`/api/sales/${sale.id}/fix-vat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fix VAT');
+      }
+
+      const data = await response.json();
+      setFixVATSuccess(true);
+
+      // Refresh the page data after a short delay to show success message
+      setTimeout(() => {
+        router.refresh();
+      }, 1500);
+    } catch (error) {
+      console.error('Error fixing VAT:', error);
+      setFixVATError(error instanceof Error ? error.message : 'Failed to fix VAT');
+    } finally {
+      setIsFixingVAT(false);
     }
   };
 
@@ -531,9 +569,26 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
           {/* VAT Discrepancy Warning */}
           {vatLogic.hasDiscrepancy && (
             <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800">
-                <span className="font-semibold">⚠️ VAT Discrepancy:</span> The effective VAT rate ({effectiveVATPercent.toFixed(1)}%) does not match the expected rate ({vatLogic.expectedVAT?.toFixed(1)}%) for this tax treatment. This may indicate an error in the sale record.
-              </p>
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-sm text-red-800 flex-1">
+                  <span className="font-semibold">⚠️ VAT Discrepancy:</span> The effective VAT rate ({effectiveVATPercent.toFixed(1)}%) does not match the expected rate ({vatLogic.expectedVAT?.toFixed(1)}%) for this tax treatment. This may indicate an error in the sale record.
+                </p>
+                {userRole === 'superadmin' && (
+                  <button
+                    onClick={handleFixVAT}
+                    disabled={isFixingVAT}
+                    className="px-3 py-1 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                  >
+                    {isFixingVAT ? 'Fixing...' : 'Fix VAT'}
+                  </button>
+                )}
+              </div>
+              {fixVATError && (
+                <p className="mt-2 text-sm text-red-600">Error: {fixVATError}</p>
+              )}
+              {fixVATSuccess && (
+                <p className="mt-2 text-sm text-green-600 font-medium">✓ VAT fixed successfully! Refreshing...</p>
+              )}
             </div>
           )}
 

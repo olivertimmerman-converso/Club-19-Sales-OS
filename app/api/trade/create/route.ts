@@ -4,6 +4,7 @@ import { ZodError } from "zod";
 import { XataClient } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
 import * as logger from "@/lib/logger";
+import { getBrandingThemeMapping } from "@/lib/branding-theme-mappings";
 
 // Initialize Xata client
 const xata = new XataClient();
@@ -233,6 +234,42 @@ export async function POST(request: NextRequest) {
         sum + (item.sellPriceGBP || item.sellPrice), 0
       );
 
+      // Determine VAT rate based on branding theme
+      const brandingThemeMapping = getBrandingThemeMapping(firstItem.brandTheme);
+      const vatRate = brandingThemeMapping?.expectedVAT || 20.0; // Default to 20% if unknown
+      const vatRateDecimal = vatRate / 100;
+
+      logger.info('TRADE_CREATE', 'VAT calculation', {
+        brandTheme: firstItem.brandTheme,
+        mappingFound: !!brandingThemeMapping,
+        themeName: brandingThemeMapping?.name,
+        vatRate: vatRate,
+        accountCode: brandingThemeMapping?.accountCode
+      });
+
+      // Calculate VAT amounts
+      // Note: User enters sell price (assumed ex VAT for standard rate, total for zero-rated)
+      let saleAmountExVat: number;
+      let saleAmountIncVat: number;
+
+      if (vatRate === 0) {
+        // Zero-rated: inc VAT = ex VAT (no VAT added)
+        saleAmountExVat = totalSellPrice;
+        saleAmountIncVat = totalSellPrice;
+      } else {
+        // Standard rate (20%): calculate VAT
+        saleAmountExVat = totalSellPrice;
+        saleAmountIncVat = saleAmountExVat * (1 + vatRateDecimal);
+      }
+
+      logger.info('TRADE_CREATE', 'VAT amounts calculated', {
+        totalSellPrice,
+        vatRate,
+        saleAmountExVat,
+        saleAmountIncVat,
+        vatAmount: saleAmountIncVat - saleAmountExVat
+      });
+
       // Create Sales record
       const saleRecord = await xata.db.Sales.create({
         // Metadata
@@ -253,10 +290,10 @@ export async function POST(request: NextRequest) {
         item_title: firstItem.description,
         quantity: firstItem.quantity,
 
-        // Pricing
+        // Pricing with correct VAT calculation
         buy_price: totalBuyPrice,
-        sale_amount_ex_vat: totalSellPrice,
-        sale_amount_inc_vat: totalSellPrice, // TODO: Calculate actual VAT if needed
+        sale_amount_ex_vat: saleAmountExVat,
+        sale_amount_inc_vat: saleAmountIncVat,
         currency: firstItem.sellCurrency || 'GBP',
 
         // Costs
