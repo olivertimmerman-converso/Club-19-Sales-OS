@@ -205,6 +205,12 @@ export type WizardState = {
   // Buyer (Step 2)
   buyer: Buyer | null;
 
+  // Introducer (Step 2 - optional)
+  hasIntroducer?: boolean;
+  introducerId?: string; // Xata Introducers table ID
+  introducerName?: string;
+  introducerSharePercent?: number;
+
   // Invoice metadata (Step 2)
   dueDate: string;
   notes: string;

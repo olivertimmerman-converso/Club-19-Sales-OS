@@ -54,6 +54,10 @@ type TradeContextType = {
   // Buyer
   setBuyer: (buyer: Buyer) => void;
 
+  // Introducer
+  setHasIntroducer: (hasIntroducer: boolean) => void;
+  setIntroducer: (introducerId: string | undefined, introducerName: string | undefined, introducerSharePercent: number | undefined) => void;
+
   // Invoice metadata
   setDueDate: (date: string) => void;
   setNotes: (notes: string) => void;
@@ -287,6 +291,25 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, buyer }));
   }, []);
 
+  const setHasIntroducer = useCallback((hasIntroducer: boolean) => {
+    setState((prev) => ({
+      ...prev,
+      hasIntroducer,
+      // Clear introducer data when toggling off
+      ...(hasIntroducer ? {} : { introducerId: undefined, introducerName: undefined, introducerSharePercent: undefined })
+    }));
+  }, []);
+
+  const setIntroducer = useCallback((introducerId: string | undefined, introducerName: string | undefined, introducerSharePercent: number | undefined) => {
+    setState((prev) => ({
+      ...prev,
+      introducerId,
+      introducerName,
+      introducerSharePercent,
+      hasIntroducer: !!introducerId, // Auto-set hasIntroducer if ID is provided
+    }));
+  }, []);
+
   const setDueDate = useCallback((date: string) => {
     setState((prev) => ({ ...prev, dueDate: date }));
   }, []);
@@ -346,6 +369,8 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     removeItem,
     startEditingItem,
     setBuyer,
+    setHasIntroducer,
+    setIntroducer,
     setDueDate,
     setNotes,
     setImpliedCosts,
