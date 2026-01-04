@@ -36,8 +36,9 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
     const dateRange = getMonthDateRange(monthParam);
     console.log('[SalesPage] Date range:', dateRange);
 
-    // Query ACTIVE Sales table from Xata (exclude xero_import records)
-    let activeQuery = xata.db.Sales
+    // Query ALL Sales from Xata (exclude xero_import records)
+    // Then filter active vs deleted in JavaScript for reliability
+    let allSalesQuery = xata.db.Sales
       .select([
         'id',
         'sale_reference',
@@ -54,37 +55,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
         'shopper.name',
         'deleted_at',
       ])
-      .filter({
-        $all: [
-          { source: { $isNot: 'xero_import' } },
-          { deleted_at: null }
-        ]
-      });
-
-    // Query DELETED Sales (superadmin only)
-    let deletedQuery = role === 'superadmin' ? xata.db.Sales
-      .select([
-        'id',
-        'sale_reference',
-        'sale_date',
-        'brand',
-        'item_title',
-        'sale_amount_inc_vat',
-        'gross_margin',
-        'xero_invoice_number',
-        'invoice_status',
-        'currency',
-        'buyer.name',
-        'shopper.id',
-        'shopper.name',
-        'deleted_at',
-      ])
-      .filter({
-        $all: [
-          { source: { $isNot: 'xero_import' } },
-          { deleted_at: { $isNot: null } }
-        ]
-      }) : null;
+      .filter({ source: { $isNot: 'xero_import' } });
 
     // Filter for shoppers - only show their own sales
     if (role === 'shopper') {
@@ -97,7 +68,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
         console.log('[SalesPage] Found shopper:', shopper?.id);
         if (shopper) {
           // Filter Sales by the shopper link ID
-          activeQuery = activeQuery.filter({ shopper: shopper.id });
+          allSalesQuery = allSalesQuery.filter({ shopper: shopper.id });
         }
       }
     }
@@ -105,30 +76,27 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
     // Apply date range filter if specified
     if (dateRange) {
       console.log('[SalesPage] Applying date range filter');
-      activeQuery = activeQuery.filter({
+      allSalesQuery = allSalesQuery.filter({
         sale_date: {
           $ge: dateRange.start,
           $le: dateRange.end,
         },
       });
-      if (deletedQuery) {
-        deletedQuery = deletedQuery.filter({
-          sale_date: {
-            $ge: dateRange.start,
-            $le: dateRange.end,
-          },
-        });
-      }
     }
 
-    console.log('[SalesPage] Executing queries...');
-    // Limit to 200 recent sales for performance
-    const salesRaw = await activeQuery.sort('sale_date', 'desc').getMany({ pagination: { size: 200 } });
-    const deletedSalesRaw = deletedQuery ? await deletedQuery.sort('sale_date', 'desc').getMany({ pagination: { size: 50 } }) : [];
+    console.log('[SalesPage] Executing query...');
+    // Fetch all sales, then split by deleted_at in JavaScript
+    const allSalesRaw = await allSalesQuery.sort('sale_date', 'desc').getAll();
+    console.log('[SalesPage] Total sales fetched:', allSalesRaw.length);
+
+    // Split into active and deleted using JavaScript (reliable!)
+    const salesRaw = allSalesRaw.filter(sale => !sale.deleted_at);
+    const deletedSalesRaw = role === 'superadmin' ? allSalesRaw.filter(sale => sale.deleted_at) : [];
+
     console.log('[SalesPage] Active sales count:', salesRaw.length);
     console.log('[SalesPage] Deleted sales count:', deletedSalesRaw.length);
 
-    // Debug: Log sample records to check deleted_at values
+    // Debug: Log sample records to verify filtering
     if (salesRaw.length > 0) {
       console.log('[SalesPage] Sample active sale:', {
         id: salesRaw[0].id,
