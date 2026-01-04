@@ -106,6 +106,8 @@ const tables = [
       { name: "needs_allocation", type: "bool", defaultValue: "false" },
       { name: "source", type: "text" },
       { name: "deleted_at", type: "datetime" },
+      { name: "has_introducer", type: "bool", defaultValue: "false" },
+      { name: "introducer_commission", type: "float" },
     ],
     revLinks: [{ column: "sale", table: "Errors" }],
   },
