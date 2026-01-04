@@ -29,9 +29,10 @@ interface SalesTableClientProps {
   sales: Sale[];
   shoppers: Shopper[];
   userRole: string | null;
+  isDeletedSection?: boolean;
 }
 
-export function SalesTableClient({ sales, shoppers, userRole }: SalesTableClientProps) {
+export function SalesTableClient({ sales, shoppers, userRole, isDeletedSection = false }: SalesTableClientProps) {
   const router = useRouter();
   const [updating, setUpdating] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -209,7 +210,7 @@ export function SalesTableClient({ sales, shoppers, userRole }: SalesTableClient
                 >
                   Status
                 </th>
-                {userRole === 'superadmin' && (
+                {userRole === 'superadmin' && !isDeletedSection && (
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -274,7 +275,7 @@ export function SalesTableClient({ sales, shoppers, userRole }: SalesTableClient
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {getStatusBadge(sale.invoice_status)}
                   </td>
-                  {userRole === 'superadmin' && (
+                  {userRole === 'superadmin' && !isDeletedSection && (
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <button
                         onClick={() => handleDelete(sale.id)}
