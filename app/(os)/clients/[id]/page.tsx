@@ -26,7 +26,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     notFound();
   }
 
-  // Fetch all sales for this client
+  // Fetch all sales for this client (show all in table, but filter for metrics)
   const sales = await xata.db.Sales
     .select([
       'id',
@@ -38,15 +38,26 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       'xero_invoice_number',
       'invoice_status',
       'currency',
+      'deleted_at',
     ])
-    .filter({ 'buyer.id': id })
+    .filter({
+      $all: [
+        { 'buyer.id': id },
+        { deleted_at: { $is: null } }
+      ]
+    })
     .sort('sale_date', 'desc')
     .getAll();
 
-  // Calculate totals
-  const totalSpend = sales.reduce((sum, sale) => sum + (sale.sale_amount_inc_vat || 0), 0);
-  const totalMargin = sales.reduce((sum, sale) => sum + (sale.gross_margin || 0), 0);
-  const tradesCount = sales.length;
+  // Filter to PAID invoices only for metrics
+  const paidSales = sales.filter(sale =>
+    sale.invoice_status?.toUpperCase() === 'PAID'
+  );
+
+  // Calculate totals from PAID invoices only
+  const totalSpend = paidSales.reduce((sum, sale) => sum + (sale.sale_amount_inc_vat || 0), 0);
+  const totalMargin = paidSales.reduce((sum, sale) => sum + (sale.gross_margin || 0), 0);
+  const tradesCount = paidSales.length;
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -63,25 +74,35 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
     });
   };
 
-  // Format status badge
+  // Format status badge (matching sales page)
   const getStatusBadge = (status: string | null | undefined) => {
     if (!status) return <span className="text-gray-400">—</span>;
 
     const statusColors: Record<string, string> = {
       'DRAFT': 'bg-gray-100 text-gray-700',
       'SUBMITTED': 'bg-blue-100 text-blue-700',
-      'AUTHORISED': 'bg-green-100 text-green-700',
+      'AUTHORISED': 'bg-yellow-100 text-yellow-800',
       'PAID': 'bg-green-100 text-green-700',
       'VOIDED': 'bg-red-100 text-red-700',
     };
 
+    const statusLabels: Record<string, string> = {
+      'AUTHORISED': 'Awaiting Payment',
+    };
+
     const colorClass = statusColors[status] || 'bg-gray-100 text-gray-700';
+    const label = statusLabels[status] || status;
 
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
-        {status}
+        {label}
       </span>
     );
+  };
+
+  // Check if sale is paid (for visual styling)
+  const isPaid = (status: string | null | undefined) => {
+    return status?.toUpperCase() === 'PAID';
   };
 
   return (
@@ -145,17 +166,17 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Total Spend</h3>
           <p className="text-2xl font-bold text-purple-600">{formatCurrency(totalSpend)}</p>
-          <p className="text-xs text-gray-500 mt-1">Lifetime value</p>
+          <p className="text-xs text-gray-500 mt-1">Paid invoices only</p>
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Total Margin</h3>
           <p className="text-2xl font-bold text-green-600">{formatCurrency(totalMargin)}</p>
-          <p className="text-xs text-gray-500 mt-1">Margin generated</p>
+          <p className="text-xs text-gray-500 mt-1">Paid invoices only</p>
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Number of Trades</h3>
+          <h3 className="text-sm font-medium text-gray-500 mb-2">Paid Sales</h3>
           <p className="text-2xl font-bold text-gray-900">{tradesCount}</p>
-          <p className="text-xs text-gray-500 mt-1">Total purchases</p>
+          <p className="text-xs text-gray-500 mt-1">{sales.length} total ({sales.length - tradesCount} unpaid)</p>
         </div>
       </div>
 
@@ -234,39 +255,43 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sales.map((sale) => (
-                    <tr
-                      key={sale.id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(sale.sale_date)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                        <Link
-                          href={`/sales/${sale.id}`}
-                          className="text-purple-600 hover:text-purple-900"
-                        >
-                          {sale.item_title || '—'}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {sale.brand || '—'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-                        {formatCurrency(sale.sale_amount_inc_vat || 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">
-                        {formatCurrency(sale.gross_margin || 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {sale.xero_invoice_number || '—'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(sale.invoice_status)}
-                      </td>
-                    </tr>
-                  ))}
+                  {sales.map((sale) => {
+                    const paid = isPaid(sale.invoice_status);
+                    return (
+                      <tr
+                        key={sale.id}
+                        className={`hover:bg-gray-50 transition-colors ${!paid ? 'opacity-50 bg-gray-50' : ''}`}
+                        title={!paid ? 'Not counted in totals (unpaid)' : ''}
+                      >
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${paid ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {formatDate(sale.sale_date)}
+                        </td>
+                        <td className={`px-6 py-4 text-sm max-w-xs truncate ${paid ? 'text-gray-900' : 'text-gray-400'}`}>
+                          <Link
+                            href={`/sales/${sale.id}`}
+                            className={paid ? 'text-purple-600 hover:text-purple-900' : 'text-gray-400 hover:text-gray-600'}
+                          >
+                            {sale.item_title || '—'}
+                          </Link>
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${paid ? 'text-gray-900' : 'text-gray-400'}`}>
+                          {sale.brand || '—'}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${paid ? 'text-gray-900' : 'text-gray-400'}`}>
+                          {formatCurrency(sale.sale_amount_inc_vat || 0)}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${paid ? 'text-green-600' : 'text-gray-400'}`}>
+                          {formatCurrency(sale.gross_margin || 0)}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${paid ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {sale.xero_invoice_number || '—'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(sale.invoice_status)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

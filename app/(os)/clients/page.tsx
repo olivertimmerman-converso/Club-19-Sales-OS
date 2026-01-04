@@ -43,6 +43,7 @@ export default async function ClientsPage() {
       'sale_date',
       'shopper.name',
       'source',
+      'invoice_status',
     ])
     .filter({
       deleted_at: { $is: null }
@@ -81,24 +82,29 @@ export default async function ClientsPage() {
     // Find all sales for this buyer
     const buyerSales = sales.filter(sale => sale.buyer?.id === buyer.id);
 
-    // Filter 2026 Atelier sales (source: 'atelier' AND date >= 2026-01-01)
-    const sales2026 = buyerSales.filter(sale => {
+    // Filter to PAID invoices only for metrics (exclude deleted handled by query)
+    const paidSales = buyerSales.filter(sale =>
+      sale.invoice_status?.toUpperCase() === 'PAID'
+    );
+
+    // Filter 2026 Atelier PAID sales (source: 'atelier' AND date >= 2026-01-01 AND PAID)
+    const sales2026 = paidSales.filter(sale => {
       if (sale.source !== 'atelier') return false;
       const saleDate = sale.sale_date ? new Date(sale.sale_date) : null;
       if (!saleDate) return false;
       return saleDate >= new Date('2026-01-01');
     });
 
-    // Calculate lifetime totals (all sales)
-    const totalSpend = buyerSales.reduce((sum, sale) =>
+    // Calculate lifetime totals (PAID sales only)
+    const totalSpend = paidSales.reduce((sum, sale) =>
       sum + (sale.sale_amount_inc_vat || 0), 0
     );
-    const totalMargin = buyerSales.reduce((sum, sale) =>
+    const totalMargin = paidSales.reduce((sum, sale) =>
       sum + (sale.gross_margin || 0), 0
     );
-    const tradesCount = buyerSales.length;
+    const tradesCount = paidSales.length;
 
-    // Calculate 2026 totals (Atelier only)
+    // Calculate 2026 totals (Atelier PAID only)
     const spend2026 = sales2026.reduce((sum, sale) =>
       sum + (sale.sale_amount_inc_vat || 0), 0
     );
