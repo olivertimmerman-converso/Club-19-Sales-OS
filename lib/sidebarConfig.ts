@@ -75,7 +75,7 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "RefreshCw",
   },
   {
-    label: "Deleted Sales",
+    label: "🗑️ Deleted Sales",
     href: "/admin/deleted-sales",
     icon: "Trash2",
   },
