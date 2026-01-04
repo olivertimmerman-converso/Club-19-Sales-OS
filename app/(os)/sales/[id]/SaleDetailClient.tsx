@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getBrandingThemeMapping } from '@/lib/branding-theme-mappings';
 
 interface Sale {
   id: string;
@@ -62,61 +63,35 @@ interface SaleDetailClientProps {
 
 /**
  * Helper function to interpret branding_theme and provide VAT logic explanation
+ * Now supports both Xero branding theme GUIDs and friendly names
  */
 function getVATLogicExplanation(brandingTheme: string | null, effectiveVATPercent: number) {
-  if (!brandingTheme) {
+  // Get mapping from the branding theme mappings file
+  const mapping = getBrandingThemeMapping(brandingTheme);
+
+  if (!mapping) {
     return {
       accountCode: null,
       treatment: "Unknown",
-      explanation: "No branding theme specified",
+      explanation: brandingTheme
+        ? `Unrecognized branding theme ID: "${brandingTheme}". This theme may need to be added to lib/branding-theme-mappings.ts`
+        : "No branding theme specified",
       expectedVAT: null,
       hasDiscrepancy: false,
+      themeName: null,
     };
   }
 
-  let accountCode: string;
-  let treatment: string;
-  let explanation: string;
-  let expectedVAT: number | null;
-
-  switch (brandingTheme) {
-    case "CN 20% VAT":
-      accountCode = "425";
-      treatment = "UK Domestic Sale";
-      explanation = "Standard 20% VAT applies to this UK domestic retail sale. The item and client are both in the UK.";
-      expectedVAT = 20.0;
-      break;
-
-    case "CN Margin Scheme":
-      accountCode = "424";
-      treatment = "VAT Margin Scheme";
-      explanation = "VAT Margin Scheme applies. VAT is only charged on the profit margin, not the full sale price. Used for second-hand goods purchased without VAT.";
-      expectedVAT = 0.0; // Margin scheme shows zero-rated on invoice
-      break;
-
-    case "CN Export Sales":
-      accountCode = "423";
-      treatment = "Export Sale (Zero-Rated)";
-      explanation = "Zero-rated export sale. The client is outside the UK, so no UK VAT applies to this transaction.";
-      expectedVAT = 0.0;
-      break;
-
-    default:
-      accountCode = "Unknown";
-      treatment = "Unknown Branding Theme";
-      explanation = `Unrecognized branding theme: "${brandingTheme}"`;
-      expectedVAT = null;
-  }
-
   // Check for discrepancy (allow 0.5% tolerance for rounding)
-  const hasDiscrepancy = expectedVAT !== null && Math.abs(effectiveVATPercent - expectedVAT) > 0.5;
+  const hasDiscrepancy = mapping.expectedVAT !== null && Math.abs(effectiveVATPercent - mapping.expectedVAT) > 0.5;
 
   return {
-    accountCode,
-    treatment,
-    explanation,
-    expectedVAT,
+    accountCode: mapping.accountCode,
+    treatment: mapping.treatment,
+    explanation: mapping.explanation,
+    expectedVAT: mapping.expectedVAT,
     hasDiscrepancy,
+    themeName: mapping.name,
   };
 }
 
@@ -475,6 +450,14 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
             <div>
               <h3 className="text-sm font-medium text-gray-500 mb-3">Tax Treatment</h3>
               <dl className="space-y-2">
+                {vatLogic.themeName && (
+                  <div>
+                    <dt className="text-sm text-gray-600">Branding Theme</dt>
+                    <dd className="text-sm font-medium text-gray-900">
+                      {vatLogic.themeName}
+                    </dd>
+                  </div>
+                )}
                 {vatLogic.accountCode && (
                   <div>
                     <dt className="text-sm text-gray-600">Account Code</dt>
