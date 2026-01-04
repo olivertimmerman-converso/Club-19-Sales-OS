@@ -38,6 +38,16 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
     notFound();
   }
 
+  // Debug: Log raw data from database
+  console.log('[SALE_DETAIL] Raw sale from DB:', {
+    id: sale.id,
+    sale_reference: sale.sale_reference,
+    sale_amount_inc_vat: sale.sale_amount_inc_vat,
+    sale_amount_ex_vat: sale.sale_amount_ex_vat,
+    branding_theme: sale.branding_theme,
+    timestamp: new Date().toISOString(),
+  });
+
   // Fetch all shoppers for the dropdown
   const shoppers = await xata.db.Shoppers
     .select(['id', 'name'])
@@ -113,6 +123,15 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
       name: sale.introducer.name || 'Unknown',
     } : null,
   };
+
+  // Debug: Log serialized data
+  console.log('[SALE_DETAIL] Serialized sale:', {
+    id: serializedSale.id,
+    sale_reference: serializedSale.sale_reference,
+    sale_amount_inc_vat: serializedSale.sale_amount_inc_vat,
+    sale_amount_ex_vat: serializedSale.sale_amount_ex_vat,
+    branding_theme: serializedSale.branding_theme,
+  });
 
   const serializedShoppers = shoppers.map(s => ({
     id: s.id,
