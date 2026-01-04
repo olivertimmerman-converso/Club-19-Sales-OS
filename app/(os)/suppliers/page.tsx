@@ -35,7 +35,11 @@ export default async function SuppliersPage() {
       'buy_price',
       'gross_margin',
       'sale_date',
+      'invoice_status',
     ])
+    .filter({
+      deleted_at: { $is: null }
+    })
     .getMany({ pagination: { size: 1000 } });
 
   // Calculate stats for each supplier
@@ -43,14 +47,19 @@ export default async function SuppliersPage() {
     // Find all sales for this supplier
     const supplierSales = sales.filter(sale => sale.supplier?.id === supplier.id);
 
-    // Calculate totals
-    const totalSourced = supplierSales.reduce((sum, sale) =>
+    // Filter to PAID invoices only for metrics
+    const paidSales = supplierSales.filter(sale =>
+      sale.invoice_status?.toUpperCase() === 'PAID'
+    );
+
+    // Calculate totals from PAID sales only
+    const totalSourced = paidSales.reduce((sum, sale) =>
       sum + (sale.buy_price || 0), 0
     );
-    const totalMargin = supplierSales.reduce((sum, sale) =>
+    const totalMargin = paidSales.reduce((sum, sale) =>
       sum + (sale.gross_margin || 0), 0
     );
-    const tradesCount = supplierSales.length;
+    const tradesCount = paidSales.length;
 
     // Find last trade date
     const lastTradeDate = supplierSales.length > 0
@@ -138,7 +147,7 @@ export default async function SuppliersPage() {
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Total Sourced Value</h3>
           <p className="text-2xl font-bold text-purple-600">{formatCurrency(totalSourcedValue)}</p>
-          <p className="text-xs text-gray-500 mt-1">Total purchase cost</p>
+          <p className="text-xs text-gray-500 mt-1">Paid trades only</p>
         </div>
       </div>
 

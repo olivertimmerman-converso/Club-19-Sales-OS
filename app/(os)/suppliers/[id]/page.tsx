@@ -26,7 +26,7 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
     notFound();
   }
 
-  // Fetch all sales for this supplier
+  // Fetch all sales for this supplier (show all in table, but filter for metrics)
   const sales = await xata.db.Sales
     .select([
       'id',
@@ -37,15 +37,27 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
       'sale_amount_inc_vat',
       'gross_margin',
       'buyer.name',
+      'invoice_status',
+      'deleted_at',
     ])
-    .filter({ 'supplier.id': id })
+    .filter({
+      $all: [
+        { 'supplier.id': id },
+        { deleted_at: { $is: null } }
+      ]
+    })
     .sort('sale_date', 'desc')
     .getAll();
 
-  // Calculate totals
-  const totalSourced = sales.reduce((sum, sale) => sum + (sale.buy_price || 0), 0);
-  const totalMargin = sales.reduce((sum, sale) => sum + (sale.gross_margin || 0), 0);
-  const tradesCount = sales.length;
+  // Filter to PAID invoices only for metrics
+  const paidSales = sales.filter(sale =>
+    sale.invoice_status?.toUpperCase() === 'PAID'
+  );
+
+  // Calculate totals from PAID invoices only
+  const totalSourced = paidSales.reduce((sum, sale) => sum + (sale.buy_price || 0), 0);
+  const totalMargin = paidSales.reduce((sum, sale) => sum + (sale.gross_margin || 0), 0);
+  const tradesCount = paidSales.length;
 
   // Format currency
   const formatCurrency = (amount: number) => {
@@ -60,6 +72,11 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
       month: 'short',
       year: 'numeric'
     });
+  };
+
+  // Check if sale is paid (for visual styling)
+  const isPaid = (status: string | null | undefined) => {
+    return status?.toUpperCase() === 'PAID';
   };
 
   return (
@@ -123,17 +140,17 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Total Sourced</h3>
           <p className="text-2xl font-bold text-purple-600">{formatCurrency(totalSourced)}</p>
-          <p className="text-xs text-gray-500 mt-1">Total purchase cost</p>
+          <p className="text-xs text-gray-500 mt-1">Paid trades only</p>
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Margin Generated</h3>
           <p className="text-2xl font-bold text-green-600">{formatCurrency(totalMargin)}</p>
-          <p className="text-xs text-gray-500 mt-1">Total margin contribution</p>
+          <p className="text-xs text-gray-500 mt-1">Paid trades only</p>
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Trades Count</h3>
+          <h3 className="text-sm font-medium text-gray-500 mb-2">Paid Trades</h3>
           <p className="text-2xl font-bold text-gray-900">{tradesCount}</p>
-          <p className="text-xs text-gray-500 mt-1">Total trades</p>
+          <p className="text-xs text-gray-500 mt-1">{sales.length} total ({sales.length - tradesCount} unpaid)</p>
         </div>
       </div>
 
@@ -212,39 +229,43 @@ export default async function SupplierDetailPage({ params }: { params: Promise<{
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sales.map((sale) => (
-                    <tr
-                      key={sale.id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(sale.sale_date)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                        <Link
-                          href={`/sales/${sale.id}`}
-                          className="text-purple-600 hover:text-purple-900"
-                        >
-                          {sale.item_title || '—'}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {sale.brand || '—'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-                        {formatCurrency(sale.buy_price || 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-                        {formatCurrency(sale.sale_amount_inc_vat || 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">
-                        {formatCurrency(sale.gross_margin || 0)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {sale.buyer?.name || '—'}
-                      </td>
-                    </tr>
-                  ))}
+                  {sales.map((sale) => {
+                    const paid = isPaid(sale.invoice_status);
+                    return (
+                      <tr
+                        key={sale.id}
+                        className={`hover:bg-gray-50 transition-colors ${!paid ? 'opacity-50 bg-gray-50' : ''}`}
+                        title={!paid ? 'Not counted in totals (unpaid)' : ''}
+                      >
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${paid ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {formatDate(sale.sale_date)}
+                        </td>
+                        <td className={`px-6 py-4 text-sm max-w-xs truncate ${paid ? 'text-gray-900' : 'text-gray-400'}`}>
+                          <Link
+                            href={`/sales/${sale.id}`}
+                            className={paid ? 'text-purple-600 hover:text-purple-900' : 'text-gray-400 hover:text-gray-600'}
+                          >
+                            {sale.item_title || '—'}
+                          </Link>
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${paid ? 'text-gray-900' : 'text-gray-400'}`}>
+                          {sale.brand || '—'}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${paid ? 'text-gray-900' : 'text-gray-400'}`}>
+                          {formatCurrency(sale.buy_price || 0)}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${paid ? 'text-gray-900' : 'text-gray-400'}`}>
+                          {formatCurrency(sale.sale_amount_inc_vat || 0)}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${paid ? 'text-green-600' : 'text-gray-400'}`}>
+                          {formatCurrency(sale.gross_margin || 0)}
+                        </td>
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm ${paid ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {sale.buyer?.name || '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
