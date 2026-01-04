@@ -325,7 +325,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
           <h3 className="text-sm font-medium text-gray-500 mb-2">Sales</h3>
           <p className="text-2xl font-bold text-gray-900">{tradesCount}</p>
           {getTrendIndicator(tradesCount, lastMonthData?.tradesCount || null) || (
-            <p className="text-xs text-gray-500 mt-1">Completed</p>
+            <p className="text-xs text-gray-500 mt-1">This month</p>
           )}
         </div>
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
@@ -484,7 +484,9 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
         {/* Sales Needing Attention */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Sales Needing Attention</h3>
+            <Link href="/sales" className="text-lg font-semibold text-gray-900 hover:text-purple-600 transition-colors">
+              Sales Needing Attention
+            </Link>
             {salesNeedingAttention.length > 0 && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                 {salesNeedingAttention.length}
@@ -534,7 +536,9 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
         {/* Unpaid Invoices */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
           <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">Unpaid Invoices</h3>
+            <Link href="/sales" className="text-lg font-semibold text-gray-900 hover:text-purple-600 transition-colors block mb-1">
+              Unpaid Invoices
+            </Link>
             <p className="text-2xl font-bold text-yellow-600">{formatCurrency(unpaidTotal)}</p>
             <p className="text-xs text-gray-500 mt-1">{unpaidInvoices.length} {unpaidInvoices.length === 1 ? 'invoice' : 'invoices'}</p>
           </div>
@@ -561,7 +565,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
                       </div>
                       <div className="ml-2 text-right">
                         <p className="font-medium text-gray-900">{formatCurrency(sale.sale_amount_inc_vat || 0)}</p>
-                        <p className="text-xs text-gray-500">{daysOld}d old</p>
+                        <p className="text-xs text-gray-500">{daysOld} {daysOld === 1 ? 'day' : 'days'}</p>
                       </div>
                     </div>
                   </Link>
