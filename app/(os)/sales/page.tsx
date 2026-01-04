@@ -52,6 +52,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
         'buyer.name',
         'shopper.id',
         'shopper.name',
+        'deleted_at',
       ])
       .filter({
         $all: [
@@ -76,6 +77,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
         'buyer.name',
         'shopper.id',
         'shopper.name',
+        'deleted_at',
       ])
       .filter({
         $all: [
@@ -125,6 +127,24 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
     const deletedSalesRaw = deletedQuery ? await deletedQuery.sort('sale_date', 'desc').getMany({ pagination: { size: 50 } }) : [];
     console.log('[SalesPage] Active sales count:', salesRaw.length);
     console.log('[SalesPage] Deleted sales count:', deletedSalesRaw.length);
+
+    // Debug: Log sample records to check deleted_at values
+    if (salesRaw.length > 0) {
+      console.log('[SalesPage] Sample active sale:', {
+        id: salesRaw[0].id,
+        ref: salesRaw[0].sale_reference,
+        deleted_at: salesRaw[0].deleted_at,
+        invoice_status: salesRaw[0].invoice_status
+      });
+    }
+    if (deletedSalesRaw.length > 0) {
+      console.log('[SalesPage] Sample deleted sale:', {
+        id: deletedSalesRaw[0].id,
+        ref: deletedSalesRaw[0].sale_reference,
+        deleted_at: deletedSalesRaw[0].deleted_at,
+        invoice_status: deletedSalesRaw[0].invoice_status
+      });
+    }
 
     // Fetch all shoppers for the dropdown
     const shoppersRaw = await xata.db.Shoppers
