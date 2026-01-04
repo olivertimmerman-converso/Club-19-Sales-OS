@@ -64,7 +64,7 @@ export function XeroStatusChart({ data }: XeroStatusChartProps) {
             cx="50%"
             cy="50%"
             outerRadius={100}
-            label={(entry) => `${entry.status} (${entry.count})`}
+            label={({ name }) => name}
           >
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
