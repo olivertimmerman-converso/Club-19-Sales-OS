@@ -1,15 +1,18 @@
 /**
- * Club 19 Sales OS - Link Atelier Sale to Xero Invoice API
+ * Club 19 Sales OS - Link/Re-link Atelier Sale to Xero Invoice API
  *
  * POST /api/sales/[id]/link-xero
- * Links an Atelier sale to an existing Xero invoice (imported record)
+ * Links (or re-links) an Atelier sale to an existing Xero invoice (imported record)
  *
  * This endpoint:
  * 1. Gets the Atelier sale record (the one we're updating)
  * 2. Gets the Xero import record (the one we're linking to)
- * 3. Copies Xero fields from import to Atelier record
+ * 3. Copies Xero fields from import to Atelier record (overwrites if already linked)
  * 4. Soft-deletes the Xero import record (set deleted_at = now)
  * 5. Returns success
+ *
+ * Re-linking: If the Atelier sale already has a xero_invoice_id, this will update it
+ * to point to the new invoice. The old invoice (if it exists in Xero) remains as a Draft.
  *
  * Superadmin only endpoint
  */

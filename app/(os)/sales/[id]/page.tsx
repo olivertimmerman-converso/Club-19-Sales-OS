@@ -44,8 +44,8 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
     .sort('name', 'asc')
     .getAll();
 
-  // Fetch unallocated Xero imports for superadmin linking (if Atelier sale without Xero link)
-  const unallocatedXeroImports = (role === 'superadmin' && sale.source === 'atelier' && !sale.xero_invoice_id)
+  // Fetch unallocated Xero imports for superadmin linking (for all Atelier sales, even if already linked)
+  const unallocatedXeroImports = (role === 'superadmin' && sale.source === 'atelier')
     ? await xata.db.Sales
         .filter({
           $all: [

@@ -558,18 +558,34 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
           </div>
         )}
 
-        {/* Link to Xero Invoice (Superadmin only, Atelier sales without Xero link) */}
-        {userRole === 'superadmin' && sale.source === 'atelier' && !sale.xero_invoice_id && unallocatedXeroImports.length > 0 && (
+        {/* Link to Xero Invoice (Superadmin only, Atelier sales) */}
+        {userRole === 'superadmin' && sale.source === 'atelier' && unallocatedXeroImports.length > 0 && (
           <div className="bg-blue-50 rounded-lg border border-blue-200 shadow-sm p-6 lg:col-span-2">
             <div className="flex items-start gap-3 mb-4">
               <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
               <div className="flex-1">
-                <h2 className="text-lg font-semibold text-blue-900 mb-1">Link to Xero Invoice</h2>
-                <p className="text-sm text-blue-700 mb-4">
-                  This sale was created via Sales Atelier. If there&apos;s a duplicate invoice in Xero that was sent manually, you can link this record to that invoice for payment tracking.
-                </p>
+                {sale.xero_invoice_id ? (
+                  <>
+                    <h2 className="text-lg font-semibold text-blue-900 mb-1">Re-link to Different Xero Invoice</h2>
+                    <div className="mb-3 bg-blue-100 border border-blue-300 rounded-lg p-3">
+                      <p className="text-sm font-medium text-blue-900">
+                        Currently linked: <span className="font-bold">{sale.xero_invoice_number}</span>
+                      </p>
+                    </div>
+                    <p className="text-sm text-blue-700 mb-4">
+                      Need to link to a different invoice? This is useful when a manual invoice was sent before the Atelier record was created. The old invoice will remain in Xero as a Draft.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-lg font-semibold text-blue-900 mb-1">Link to Xero Invoice</h2>
+                    <p className="text-sm text-blue-700 mb-4">
+                      This sale was created via Sales Atelier. If there&apos;s a duplicate invoice in Xero that was sent manually, you can link this record to that invoice for payment tracking.
+                    </p>
+                  </>
+                )}
 
                 {linkSuccess && (
                   <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
@@ -605,26 +621,9 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
                     disabled={!selectedXeroImportId || isLinking}
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    {isLinking ? 'Linking...' : 'Link Invoice'}
+                    {isLinking ? (sale.xero_invoice_id ? 'Re-linking...' : 'Linking...') : (sale.xero_invoice_id ? 'Re-link Invoice' : 'Link Invoice')}
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Linked Xero Invoice Status (Atelier sales with Xero link) */}
-        {sale.source === 'atelier' && sale.xero_invoice_id && (
-          <div className="bg-green-50 rounded-lg border border-green-200 shadow-sm p-6 lg:col-span-2">
-            <div className="flex items-start gap-3">
-              <svg className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <h2 className="text-lg font-semibold text-green-900 mb-1">Linked Xero Invoice</h2>
-                <p className="text-sm text-green-700">
-                  This Atelier sale is linked to Xero invoice: <span className="font-medium">{sale.xero_invoice_number}</span>
-                </p>
               </div>
             </div>
           </div>
