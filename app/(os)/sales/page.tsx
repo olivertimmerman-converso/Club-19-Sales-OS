@@ -57,7 +57,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
       .filter({
         $all: [
           { source: { $isNot: 'xero_import' } },
-          { $not: { $exists: 'deleted_at' } }
+          { deleted_at: null }
         ]
       });
 
