@@ -34,7 +34,6 @@ interface Sale {
   commission_paid: boolean;
   commission_amount: number | null;
   internal_notes: string | null;
-  introducer_commission_percent: number | null;
   buyer: { id: string; name: string } | null;
   shopper: { id: string; name: string } | null;
   supplier: { id: string; name: string } | null;
