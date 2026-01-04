@@ -123,16 +123,21 @@ export function SalesTableClient({ sales, shoppers, userRole, isDeletedSection =
     const statusColors: Record<string, string> = {
       'DRAFT': 'bg-gray-100 text-gray-700',
       'SUBMITTED': 'bg-blue-100 text-blue-700',
-      'AUTHORISED': 'bg-green-100 text-green-700',
+      'AUTHORISED': 'bg-yellow-100 text-yellow-800',
       'PAID': 'bg-green-100 text-green-700',
       'VOIDED': 'bg-red-100 text-red-700',
     };
 
+    const statusLabels: Record<string, string> = {
+      'AUTHORISED': 'Awaiting Payment',
+    };
+
     const colorClass = statusColors[status] || 'bg-gray-100 text-gray-700';
+    const label = statusLabels[status] || status;
 
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
-        {status}
+        {label}
       </span>
     );
   };
