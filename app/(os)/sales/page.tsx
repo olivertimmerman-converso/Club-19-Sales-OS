@@ -38,6 +38,7 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
 
     // Query ALL Sales from Xata (exclude xero_import records)
     // Then filter active vs deleted in JavaScript for reliability
+    // Note: We fetch ALL records and filter in JS because Xata's $isNot excludes null values
     let allSalesQuery = xata.db.Sales
       .select([
         'id',
@@ -50,12 +51,12 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
         'xero_invoice_number',
         'invoice_status',
         'currency',
+        'source',
         'buyer.name',
         'shopper.id',
         'shopper.name',
         'deleted_at',
-      ])
-      .filter({ source: { $isNot: 'xero_import' } });
+      ]);
 
     // Filter for shoppers - only show their own sales
     if (role === 'shopper') {
@@ -89,9 +90,13 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
     const allSalesRaw = await allSalesQuery.sort('sale_date', 'desc').getAll();
     console.log('[SalesPage] Total sales fetched:', allSalesRaw.length);
 
+    // Filter out xero_import records in JavaScript (Xata's $isNot excludes null values, so we do it here)
+    const nonImportedSales = allSalesRaw.filter(sale => sale.source !== 'xero_import');
+    console.log('[SalesPage] After excluding xero_import:', nonImportedSales.length);
+
     // Split into active and deleted using JavaScript (reliable!)
-    const salesRaw = allSalesRaw.filter(sale => !sale.deleted_at);
-    const deletedSalesRaw = role === 'superadmin' ? allSalesRaw.filter(sale => sale.deleted_at) : [];
+    const salesRaw = nonImportedSales.filter(sale => !sale.deleted_at);
+    const deletedSalesRaw = role === 'superadmin' ? nonImportedSales.filter(sale => sale.deleted_at) : [];
 
     console.log('[SalesPage] Active sales count:', salesRaw.length);
     console.log('[SalesPage] Deleted sales count:', deletedSalesRaw.length);

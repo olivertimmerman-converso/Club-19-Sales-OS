@@ -430,6 +430,7 @@ export async function createSaleFromAppPayload(
     // Core identifiers
     sale_reference: sanitizedPayload.sale_reference,
     sale_date: sanitizedPayload.sale_date,
+    source: 'atelier', // Mark as created via Atelier (Trade Wizard or direct API)
 
     // Relationships
     shopper: shopper.id,
