@@ -53,11 +53,12 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     href: "/finance",
     icon: "Calculator",
   },
-  {
-    label: "Sales Sheet Data",
-    href: "/legacy",
-    icon: "Archive",
-  },
+  // {
+  //   label: "Sales Sheet Data",
+  //   href: "/legacy",
+  //   icon: "Archive",
+  // },
+  // Note: Sales Sheet Data page still accessible at /legacy if needed
   {
     label: "Legacy Xero Data",
     href: "/legacy-xero",
