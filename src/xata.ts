@@ -108,8 +108,13 @@ const tables = [
       { name: "deleted_at", type: "datetime" },
       { name: "has_introducer", type: "bool", defaultValue: "false" },
       { name: "introducer_commission", type: "float" },
+      { name: "is_payment_plan", type: "bool", defaultValue: "false" },
+      { name: "payment_plan_instalments", type: "int" },
     ],
-    revLinks: [{ column: "sale", table: "Errors" }],
+    revLinks: [
+      { column: "sale", table: "Errors" },
+      { column: "sale", table: "PaymentSchedule" },
+    ],
   },
   {
     name: "Errors",
@@ -172,6 +177,20 @@ const tables = [
       { name: "raw_row", type: "json" },
     ],
   },
+  {
+    name: "PaymentSchedule",
+    columns: [
+      { name: "sale", type: "link", link: { table: "Sales" } },
+      { name: "instalment_number", type: "int" },
+      { name: "due_date", type: "datetime" },
+      { name: "amount", type: "float" },
+      { name: "status", type: "text" },
+      { name: "xero_invoice_id", type: "text" },
+      { name: "xero_invoice_number", type: "text" },
+      { name: "paid_date", type: "datetime" },
+      { name: "notes", type: "text" },
+    ],
+  },
 ] as const;
 
 export type SchemaTables = typeof tables;
@@ -207,6 +226,9 @@ export type LegacyClientsRecord = LegacyClients & XataRecord;
 export type LegacyTrades = InferredTypes["legacy_trades"];
 export type LegacyTradesRecord = LegacyTrades & XataRecord;
 
+export type PaymentSchedule = InferredTypes["PaymentSchedule"];
+export type PaymentScheduleRecord = PaymentSchedule & XataRecord;
+
 export type DatabaseSchema = {
   Shoppers: ShoppersRecord;
   Buyers: BuyersRecord;
@@ -218,6 +240,7 @@ export type DatabaseSchema = {
   legacy_suppliers: LegacySuppliersRecord;
   legacy_clients: LegacyClientsRecord;
   legacy_trades: LegacyTradesRecord;
+  PaymentSchedule: PaymentScheduleRecord;
 };
 
 const DatabaseClient = buildClient();
