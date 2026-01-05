@@ -110,6 +110,9 @@ const tables = [
       { name: "introducer_commission", type: "float" },
       { name: "is_payment_plan", type: "bool", defaultValue: "false" },
       { name: "payment_plan_instalments", type: "int" },
+      { name: "commission_clawback", type: "bool" },
+      { name: "commission_clawback_date", type: "datetime" },
+      { name: "commission_clawback_reason", type: "text" },
     ],
     revLinks: [
       { column: "sale", table: "Errors" },
