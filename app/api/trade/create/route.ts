@@ -4,7 +4,7 @@ import { ZodError } from "zod";
 import { XataClient } from "@/src/xata";
 import { auth } from "@clerk/nextjs/server";
 import * as logger from "@/lib/logger";
-import { getBrandingThemeMapping } from "@/lib/branding-theme-mappings";
+import { getBrandingThemeMapping, XERO_BRANDING_THEMES } from "@/lib/branding-theme-mappings";
 import { getValidTokens } from "@/lib/xero-auth";
 
 // Initialize Xata client
@@ -327,15 +327,26 @@ export async function POST(request: NextRequest) {
 
       // Determine VAT rate based on branding theme
       const brandingThemeMapping = getBrandingThemeMapping(firstItem.brandTheme);
-      const vatRate = brandingThemeMapping?.expectedVAT || 20.0; // Default to 20% if unknown
+
+      // CRITICAL: Do NOT default to 20% - this causes incorrect VAT on export sales
+      if (!brandingThemeMapping) {
+        logger.error('TRADE_CREATE', 'Unknown branding theme - cannot determine VAT rate', {
+          brandTheme: firstItem.brandTheme,
+          availableThemes: Object.keys(XERO_BRANDING_THEMES)
+        });
+        throw new Error(`Unknown branding theme: ${firstItem.brandTheme}. Cannot determine correct VAT rate.`);
+      }
+
+      const vatRate = brandingThemeMapping.expectedVAT;
       const vatRateDecimal = vatRate / 100;
 
       logger.info('TRADE_CREATE', 'VAT calculation', {
         brandTheme: firstItem.brandTheme,
-        mappingFound: !!brandingThemeMapping,
-        themeName: brandingThemeMapping?.name,
+        mappingFound: true,
+        themeName: brandingThemeMapping.name,
         vatRate: vatRate,
-        accountCode: brandingThemeMapping?.accountCode
+        accountCode: brandingThemeMapping.accountCode,
+        treatment: brandingThemeMapping.treatment
       });
 
       // Calculate VAT amounts
