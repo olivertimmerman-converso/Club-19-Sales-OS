@@ -393,7 +393,7 @@ export async function POST(request: NextRequest) {
       const saleRecord = await xata.db.Sales.create({
         // Metadata
         sale_reference: saleReference,
-        sale_date: new Date(),
+        sale_date: new Date(), // Date the invoice is created (today)
         status: 'active',
         source: 'atelier', // Sales Atelier origin
 
