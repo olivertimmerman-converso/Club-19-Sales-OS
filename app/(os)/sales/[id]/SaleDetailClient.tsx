@@ -33,6 +33,9 @@ interface Sale {
   commission_locked: boolean;
   commission_paid: boolean;
   commission_amount: number | null;
+  commission_clawback: boolean;
+  commission_clawback_date: string | null;
+  commission_clawback_reason: string | null;
   internal_notes: string | null;
   buyer: { id: string; name: string } | null;
   shopper: { id: string; name: string } | null;
@@ -158,6 +161,12 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
   const [isSavingInstalment, setIsSavingInstalment] = useState(false);
   const [paymentPlanError, setPaymentPlanError] = useState<string | null>(null);
   const [paymentPlanSuccess, setPaymentPlanSuccess] = useState<string | null>(null);
+
+  // Commission clawback state
+  const [showClawbackModal, setShowClawbackModal] = useState(false);
+  const [clawbackReason, setClawbackReason] = useState('');
+  const [isProcessingClawback, setIsProcessingClawback] = useState(false);
+  const [clawbackError, setClawbackError] = useState<string | null>(null);
 
   // Fetch introducers on mount
   useEffect(() => {
@@ -512,6 +521,47 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
       setPaymentPlanError(error instanceof Error ? error.message : 'Failed to update instalment');
     } finally {
       setIsSavingInstalment(false);
+    }
+  };
+
+  // Commission clawback handler
+  const handleProcessClawback = async () => {
+    if (!clawbackReason.trim()) {
+      setClawbackError('Please provide a reason for the clawback');
+      return;
+    }
+
+    setIsProcessingClawback(true);
+    setClawbackError(null);
+
+    try {
+      const response = await fetch(`/api/sales/${sale.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          commission_clawback: true,
+          commission_clawback_date: new Date().toISOString(),
+          commission_clawback_reason: clawbackReason.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to process clawback');
+      }
+
+      // Refresh the page
+      setTimeout(() => {
+        router.refresh();
+        setShowClawbackModal(false);
+      }, 500);
+    } catch (error) {
+      console.error('Error processing clawback:', error);
+      setClawbackError(error instanceof Error ? error.message : 'Failed to process clawback');
+    } finally {
+      setIsProcessingClawback(false);
     }
   };
 
@@ -1526,6 +1576,169 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Commission Clawback Modal */}
+        {showClawbackModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+              <div>
+                <div className="flex items-start justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Process Commission Clawback</h3>
+                  <button
+                    onClick={() => {
+                      setShowClawbackModal(false);
+                      setClawbackReason('');
+                      setClawbackError(null);
+                    }}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Warning */}
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                    <div className="flex items-start gap-2">
+                      <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <p className="text-sm text-red-800">
+                        This will mark the commission as clawed back. This action records that the commission payment must be recovered from the shopper.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Reason Input */}
+                  <div>
+                    <label htmlFor="clawback-reason" className="block text-sm font-medium text-gray-700 mb-2">
+                      Reason for Clawback <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      id="clawback-reason"
+                      value={clawbackReason}
+                      onChange={(e) => setClawbackReason(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="e.g., Payment plan defaulted - customer failed to pay instalments 2 and 3"
+                      disabled={isProcessingClawback}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Provide details about why the commission is being clawed back
+                    </p>
+                  </div>
+
+                  {/* Error Display */}
+                  {clawbackError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-800">{clawbackError}</p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex justify-end gap-3 pt-2">
+                    <button
+                      onClick={() => {
+                        setShowClawbackModal(false);
+                        setClawbackReason('');
+                        setClawbackError(null);
+                      }}
+                      disabled={isProcessingClawback}
+                      className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleProcessClawback}
+                      disabled={isProcessingClawback || !clawbackReason.trim()}
+                      className="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isProcessingClawback ? 'Processing...' : 'Process Clawback'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Commission Status & Clawback (Superadmin/Finance only) */}
+        {(userRole === 'superadmin' || userRole === 'finance') && (
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 lg:col-span-2">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Commission Status</h2>
+
+            <div className="space-y-4">
+              {/* Commission Status Display */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Commission Paid</p>
+                  <p className={`text-lg font-semibold ${sale.commission_paid ? 'text-green-600' : 'text-gray-400'}`}>
+                    {sale.commission_paid ? 'Yes' : 'No'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Commission Clawed Back</p>
+                  <p className={`text-lg font-semibold ${sale.commission_clawback ? 'text-red-600' : 'text-gray-400'}`}>
+                    {sale.commission_clawback ? 'Yes' : 'No'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Clawback Details (if clawed back) */}
+              {sale.commission_clawback && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm font-medium text-red-900 mb-2">Clawback Details</p>
+                  <dl className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <dt className="text-red-700">Date:</dt>
+                      <dd className="font-medium text-red-900">{formatDate(sale.commission_clawback_date)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-red-700 mb-1">Reason:</dt>
+                      <dd className="font-medium text-red-900">{sale.commission_clawback_reason || 'No reason provided'}</dd>
+                    </div>
+                  </dl>
+                </div>
+              )}
+
+              {/* Warning: Payment Plan with Commission Paid */}
+              {!sale.commission_clawback && sale.is_payment_plan && sale.commission_paid && (
+                <>
+                  {/* Check if there are unpaid instalments */}
+                  {instalments.some(i => i.status !== 'paid') && (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-yellow-900 mb-1">
+                            Commission Paid - Clawback May Be Required
+                          </p>
+                          <p className="text-xs text-yellow-700">
+                            This payment plan has unpaid instalments. If the deal fails, commission clawback will be required.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Clawback Button */}
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => setShowClawbackModal(true)}
+                      className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                    >
+                      Mark Commission Clawed Back
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
