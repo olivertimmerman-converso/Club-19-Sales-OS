@@ -438,10 +438,16 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error('XERO_SYNC', 'Fatal error during sync', { error: error as any });
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.error('XERO_SYNC', 'Fatal error during sync', {
+      error: error as any,
+      message: errorMessage,
+      stack: errorStack
+    });
     return NextResponse.json({
       error: 'Sync failed',
-      details: errorMessage
+      details: errorMessage,
+      stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
     }, { status: 500 });
   }
 }

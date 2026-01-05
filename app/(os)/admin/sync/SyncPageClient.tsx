@@ -46,12 +46,16 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
       if (data.success) {
         setTimeout(() => router.refresh(), 1000);
       } else {
-        setError(data.error || 'Sync failed');
+        // Show detailed error message
+        const errorMsg = data.details || data.error || 'Sync failed';
+        setError(errorMsg);
+        console.error('[SYNC] Sync failed:', { error: data.error, details: data.details, stack: data.stack });
       }
     } catch (err) {
       console.error('[SYNC] Invoice sync error:', err);
-      setError('Sync failed');
-      setSyncResult({ success: false, error: 'Sync failed' });
+      const errorMsg = err instanceof Error ? err.message : 'Sync failed';
+      setError(errorMsg);
+      setSyncResult({ success: false, error: errorMsg });
     } finally {
       setSyncing(false);
       setSyncType(null);
@@ -70,12 +74,16 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
       if (data.success) {
         setTimeout(() => router.refresh(), 1000);
       } else {
-        setError(data.error || 'Sync failed');
+        // Show detailed error message
+        const errorMsg = data.details || data.error || 'Sync failed';
+        setError(errorMsg);
+        console.error('[SYNC] Sync failed:', { error: data.error, details: data.details, stack: data.stack });
       }
     } catch (err) {
       console.error('[SYNC] Payment sync error:', err);
-      setError('Sync failed');
-      setSyncResult({ success: false, error: 'Sync failed' });
+      const errorMsg = err instanceof Error ? err.message : 'Sync failed';
+      setError(errorMsg);
+      setSyncResult({ success: false, error: errorMsg });
     } finally {
       setSyncing(false);
       setSyncType(null);

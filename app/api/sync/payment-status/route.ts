@@ -215,10 +215,16 @@ export async function POST() {
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error('PAYMENT_SYNC', 'Fatal error', { error: error as any });
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logger.error('PAYMENT_SYNC', 'Fatal error', {
+      error: error as any,
+      message: errorMessage,
+      stack: errorStack
+    });
     return NextResponse.json({
       error: 'Sync failed',
-      details: errorMessage
+      details: errorMessage,
+      stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
     }, { status: 500 });
   }
 }
