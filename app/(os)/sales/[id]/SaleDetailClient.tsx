@@ -40,6 +40,20 @@ interface Sale {
   introducer: { id: string; name: string } | null;
   has_introducer: boolean;
   introducer_commission: number | null;
+  is_payment_plan: boolean;
+  payment_plan_instalments: number | null;
+}
+
+interface PaymentInstalment {
+  id: string;
+  instalment_number: number;
+  due_date: string | null;
+  amount: number;
+  status: string;
+  paid_date: string | null;
+  xero_invoice_id: string | null;
+  xero_invoice_number: string | null;
+  notes: string | null;
 }
 
 interface Shopper {
@@ -131,6 +145,20 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
   const [introducerSaveError, setIntroducerSaveError] = useState<string | null>(null);
   const [introducerSaveSuccess, setIntroducerSaveSuccess] = useState(false);
 
+  // Payment plan state
+  const [instalments, setInstalments] = useState<PaymentInstalment[]>([]);
+  const [isLoadingInstalments, setIsLoadingInstalments] = useState(false);
+  const [showCreatePlanModal, setShowCreatePlanModal] = useState(false);
+  const [showEditInstalmentModal, setShowEditInstalmentModal] = useState(false);
+  const [editingInstalment, setEditingInstalment] = useState<PaymentInstalment | null>(null);
+  const [numberOfInstalments, setNumberOfInstalments] = useState(3);
+  const [planInstalments, setPlanInstalments] = useState<Array<{ due_date: string; amount: string }>>([]);
+  const [isCreatingPlan, setIsCreatingPlan] = useState(false);
+  const [isDeletingPlan, setIsDeletingPlan] = useState(false);
+  const [isSavingInstalment, setIsSavingInstalment] = useState(false);
+  const [paymentPlanError, setPaymentPlanError] = useState<string | null>(null);
+  const [paymentPlanSuccess, setPaymentPlanSuccess] = useState<string | null>(null);
+
   // Fetch introducers on mount
   useEffect(() => {
     const fetchIntroducers = async () => {
@@ -151,6 +179,29 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
 
     fetchIntroducers();
   }, []);
+
+  // Fetch payment instalments if this is a payment plan
+  useEffect(() => {
+    const fetchInstalments = async () => {
+      if (!sale.is_payment_plan) return;
+
+      setIsLoadingInstalments(true);
+      try {
+        const response = await fetch(`/api/sales/${sale.id}/payment-schedule`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch instalments');
+        }
+        const data = await response.json();
+        setInstalments(data.instalments || []);
+      } catch (error) {
+        console.error('Error fetching instalments:', error);
+      } finally {
+        setIsLoadingInstalments(false);
+      }
+    };
+
+    fetchInstalments();
+  }, [sale.is_payment_plan, sale.id]);
 
   const hasChanges = selectedShopperId !== (sale.shopper?.id || '');
 
@@ -333,6 +384,137 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
     }
   };
 
+  // Payment plan handlers
+  const handleCreatePaymentPlan = () => {
+    // Auto-suggest even split
+    const amountPerInstalment = sale.sale_amount_inc_vat / numberOfInstalments;
+    const suggestedInstalments = Array.from({ length: numberOfInstalments }, (_, i) => ({
+      due_date: '',
+      amount: amountPerInstalment.toFixed(2),
+    }));
+    setPlanInstalments(suggestedInstalments);
+    setShowCreatePlanModal(true);
+    setPaymentPlanError(null);
+    setPaymentPlanSuccess(null);
+  };
+
+  const handleSavePaymentPlan = async () => {
+    setIsCreatingPlan(true);
+    setPaymentPlanError(null);
+
+    try {
+      const instalmentsData = planInstalments.map((inst, idx) => ({
+        instalment_number: idx + 1,
+        due_date: inst.due_date || null,
+        amount: parseFloat(inst.amount),
+        status: 'scheduled',
+      }));
+
+      const response = await fetch(`/api/sales/${sale.id}/payment-schedule`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          instalments: instalmentsData,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create payment plan');
+      }
+
+      setPaymentPlanSuccess('Payment plan created successfully!');
+      setShowCreatePlanModal(false);
+
+      // Refresh the page
+      setTimeout(() => {
+        router.refresh();
+      }, 1500);
+    } catch (error) {
+      console.error('Error creating payment plan:', error);
+      setPaymentPlanError(error instanceof Error ? error.message : 'Failed to create payment plan');
+    } finally {
+      setIsCreatingPlan(false);
+    }
+  };
+
+  const handleDeletePaymentPlan = async () => {
+    if (!confirm('Are you sure you want to remove this payment plan? This will delete all instalments.')) {
+      return;
+    }
+
+    setIsDeletingPlan(true);
+    setPaymentPlanError(null);
+
+    try {
+      const response = await fetch(`/api/sales/${sale.id}/payment-schedule`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete payment plan');
+      }
+
+      setPaymentPlanSuccess('Payment plan removed successfully!');
+
+      // Refresh the page
+      setTimeout(() => {
+        router.refresh();
+      }, 1500);
+    } catch (error) {
+      console.error('Error deleting payment plan:', error);
+      setPaymentPlanError(error instanceof Error ? error.message : 'Failed to delete payment plan');
+    } finally {
+      setIsDeletingPlan(false);
+    }
+  };
+
+  const handleEditInstalment = (instalment: PaymentInstalment) => {
+    setEditingInstalment(instalment);
+    setShowEditInstalmentModal(true);
+    setPaymentPlanError(null);
+  };
+
+  const handleSaveInstalment = async () => {
+    if (!editingInstalment) return;
+
+    setIsSavingInstalment(true);
+    setPaymentPlanError(null);
+
+    try {
+      const response = await fetch(`/api/payment-schedule/${editingInstalment.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editingInstalment),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update instalment');
+      }
+
+      setPaymentPlanSuccess('Instalment updated successfully!');
+      setShowEditInstalmentModal(false);
+
+      // Refresh instalments
+      const refetchResponse = await fetch(`/api/sales/${sale.id}/payment-schedule`);
+      if (refetchResponse.ok) {
+        const data = await refetchResponse.json();
+        setInstalments(data.instalments || []);
+      }
+    } catch (error) {
+      console.error('Error updating instalment:', error);
+      setPaymentPlanError(error instanceof Error ? error.message : 'Failed to update instalment');
+    } finally {
+      setIsSavingInstalment(false);
+    }
+  };
+
   // Format currency
   const formatCurrency = (amount: number | null | undefined) => {
     if (!amount) return '£0';
@@ -380,6 +562,23 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
     return (
       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${colorClass}`}>
         {status}
+      </span>
+    );
+  };
+
+  // Format instalment status badge
+  const getInstalmentStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { color: string; icon: string; label: string }> = {
+      'paid': { color: 'bg-green-100 text-green-800', icon: '✓', label: 'Paid' },
+      'invoiced': { color: 'bg-yellow-100 text-yellow-800', icon: '●', label: 'Invoiced' },
+      'scheduled': { color: 'bg-gray-100 text-gray-800', icon: '○', label: 'Scheduled' },
+    };
+
+    const config = statusConfig[status] || statusConfig['scheduled'];
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+        {config.icon} {config.label}
       </span>
     );
   };
@@ -983,6 +1182,353 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
             </div>
           </div>
         </div>
+
+        {/* Payment Plan Section */}
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Payment Plan</h2>
+            {!sale.is_payment_plan && (
+              <button
+                onClick={handleCreatePaymentPlan}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                Convert to Payment Plan
+              </button>
+            )}
+          </div>
+
+          {/* Success/Error Messages */}
+          {paymentPlanSuccess && (
+            <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-green-800">{paymentPlanSuccess}</p>
+            </div>
+          )}
+          {paymentPlanError && (
+            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-red-800">{paymentPlanError}</p>
+            </div>
+          )}
+
+          {!sale.is_payment_plan ? (
+            <p className="text-sm text-gray-500">
+              This sale is not set up as a payment plan. Click &quot;Convert to Payment Plan&quot; to split the payment into instalments.
+            </p>
+          ) : (
+            <>
+              {isLoadingInstalments ? (
+                <p className="text-sm text-gray-500">Loading instalments...</p>
+              ) : (
+                <>
+                  {/* Payment Plan Summary */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-gray-700">
+                        {instalments.filter(i => i.status === 'paid').length} of {instalments.length} instalments paid
+                      </span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatCurrency(instalments.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0))} / {formatCurrency(instalments.reduce((sum, i) => sum + i.amount, 0))}
+                      </span>
+                    </div>
+                    {/* Progress Bar */}
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-green-600 h-2.5 rounded-full transition-all"
+                        style={{
+                          width: `${instalments.length > 0 ? (instalments.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.amount, 0) / instalments.reduce((sum, i) => sum + i.amount, 0)) * 100 : 0}%`
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+
+                  {/* Instalments Table */}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Xero Invoice</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {instalments.map((instalment) => (
+                          <tr key={instalment.id}>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {instalment.instalment_number}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                              {formatDate(instalment.due_date)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {formatCurrency(instalment.amount)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {getInstalmentStatusBadge(instalment.status)}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                              {instalment.xero_invoice_number || '—'}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm">
+                              <button
+                                onClick={() => handleEditInstalment(instalment)}
+                                className="text-purple-600 hover:text-purple-900 font-medium"
+                              >
+                                Edit
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Remove Payment Plan Button */}
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      onClick={handleDeletePaymentPlan}
+                      disabled={isDeletingPlan}
+                      className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isDeletingPlan ? 'Removing...' : 'Remove Payment Plan'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Create Payment Plan Modal */}
+        {showCreatePlanModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Payment Plan</h3>
+
+                {/* Number of Instalments */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Number of Instalments
+                  </label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="12"
+                    value={numberOfInstalments}
+                    onChange={(e) => {
+                      const num = parseInt(e.target.value);
+                      setNumberOfInstalments(num);
+                      // Recalculate suggested instalments
+                      const amountPerInstalment = sale.sale_amount_inc_vat / num;
+                      const suggested = Array.from({ length: num }, () => ({
+                        due_date: '',
+                        amount: amountPerInstalment.toFixed(2),
+                      }));
+                      setPlanInstalments(suggested);
+                    }}
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                  />
+                </div>
+
+                {/* Instalments */}
+                <div className="space-y-4 mb-6">
+                  {planInstalments.map((inst, idx) => (
+                    <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                      <h4 className="text-sm font-medium text-gray-900 mb-3">Instalment {idx + 1}</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Due Date
+                          </label>
+                          <input
+                            type="date"
+                            value={inst.due_date}
+                            onChange={(e) => {
+                              const updated = [...planInstalments];
+                              updated[idx].due_date = e.target.value;
+                              setPlanInstalments(updated);
+                            }}
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Amount (£)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={inst.amount}
+                            onChange={(e) => {
+                              const updated = [...planInstalments];
+                              updated[idx].amount = e.target.value;
+                              setPlanInstalments(updated);
+                            }}
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Total */}
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium text-gray-700">Total Instalments:</span>
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(planInstalments.reduce((sum, i) => sum + parseFloat(i.amount || '0'), 0))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="font-medium text-gray-700">Sale Amount:</span>
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(sale.sale_amount_inc_vat)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSavePaymentPlan}
+                    disabled={isCreatingPlan}
+                    className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isCreatingPlan ? 'Creating...' : 'Create Payment Plan'}
+                  </button>
+                  <button
+                    onClick={() => setShowCreatePlanModal(false)}
+                    disabled={isCreatingPlan}
+                    className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Instalment Modal */}
+        {showEditInstalmentModal && editingInstalment && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+              <div className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Edit Instalment #{editingInstalment.instalment_number}
+                </h3>
+
+                <div className="space-y-4 mb-6">
+                  {/* Due Date */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Due Date
+                    </label>
+                    <input
+                      type="date"
+                      value={editingInstalment.due_date || ''}
+                      onChange={(e) => setEditingInstalment({ ...editingInstalment, due_date: e.target.value })}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Amount */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Amount (£)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editingInstalment.amount}
+                      onChange={(e) => setEditingInstalment({ ...editingInstalment, amount: parseFloat(e.target.value) })}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Status
+                    </label>
+                    <select
+                      value={editingInstalment.status}
+                      onChange={(e) => setEditingInstalment({ ...editingInstalment, status: e.target.value })}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                    >
+                      <option value="scheduled">Scheduled</option>
+                      <option value="invoiced">Invoiced</option>
+                      <option value="paid">Paid</option>
+                    </select>
+                  </div>
+
+                  {/* Xero Invoice Number */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Xero Invoice Number (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={editingInstalment.xero_invoice_number || ''}
+                      onChange={(e) => setEditingInstalment({ ...editingInstalment, xero_invoice_number: e.target.value })}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                    />
+                  </div>
+
+                  {/* Paid Date (only if status is paid) */}
+                  {editingInstalment.status === 'paid' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Paid Date
+                      </label>
+                      <input
+                        type="date"
+                        value={editingInstalment.paid_date || ''}
+                        onChange={(e) => setEditingInstalment({ ...editingInstalment, paid_date: e.target.value })}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                      />
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Notes (optional)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editingInstalment.notes || ''}
+                      onChange={(e) => setEditingInstalment({ ...editingInstalment, notes: e.target.value })}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSaveInstalment}
+                    disabled={isSavingInstalment}
+                    className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isSavingInstalment ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    onClick={() => setShowEditInstalmentModal(false)}
+                    disabled={isSavingInstalment}
+                    className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Internal Notes (if present) */}
         {sale.internal_notes && (

@@ -108,6 +108,8 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
     internal_notes: sale.internal_notes || null,
     has_introducer: (sale as any).has_introducer || false,
     introducer_commission: (sale as any).introducer_commission || null,
+    is_payment_plan: (sale as any).is_payment_plan || false,
+    payment_plan_instalments: (sale as any).payment_plan_instalments || null,
     buyer: sale.buyer ? {
       id: sale.buyer.id,
       name: sale.buyer.name || 'Unknown',
