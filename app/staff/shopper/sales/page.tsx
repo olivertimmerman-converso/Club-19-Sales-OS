@@ -249,7 +249,7 @@ export default function ShopperSalesPage() {
           <div className="text-center py-12">
             <p className="text-gray-600 mb-4">
               {sales.length === 0
-                ? "No sales yet. Start creating deals to see them here!"
+                ? "No sales yet. Start creating invoices to see them here!"
                 : "No sales match your filters."}
             </p>
             {sales.length === 0 && (

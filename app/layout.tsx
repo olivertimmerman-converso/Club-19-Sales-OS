@@ -19,7 +19,7 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "Club 19 London | Sales Atelier",
   description:
-    "Elegant deal creation and invoice management for Club 19 London",
+    "Elegant invoice creation and sales management for Club 19 London",
   icons: {
     icon: "/favicon.ico",
   },

@@ -1721,7 +1721,7 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
                             Commission Paid - Clawback May Be Required
                           </p>
                           <p className="text-xs text-yellow-700">
-                            This payment plan has unpaid instalments. If the deal fails, commission clawback will be required.
+                            This payment plan has unpaid instalments. If the invoice is cancelled, commission clawback will be required.
                           </p>
                         </div>
                       </div>

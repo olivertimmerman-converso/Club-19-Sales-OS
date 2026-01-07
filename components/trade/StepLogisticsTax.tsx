@@ -342,7 +342,7 @@ export function StepLogisticsTax() {
       {(state.currentSupplier || state.buyer) && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
           <p className="text-sm font-medium text-gray-900 mb-2">
-            Deal Summary
+            Invoice Summary
           </p>
           <div className="text-sm text-gray-700 space-y-1">
             {state.currentSupplier && (

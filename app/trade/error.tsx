@@ -24,8 +24,8 @@ export default function Error({
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <ErrorDisplay
-        message="Deal creation error"
-        description="An error occurred while creating your deal. Please try again or contact support if the problem persists."
+        message="Invoice creation error"
+        description="An error occurred while creating your invoice. Please try again or contact support if the problem persists."
         onRetry={reset}
       />
     </div>

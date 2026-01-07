@@ -247,7 +247,7 @@ export default function AdminDashboardPage() {
       <PageSection title="Latest Sales">
         {latestSales.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">No sales yet. Start creating deals to see them here!</p>
+            <p className="text-gray-600">No sales yet. Start creating invoices to see them here!</p>
           </div>
         ) : (
           <>

@@ -176,7 +176,7 @@ export default function ShopperDashboardPage() {
       <PageSection title="Recent Sales">
         {recentSales.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600">No sales yet. Start creating deals to see them here!</p>
+            <p className="text-gray-600">No sales yet. Start creating invoices to see them here!</p>
             <Link
               href="/trade/new"
               className="inline-block mt-4 px-6 py-2 bg-[#0A0A0A] text-white rounded-lg hover:bg-[#0A0A0A]/90 transition-colors"

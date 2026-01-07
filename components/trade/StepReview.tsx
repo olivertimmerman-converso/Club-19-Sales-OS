@@ -261,11 +261,11 @@ export function StepReview() {
         </div>
       </div>
 
-      {/* Deal Summary Card */}
+      {/* Invoice Summary Card */}
       {state.items.length > 0 && (
         <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
           <div className="bg-gray-50 px-4 py-3 border-b border-gray-300">
-            <h3 className="font-semibold text-gray-900">Deal Summary</h3>
+            <h3 className="font-semibold text-gray-900">Invoice Summary</h3>
           </div>
 
           {/* Item Details */}
