@@ -21,6 +21,8 @@ export function StepLogisticsTax() {
     setDirectShip: setDirectShipContext,
     setLandedDelivery: setLandedDeliveryContext,
     setImportVAT,
+    setShippingMethod,
+    setShippingCostFactored,
   } = useTrade();
 
   // ============================================================================
@@ -38,6 +40,12 @@ export function StepLogisticsTax() {
   const [directShip, setDirectShip] = useState<string | null>(state.directShip);
   const [insuranceLanded, setInsuranceLanded] = useState<string | null>(
     state.landedDelivery
+  );
+  const [shippingMethodLocal, setShippingMethodLocal] = useState<"to_be_shipped" | "hand_delivery" | null>(
+    state.shippingMethod
+  );
+  const [shippingCostFactoredLocal, setShippingCostFactoredLocal] = useState<boolean>(
+    state.shippingCostFactored
   );
 
   // Touched flags to prevent auto-sync from overriding manual user selections
@@ -178,6 +186,21 @@ export function StepLogisticsTax() {
   useEffect(() => {
     setLandedDeliveryContext(insuranceLanded);
   }, [insuranceLanded, setLandedDeliveryContext]);
+
+  useEffect(() => {
+    setShippingMethod(shippingMethodLocal);
+  }, [shippingMethodLocal, setShippingMethod]);
+
+  useEffect(() => {
+    setShippingCostFactored(shippingCostFactoredLocal);
+  }, [shippingCostFactoredLocal, setShippingCostFactored]);
+
+  // Default shipping method to "to_be_shipped" when tax scenario is first determined
+  useEffect(() => {
+    if (result && shippingMethodLocal === null) {
+      setShippingMethodLocal("to_be_shipped");
+    }
+  }, [result, shippingMethodLocal]);
 
   // ============================================================================
   // DISPLAY HELPERS
@@ -573,6 +596,99 @@ export function StepLogisticsTax() {
             </div>
           )}
         </>
+      )}
+
+      {/* ========================================================================
+          DELIVERY METHOD SELECTION
+          ======================================================================== */}
+      {result && (
+        <div className="border-t pt-6 space-y-4 animate-fade-in">
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-1">
+              How will this item be delivered?
+            </h3>
+            <p className="text-xs text-gray-500">
+              Choose the delivery method to determine shipping cost handling
+            </p>
+          </div>
+
+          {/* Delivery method radio buttons */}
+          <div className="space-y-3">
+            <button
+              type="button"
+              onClick={() => setShippingMethodLocal("to_be_shipped")}
+              className={`w-full p-4 border rounded-md text-left transition-colors ${
+                shippingMethodLocal === "to_be_shipped"
+                  ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+                  : "border-gray-300 hover:border-gray-400 text-gray-700"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                  shippingMethodLocal === "to_be_shipped"
+                    ? "border-blue-600 bg-blue-600"
+                    : "border-gray-400"
+                }`}>
+                  {shippingMethodLocal === "to_be_shipped" && (
+                    <div className="w-2 h-2 rounded-full bg-white" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">To be shipped</div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    Shipping cost to be confirmed later
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShippingMethodLocal("hand_delivery")}
+              className={`w-full p-4 border rounded-md text-left transition-colors ${
+                shippingMethodLocal === "hand_delivery"
+                  ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
+                  : "border-gray-300 hover:border-gray-400 text-gray-700"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                  shippingMethodLocal === "hand_delivery"
+                    ? "border-blue-600 bg-blue-600"
+                    : "border-gray-400"
+                }`}>
+                  {shippingMethodLocal === "hand_delivery" && (
+                    <div className="w-2 h-2 rounded-full bg-white" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium">Hand delivery</div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    No shipping cost required
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          {/* Shipping cost factored checkbox */}
+          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-md hover:bg-gray-50 transition-colors">
+            <input
+              type="checkbox"
+              checked={shippingCostFactoredLocal}
+              onChange={(e) => setShippingCostFactoredLocal(e.target.checked)}
+              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <div className="flex-1">
+              <span className="text-sm font-medium text-gray-900">
+                I confirm shipping has been factored into the client's price
+              </span>
+              <p className="text-xs text-gray-500 mt-1">
+                Check this if you've already included shipping costs in your quote to the client
+              </p>
+            </div>
+          </label>
+        </div>
       )}
 
       {/* ========================================================================

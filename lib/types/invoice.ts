@@ -198,6 +198,10 @@ export type WizardState = {
   directShip: string | null; // "yes" | "no"
   landedDelivery: string | null; // "yes" | "no"
 
+  // Shipping method (Step 3 - Logistics & Tax)
+  shippingMethod: "to_be_shipped" | "hand_delivery" | null;
+  shippingCostFactored: boolean; // Has shipping been factored into client price?
+
   // Items (Step 1)
   items: TradeItem[];
   editingItemId: string | null; // ID of item being edited, or 'new'

@@ -45,6 +45,10 @@ type TradeContextType = {
   setDirectShip: (directShip: string | null) => void;
   setLandedDelivery: (landed: string | null) => void;
 
+  // Shipping method
+  setShippingMethod: (method: "to_be_shipped" | "hand_delivery" | null) => void;
+  setShippingCostFactored: (factored: boolean) => void;
+
   // Items
   addItem: (item: TradeItem) => void;
   updateItem: (itemId: string, item: Partial<TradeItem>) => void;
@@ -89,6 +93,8 @@ const createInitialState = (): WizardState => ({
   purchaseType: null,
   directShip: null,
   landedDelivery: null,
+  shippingMethod: null,
+  shippingCostFactored: false,
   items: [],
   editingItemId: null,
   buyer: null,
@@ -255,6 +261,14 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, landedDelivery: landed }));
   }, []);
 
+  const setShippingMethod = useCallback((method: "to_be_shipped" | "hand_delivery" | null) => {
+    setState((prev) => ({ ...prev, shippingMethod: method }));
+  }, []);
+
+  const setShippingCostFactored = useCallback((factored: boolean) => {
+    setState((prev) => ({ ...prev, shippingCostFactored: factored }));
+  }, []);
+
   const addItem = useCallback((item: TradeItem) => {
     setState((prev) => ({
       ...prev,
@@ -351,6 +365,8 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setPurchaseType,
     setDirectShip,
     setLandedDelivery,
+    setShippingMethod,
+    setShippingCostFactored,
     addItem,
     updateItem,
     removeItem,
