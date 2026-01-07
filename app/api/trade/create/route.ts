@@ -421,8 +421,12 @@ export async function POST(request: NextRequest) {
 
         // Costs
         card_fees: trade.impliedCosts.cardFees,
-        shipping_cost: trade.impliedCosts.shipping,
+        shipping_cost: (body.shippingMethod === 'hand_delivery') ? 0 : null,
         direct_costs: trade.impliedCosts.total,
+
+        // Shipping method
+        shipping_method: body.shippingMethod || 'to_be_shipped',
+        shipping_cost_confirmed: body.shippingMethod === 'hand_delivery',
 
         // Margins (calculated server-side for accuracy)
         gross_margin: grossMargin,
