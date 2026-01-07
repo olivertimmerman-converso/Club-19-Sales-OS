@@ -80,10 +80,19 @@ export async function GET(request: NextRequest) {
         count: allContacts.length,
       });
     } catch (error: any) {
-      logger.error("XERO_CONTACTS", "Failed to fetch contacts", { error });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      const errorName = error instanceof Error ? error.name : undefined;
+
+      logger.error("XERO_CONTACTS", "Failed to fetch contacts", {
+        message: errorMessage,
+        stack: errorStack,
+        name: errorName,
+        type: typeof error,
+      });
 
       // Check if it's an auth error
-      if (error.message.includes("Xero") || error.message.includes("token")) {
+      if (errorMessage && (errorMessage.includes("Xero") || errorMessage.includes("token") || errorMessage.includes("not connected"))) {
         return NextResponse.json(
           {
             error: "Xero not connected",
@@ -95,7 +104,7 @@ export async function GET(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: "Failed to fetch contacts", details: error.message },
+        { error: "Failed to fetch contacts", details: errorMessage },
         { status: 500 }
       );
     }
@@ -141,9 +150,19 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ contacts });
   } catch (error: any) {
-    logger.error("XERO_CONTACTS", "Fatal error in buyer search", { error });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    const errorName = error instanceof Error ? error.name : undefined;
+
+    logger.error("XERO_CONTACTS", "Fatal error in buyer search", {
+      message: errorMessage,
+      stack: errorStack,
+      name: errorName,
+      type: typeof error,
+    });
+
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Internal server error", details: errorMessage },
       { status: 500 }
     );
   }
