@@ -1037,7 +1037,11 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-600">Shipping Cost</dt>
                   <dd className="text-sm font-medium text-gray-900">
-                    {formatCurrency(sale.shipping_cost)}
+                    {sale.shipping_method === 'to_be_shipped' && !sale.shipping_cost_confirmed ? (
+                      <span className="text-amber-600 font-medium">Pending</span>
+                    ) : (
+                      formatCurrency(sale.shipping_cost)
+                    )}
                   </dd>
                 </div>
                 <div className="flex justify-between">
@@ -1074,6 +1078,11 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
                   </div>
                 </div>
               </div>
+              {sale.shipping_method === 'to_be_shipped' && !sale.shipping_cost_confirmed && (
+                <p className="text-xs text-amber-700 italic mt-2">
+                  Note: Excludes shipping - not yet confirmed
+                </p>
+              )}
               {sale.introducer_commission && (
                 <div className="flex justify-between pt-2 border-t border-green-200">
                   <dt className="text-sm text-green-800">Less Introducer Fee</dt>
