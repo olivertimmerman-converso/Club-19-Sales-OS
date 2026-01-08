@@ -11,15 +11,23 @@ export function StepPricing() {
   const [sellPrice, setSellPrice] = useState(state.currentItem?.sellPrice?.toString() || "");
 
   // Sync to context whenever prices change
+  // Important: Only update if values actually changed to prevent infinite loop and floating point drift
   useEffect(() => {
     if (state.currentItem && buyPrice && sellPrice) {
-      setCurrentItem({
-        ...state.currentItem,
-        buyPrice: parseFloat(buyPrice) || undefined,
-        sellPrice: parseFloat(sellPrice) || undefined,
-      });
+      const newBuyPrice = parseFloat(buyPrice) || undefined;
+      const newSellPrice = parseFloat(sellPrice) || undefined;
+
+      // Only update if values have actually changed
+      if (state.currentItem.buyPrice !== newBuyPrice || state.currentItem.sellPrice !== newSellPrice) {
+        setCurrentItem({
+          ...state.currentItem,
+          buyPrice: newBuyPrice,
+          sellPrice: newSellPrice,
+        });
+      }
     }
-  }, [buyPrice, sellPrice, state.currentItem, setCurrentItem]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buyPrice, sellPrice]); // Intentionally exclude state.currentItem to prevent loop
 
   return (
     <div className="space-y-6">
