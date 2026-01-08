@@ -103,12 +103,28 @@ export function StepReview() {
       return { shipping: 0, cardFees: 0, total: 0 };
     }
 
-    return calculateImpliedCosts({
+    const costs = calculateImpliedCosts({
       items: state.items,
       paymentMethod: state.currentPaymentMethod,
       deliveryCountry: state.deliveryCountry,
     });
-  }, [state.items, state.currentPaymentMethod, state.deliveryCountry]);
+
+    // Override shipping cost based on shipping method:
+    // - "hand_delivery" = £0 (no shipping)
+    // - "to_be_shipped" = 0 (TBC, don't deduct from margin yet)
+    // - Otherwise use calculated implied shipping
+    if (state.shippingMethod === "hand_delivery") {
+      return { ...costs, shipping: 0, total: costs.cardFees };
+    } else if (state.shippingMethod === "to_be_shipped") {
+      // Don't deduct shipping from margin when TBC
+      return { ...costs, shipping: 0, total: costs.cardFees };
+    }
+
+    return costs;
+  }, [state.items, state.currentPaymentMethod, state.deliveryCountry, state.shippingMethod]);
+
+  // Track whether shipping is TBC (to be confirmed)
+  const shippingTBC = state.shippingMethod === "to_be_shipped";
 
   // Calculate commissionable margin
   const commissionableMarginGBP = useMemo(() => {
@@ -414,10 +430,19 @@ export function StepReview() {
             <span className="text-purple-700">Gross margin (GBP):</span>
             <span className="font-semibold text-purple-900">£{grossMarginGBP.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-purple-700">Implied shipping:</span>
-            <span className="font-medium text-purple-900">−£{impliedCosts.shipping.toFixed(2)}</span>
-          </div>
+          {shippingTBC ? (
+            <div className="flex justify-between">
+              <span className="text-purple-700">Shipping:</span>
+              <span className="font-medium text-amber-600">To be confirmed</span>
+            </div>
+          ) : (
+            <div className="flex justify-between">
+              <span className="text-purple-700">Shipping:</span>
+              <span className="font-medium text-purple-900">
+                {impliedCosts.shipping > 0 ? `−£${impliedCosts.shipping.toFixed(2)}` : '£0.00 (hand delivery)'}
+              </span>
+            </div>
+          )}
           {state.importVAT !== null && state.importVAT > 0 && (
             <div className="flex justify-between">
               <span className="text-purple-700">Import VAT (non-reclaimable):</span>
@@ -451,11 +476,11 @@ export function StepReview() {
           </div>
         </div>
         <div className="mt-3 text-xs text-purple-700 bg-white border border-purple-200 p-2 rounded">
-          This is the margin available for commission after estimated shipping, card fees
+          This is the margin available for commission after {shippingTBC ? '' : 'estimated shipping, '}card fees
           {state.estimatedImportExportGBP !== null &&
             state.estimatedImportExportGBP > 0 &&
             ", and import/export taxes"}
-          .
+          .{shippingTBC && ' Shipping cost will be confirmed later.'}
         </div>
       </div>
 
