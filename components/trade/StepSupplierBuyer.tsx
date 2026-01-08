@@ -304,12 +304,15 @@ export function StepSupplierBuyer() {
           console.log('[CLIENT_SEARCH] Results received:', results);
           console.log('[CLIENT_SEARCH] Results length:', results.length);
           console.log('[CLIENT_SEARCH] Setting results in state...');
+
+          // Update both results and active state together
           setBuyerDropdownResults(results);
-          // Ensure dropdown stays visible even after loading finishes
-          if (results.length > 0) {
-            setIsBuyerSearchActive(true);
-          }
+          // Keep dropdown active regardless of result count (user is still typing/searching)
+          // Dropdown visibility is controlled by the condition: results.length > 0 || loadingBuyers
+          setIsBuyerSearchActive(true);
           setXeroError(null); // Clear error on successful search
+
+          console.log('[CLIENT_SEARCH] State updated. Results count:', results.length);
         } catch (error: any) {
           // Ignore AbortError - it just means we cancelled the request
           if (error.name === 'AbortError') {
