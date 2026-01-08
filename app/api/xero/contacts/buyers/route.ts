@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { searchXeroContacts } from "@/lib/xero-contacts-cache";
+import { getAllXeroContacts } from "@/lib/xero-contacts-cache";
 import { searchBuyers } from "@/lib/search";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
 import * as logger from "@/lib/logger";
@@ -22,16 +22,16 @@ interface NormalizedContact {
 /**
  * GET /api/xero/contacts/buyers
  *
- * Server-Side Filtered Buyer/Customer Contact Search (OPTIMIZED)
+ * Cached Buyer/Customer Contact Search (OPTIMIZED HYBRID)
  *
  * This endpoint:
- * 1. Uses Xero's where clause to filter contacts server-side by name
- * 2. Performs local fuzzy search on filtered results for ranking
+ * 1. Fetches ALL Xero contacts once and caches them (10 min TTL)
+ * 2. Performs local fuzzy search on cached contacts
  * 3. Classifies contacts as buyers using intelligent rules
  * 4. Returns top 15 ranked results
  *
- * PERFORMANCE: Server-side filtering reduces response time from 5+ seconds to <2 seconds.
- * Only matching contacts are fetched from Xero API, avoiding pagination of 500+ contacts.
+ * PERFORMANCE: First search may take 2-5s (cache warm), subsequent searches <100ms (cache hit).
+ * Fuzzy matching finds "Bettina" when searching "bet" (better than Xero's exact substring matching).
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -80,19 +80,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ contacts: [] });
     }
 
-    logger.info("XERO_CONTACTS", "Searching for buyers with server-side filtering", { query, userId });
+    logger.info("XERO_CONTACTS", "Searching for buyers with cached fuzzy matching", { query, userId });
 
-    // 3. Use server-side search to fetch only matching contacts (OPTIMIZED)
+    // 3. Get all contacts from cache (or fetch if needed) - HYBRID APPROACH
     let allContacts;
     try {
       const fetchStartTime = Date.now();
-      allContacts = await searchXeroContacts(userId, query);
+      allContacts = await getAllXeroContacts(userId);
       fetchDuration = Date.now() - fetchStartTime;
 
-      logger.info("XERO_CONTACTS", "Server-side search completed", {
+      logger.info("XERO_CONTACTS", "Loaded contacts from cache", {
         count: allContacts.length,
         fetchDuration,
-        serverSideFiltered: true,
+        cacheHit: fetchDuration < 100, // < 100ms suggests cache hit
       });
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -124,7 +124,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 4. Perform local fuzzy search with buyer classification (on already-filtered results)
+    // 4. Perform local fuzzy search with buyer classification on cached contacts
+    // This finds "Bettina" when searching "bet" (better than Xero's exact matching)
     const searchStartTime = Date.now();
     const results = searchBuyers(query, allContacts, 15);
     searchDuration = Date.now() - searchStartTime;
