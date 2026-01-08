@@ -109,6 +109,11 @@ export function StepReview() {
       deliveryCountry: state.deliveryCountry,
     });
 
+    // If user confirmed shipping/fees are factored into price, don't deduct them
+    if (state.shippingCostFactored) {
+      return { shipping: 0, cardFees: 0, total: 0 };
+    }
+
     // Override shipping cost based on shipping method:
     // - "hand_delivery" = £0 (no shipping)
     // - "to_be_shipped" = 0 (TBC, don't deduct from margin yet)
@@ -121,10 +126,13 @@ export function StepReview() {
     }
 
     return costs;
-  }, [state.items, state.currentPaymentMethod, state.deliveryCountry, state.shippingMethod]);
+  }, [state.items, state.currentPaymentMethod, state.deliveryCountry, state.shippingMethod, state.shippingCostFactored]);
 
-  // Track whether shipping is TBC (to be confirmed)
-  const shippingTBC = state.shippingMethod === "to_be_shipped";
+  // Track whether shipping/fees are already factored into price
+  const costsFactoredIn = state.shippingCostFactored;
+
+  // Track whether shipping is TBC (to be confirmed) - only relevant if NOT factored in
+  const shippingTBC = !costsFactoredIn && state.shippingMethod === "to_be_shipped";
 
   // Calculate commissionable margin
   const commissionableMarginGBP = useMemo(() => {
@@ -430,18 +438,22 @@ export function StepReview() {
             <span className="text-purple-700">Gross margin (GBP):</span>
             <span className="font-semibold text-purple-900">£{grossMarginGBP.toFixed(2)}</span>
           </div>
-          {shippingTBC ? (
-            <div className="flex justify-between">
-              <span className="text-purple-700">Shipping:</span>
-              <span className="font-medium text-amber-600">To be confirmed</span>
-            </div>
-          ) : (
-            <div className="flex justify-between">
-              <span className="text-purple-700">Shipping:</span>
-              <span className="font-medium text-purple-900">
-                {impliedCosts.shipping > 0 ? `−£${impliedCosts.shipping.toFixed(2)}` : '£0.00 (hand delivery)'}
-              </span>
-            </div>
+          {!costsFactoredIn && (
+            <>
+              {shippingTBC ? (
+                <div className="flex justify-between">
+                  <span className="text-purple-700">Shipping:</span>
+                  <span className="font-medium text-amber-600">To be confirmed</span>
+                </div>
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-purple-700">Shipping:</span>
+                  <span className="font-medium text-purple-900">
+                    {impliedCosts.shipping > 0 ? `−£${impliedCosts.shipping.toFixed(2)}` : '£0.00 (hand delivery)'}
+                  </span>
+                </div>
+              )}
+            </>
           )}
           {state.importVAT !== null && state.importVAT > 0 && (
             <div className="flex justify-between">
@@ -451,7 +463,7 @@ export function StepReview() {
               </span>
             </div>
           )}
-          {impliedCosts.cardFees > 0 && (
+          {!costsFactoredIn && impliedCosts.cardFees > 0 && (
             <div className="flex justify-between">
               <span className="text-purple-700">Card processing fees:</span>
               <span className="font-medium text-purple-900">
@@ -476,11 +488,22 @@ export function StepReview() {
           </div>
         </div>
         <div className="mt-3 text-xs text-purple-700 bg-white border border-purple-200 p-2 rounded">
-          This is the margin available for commission after {shippingTBC ? '' : 'estimated shipping, '}card fees
-          {state.estimatedImportExportGBP !== null &&
-            state.estimatedImportExportGBP > 0 &&
-            ", and import/export taxes"}
-          .{shippingTBC && ' Shipping cost will be confirmed later.'}
+          {costsFactoredIn ? (
+            <>
+              Shipping and card fees have been factored into the client price.
+              {state.estimatedImportExportGBP !== null &&
+                state.estimatedImportExportGBP > 0 &&
+                " Import/export taxes have been deducted."}
+            </>
+          ) : (
+            <>
+              This is the margin available for commission after {shippingTBC ? '' : 'estimated shipping, '}card fees
+              {state.estimatedImportExportGBP !== null &&
+                state.estimatedImportExportGBP > 0 &&
+                ", and import/export taxes"}
+              .{shippingTBC && ' Shipping cost will be confirmed later.'}
+            </>
+          )}
         </div>
       </div>
 
