@@ -109,30 +109,15 @@ export function StepReview() {
       deliveryCountry: state.deliveryCountry,
     });
 
-    // If user confirmed shipping/fees are factored into price, don't deduct them
-    if (state.shippingCostFactored) {
-      return { shipping: 0, cardFees: 0, total: 0 };
-    }
+    // If hasDeliveryCost is false (free delivery), shipping is £0
+    // If hasDeliveryCost is true (cost TBC), don't deduct from margin yet (set to 0)
+    // Either way, shipping doesn't affect commissionable margin
+    return { ...costs, shipping: 0, total: costs.cardFees };
+  }, [state.items, state.currentPaymentMethod, state.deliveryCountry]);
 
-    // Override shipping cost based on shipping method:
-    // - "hand_delivery" = £0 (no shipping)
-    // - "to_be_shipped" = 0 (TBC, don't deduct from margin yet)
-    // - Otherwise use calculated implied shipping
-    if (state.shippingMethod === "hand_delivery") {
-      return { ...costs, shipping: 0, total: costs.cardFees };
-    } else if (state.shippingMethod === "to_be_shipped") {
-      // Don't deduct shipping from margin when TBC
-      return { ...costs, shipping: 0, total: costs.cardFees };
-    }
-
-    return costs;
-  }, [state.items, state.currentPaymentMethod, state.deliveryCountry, state.shippingMethod, state.shippingCostFactored]);
-
-  // Track whether shipping/fees are already factored into price
-  const costsFactoredIn = state.shippingCostFactored;
-
-  // Track whether shipping is TBC (to be confirmed) - only relevant if NOT factored in
-  const shippingTBC = !costsFactoredIn && state.shippingMethod === "to_be_shipped";
+  // Track whether delivery has a cost (true = TBC, false = free)
+  const deliveryCostTBC = state.hasDeliveryCost === true;
+  const deliveryFree = state.hasDeliveryCost === false;
 
   // Calculate commissionable margin
   const commissionableMarginGBP = useMemo(() => {
@@ -438,23 +423,17 @@ export function StepReview() {
             <span className="text-purple-700">Gross margin (GBP):</span>
             <span className="font-semibold text-purple-900">£{grossMarginGBP.toFixed(2)}</span>
           </div>
-          {!costsFactoredIn && (
-            <>
-              {shippingTBC ? (
-                <div className="flex justify-between">
-                  <span className="text-purple-700">Shipping:</span>
-                  <span className="font-medium text-amber-600">To be confirmed</span>
-                </div>
-              ) : (
-                <div className="flex justify-between">
-                  <span className="text-purple-700">Shipping:</span>
-                  <span className="font-medium text-purple-900">
-                    {impliedCosts.shipping > 0 ? `−£${impliedCosts.shipping.toFixed(2)}` : '£0.00 (hand delivery)'}
-                  </span>
-                </div>
-              )}
-            </>
-          )}
+          {deliveryCostTBC ? (
+            <div className="flex justify-between">
+              <span className="text-purple-700">Delivery:</span>
+              <span className="font-medium text-amber-600">To be confirmed</span>
+            </div>
+          ) : deliveryFree ? (
+            <div className="flex justify-between">
+              <span className="text-purple-700">Delivery:</span>
+              <span className="font-medium text-purple-900">£0.00 (free)</span>
+            </div>
+          ) : null}
           {state.importVAT !== null && state.importVAT > 0 && (
             <div className="flex justify-between">
               <span className="text-purple-700">Import VAT (non-reclaimable):</span>
@@ -463,7 +442,7 @@ export function StepReview() {
               </span>
             </div>
           )}
-          {!costsFactoredIn && impliedCosts.cardFees > 0 && (
+          {impliedCosts.cardFees > 0 && (
             <div className="flex justify-between">
               <span className="text-purple-700">Card processing fees:</span>
               <span className="font-medium text-purple-900">
@@ -488,22 +467,11 @@ export function StepReview() {
           </div>
         </div>
         <div className="mt-3 text-xs text-purple-700 bg-white border border-purple-200 p-2 rounded">
-          {costsFactoredIn ? (
-            <>
-              Shipping and card fees have been factored into the client price.
-              {state.estimatedImportExportGBP !== null &&
-                state.estimatedImportExportGBP > 0 &&
-                " Import/export taxes have been deducted."}
-            </>
-          ) : (
-            <>
-              This is the margin available for commission after {shippingTBC ? '' : 'estimated shipping, '}card fees
-              {state.estimatedImportExportGBP !== null &&
-                state.estimatedImportExportGBP > 0 &&
-                ", and import/export taxes"}
-              .{shippingTBC && ' Shipping cost will be confirmed later.'}
-            </>
-          )}
+          This is the margin available for commission after card fees
+          {state.estimatedImportExportGBP !== null &&
+            state.estimatedImportExportGBP > 0 &&
+            " and import/export taxes"}
+          .{deliveryCostTBC && ' Delivery cost will be confirmed later.'}
         </div>
       </div>
 

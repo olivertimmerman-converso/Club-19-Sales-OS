@@ -21,8 +21,7 @@ export function StepLogisticsTax() {
     setDirectShip: setDirectShipContext,
     setLandedDelivery: setLandedDeliveryContext,
     setImportVAT,
-    setShippingMethod,
-    setShippingCostFactored,
+    setHasDeliveryCost,
   } = useTrade();
 
   // ============================================================================
@@ -41,11 +40,8 @@ export function StepLogisticsTax() {
   const [insuranceLanded, setInsuranceLanded] = useState<string | null>(
     state.landedDelivery
   );
-  const [shippingMethodLocal, setShippingMethodLocal] = useState<"to_be_shipped" | "hand_delivery" | null>(
-    state.shippingMethod
-  );
-  const [shippingCostFactoredLocal, setShippingCostFactoredLocal] = useState<boolean>(
-    state.shippingCostFactored
+  const [hasDeliveryCostLocal, setHasDeliveryCostLocal] = useState<boolean | null>(
+    state.hasDeliveryCost
   );
 
   // Touched flags to prevent auto-sync from overriding manual user selections
@@ -188,19 +184,15 @@ export function StepLogisticsTax() {
   }, [insuranceLanded, setLandedDeliveryContext]);
 
   useEffect(() => {
-    setShippingMethod(shippingMethodLocal);
-  }, [shippingMethodLocal, setShippingMethod]);
+    setHasDeliveryCost(hasDeliveryCostLocal);
+  }, [hasDeliveryCostLocal, setHasDeliveryCost]);
 
+  // Default hasDeliveryCost to true when tax scenario is first determined
   useEffect(() => {
-    setShippingCostFactored(shippingCostFactoredLocal);
-  }, [shippingCostFactoredLocal, setShippingCostFactored]);
-
-  // Default shipping method to "to_be_shipped" when tax scenario is first determined
-  useEffect(() => {
-    if (result && shippingMethodLocal === null) {
-      setShippingMethodLocal("to_be_shipped");
+    if (result && hasDeliveryCostLocal === null) {
+      setHasDeliveryCostLocal(true);
     }
-  }, [result, shippingMethodLocal]);
+  }, [result, hasDeliveryCostLocal]);
 
   // ============================================================================
   // DISPLAY HELPERS
@@ -599,44 +591,44 @@ export function StepLogisticsTax() {
       )}
 
       {/* ========================================================================
-          DELIVERY METHOD SELECTION
+          DELIVERY COST SELECTION
           ======================================================================== */}
       {result && (
         <div className="border-t pt-6 space-y-4 animate-fade-in">
           <div>
             <h3 className="font-semibold text-gray-900 mb-1">
-              How will this item be delivered?
+              Does this sale have a delivery cost?
             </h3>
             <p className="text-xs text-gray-500">
-              Choose the delivery method to determine shipping cost handling
+              If there&apos;s any cost to get this item to the client, select &quot;Yes&quot; and add the cost later.
             </p>
           </div>
 
-          {/* Delivery method radio buttons */}
+          {/* Delivery cost radio buttons */}
           <div className="space-y-3">
             <button
               type="button"
-              onClick={() => setShippingMethodLocal("to_be_shipped")}
+              onClick={() => setHasDeliveryCostLocal(true)}
               className={`w-full p-4 border rounded-md text-left transition-colors ${
-                shippingMethodLocal === "to_be_shipped"
+                hasDeliveryCostLocal === true
                   ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
                   : "border-gray-300 hover:border-gray-400 text-gray-700"
               }`}
             >
               <div className="flex items-start gap-3">
                 <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                  shippingMethodLocal === "to_be_shipped"
+                  hasDeliveryCostLocal === true
                     ? "border-blue-600 bg-blue-600"
                     : "border-gray-400"
                 }`}>
-                  {shippingMethodLocal === "to_be_shipped" && (
+                  {hasDeliveryCostLocal === true && (
                     <div className="w-2 h-2 rounded-full bg-white" />
                   )}
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">To be shipped</div>
+                  <div className="font-medium">Yes - delivery cost to be confirmed</div>
                   <div className="text-xs text-gray-600 mt-1">
-                    Shipping cost to be confirmed later
+                    Shipping/courier/travel costs will be added later in Sales OS
                   </div>
                 </div>
               </div>
@@ -644,50 +636,32 @@ export function StepLogisticsTax() {
 
             <button
               type="button"
-              onClick={() => setShippingMethodLocal("hand_delivery")}
+              onClick={() => setHasDeliveryCostLocal(false)}
               className={`w-full p-4 border rounded-md text-left transition-colors ${
-                shippingMethodLocal === "hand_delivery"
+                hasDeliveryCostLocal === false
                   ? "border-blue-600 bg-blue-50 text-blue-900 font-medium"
                   : "border-gray-300 hover:border-gray-400 text-gray-700"
               }`}
             >
               <div className="flex items-start gap-3">
                 <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                  shippingMethodLocal === "hand_delivery"
+                  hasDeliveryCostLocal === false
                     ? "border-blue-600 bg-blue-600"
                     : "border-gray-400"
                 }`}>
-                  {shippingMethodLocal === "hand_delivery" && (
+                  {hasDeliveryCostLocal === false && (
                     <div className="w-2 h-2 rounded-full bg-white" />
                   )}
                 </div>
                 <div className="flex-1">
-                  <div className="font-medium">Hand delivery</div>
+                  <div className="font-medium">No - free delivery</div>
                   <div className="text-xs text-gray-600 mt-1">
-                    No shipping cost required
+                    Client collects, local handover, or delivery included in price
                   </div>
                 </div>
               </div>
             </button>
           </div>
-
-          {/* Shipping cost factored checkbox */}
-          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-md hover:bg-gray-50 transition-colors">
-            <input
-              type="checkbox"
-              checked={shippingCostFactoredLocal}
-              onChange={(e) => setShippingCostFactoredLocal(e.target.checked)}
-              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <div className="flex-1">
-              <span className="text-sm font-medium text-gray-900">
-                I confirm shipping has been factored into the client&apos;s price
-              </span>
-              <p className="text-xs text-gray-500 mt-1">
-                Check this if you&apos;ve already included shipping costs in your quote to the client
-              </p>
-            </div>
-          </label>
         </div>
       )}
 
