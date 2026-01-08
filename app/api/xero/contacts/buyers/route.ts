@@ -43,11 +43,21 @@ export async function GET(request: NextRequest) {
     return rateLimitResponse;
   }
 
+  // Track timing for all steps
+  let authDuration = 0;
+  let fetchDuration = 0;
+  let searchDuration = 0;
+  let normalizationDuration = 0;
+
   try {
     // 1. Authenticate user
+    const authStartTime = Date.now();
     const { userId } = await auth();
+    authDuration = Date.now() - authStartTime;
+
     logger.info("XERO_CONTACTS", "Buyer search request", {
       userId: userId || "NOT AUTHENTICATED",
+      authDuration,
     });
 
     if (!userId) {
@@ -75,9 +85,14 @@ export async function GET(request: NextRequest) {
     // 3. Get all contacts from cache (or fetch if needed)
     let allContacts;
     try {
+      const fetchStartTime = Date.now();
       allContacts = await getAllXeroContacts(userId);
+      fetchDuration = Date.now() - fetchStartTime;
+
       logger.info("XERO_CONTACTS", "Loaded contacts from cache", {
         count: allContacts.length,
+        fetchDuration,
+        cacheHit: fetchDuration < 100, // < 100ms suggests cache hit
       });
     } catch (error: any) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -112,7 +127,7 @@ export async function GET(request: NextRequest) {
     // 4. Perform Make-style fuzzy search with buyer classification
     const searchStartTime = Date.now();
     const results = searchBuyers(query, allContacts, 15);
-    const searchDuration = Date.now() - searchStartTime;
+    searchDuration = Date.now() - searchStartTime;
 
     logger.info("XERO_CONTACTS", "Fuzzy search completed", {
       duration: searchDuration,
@@ -134,6 +149,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 6. Convert to UI format
+    const normalizationStartTime = Date.now();
     const contacts: NormalizedContact[] = results.map((result) => ({
       contactId: result.contact.contactId,
       name: result.contact.name,
@@ -141,11 +157,20 @@ export async function GET(request: NextRequest) {
       isCustomer: result.contact.isCustomer,
       isSupplier: result.contact.isSupplier,
     }));
+    normalizationDuration = Date.now() - normalizationStartTime;
 
     const totalDuration = Date.now() - startTime;
     logger.info("XERO_CONTACTS", "Returning buyer contacts", {
       count: contacts.length,
-      duration: totalDuration,
+      totalDuration,
+      normalizationDuration,
+      timing: {
+        auth: authDuration,
+        fetch: fetchDuration,
+        search: searchDuration,
+        normalization: normalizationDuration,
+        total: totalDuration,
+      },
     });
 
     return NextResponse.json({ contacts });
