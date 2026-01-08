@@ -58,8 +58,10 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
         'deleted_at',
         'is_payment_plan',
         'payment_plan_instalments',
-        'shipping_method',
         'shipping_cost_confirmed',
+        'has_introducer',
+        'introducer.id',
+        'introducer.name',
       ]);
 
     // Filter for shoppers - only show their own sales
@@ -145,8 +147,9 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
       shopper: sale.shopper ? { id: sale.shopper.id, name: sale.shopper.name || 'Unknown' } : null,
       is_payment_plan: (sale as any).is_payment_plan || false,
       payment_plan_instalments: (sale as any).payment_plan_instalments || null,
-      shipping_method: (sale as any).shipping_method || null,
       shipping_cost_confirmed: (sale as any).shipping_cost_confirmed || false,
+      has_introducer: (sale as any).has_introducer || false,
+      introducer: sale.introducer ? { id: sale.introducer.id, name: sale.introducer.name || 'Unknown' } : null,
     }));
 
     const deletedSales = deletedSalesRaw.map(sale => ({
@@ -164,8 +167,9 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
       shopper: sale.shopper ? { id: sale.shopper.id, name: sale.shopper.name || 'Unknown' } : null,
       is_payment_plan: (sale as any).is_payment_plan || false,
       payment_plan_instalments: (sale as any).payment_plan_instalments || null,
-      shipping_method: (sale as any).shipping_method || null,
       shipping_cost_confirmed: (sale as any).shipping_cost_confirmed || false,
+      has_introducer: (sale as any).has_introducer || false,
+      introducer: sale.introducer ? { id: sale.introducer.id, name: sale.introducer.name || 'Unknown' } : null,
     }));
 
     const shoppers = shoppersRaw.map(s => ({
