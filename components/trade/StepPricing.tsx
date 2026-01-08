@@ -139,7 +139,7 @@ export function StepPricing() {
             />
           </div>
           <p className="text-xs text-gray-600 mt-1">
-            Price you&apos;re charging the client (always in GBP)
+            Price you&apos;re charging the client (always in GBP). <strong>Include shipping and card fees in this price.</strong>
           </p>
 
           {/* Real-time margin preview */}
