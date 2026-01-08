@@ -10,10 +10,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getXataClient } from '@/src/xata';
+import { clerkClient } from '@clerk/nextjs/server';
+import { refreshTokens } from '@/lib/xero-auth';
 import * as logger from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
+
+interface XeroMetadata {
+  xero?: {
+    accessToken?: string;
+    refreshToken?: string;
+    tenantId?: string;
+  };
+}
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -37,12 +46,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const xata = getXataClient();
+    // Get all users from Clerk
+    const users = await clerkClient.users.getUserList({ limit: 100 });
 
-    // Find all users with Xero tokens
-    const usersWithTokens = await xata.db.XeroTokens
-      .filter({ refresh_token: { $exists: true } })
-      .getAll();
+    // Filter for users with Xero tokens in privateMetadata
+    const usersWithTokens = users.data.filter(user => {
+      const meta = user.privateMetadata as XeroMetadata;
+      return !!(meta.xero?.accessToken && meta.xero?.refreshToken && meta.xero?.tenantId);
+    });
 
     if (usersWithTokens.length === 0) {
       logger.info('XERO_CRON', 'No Xero tokens found');
@@ -62,44 +73,26 @@ export async function GET(request: NextRequest) {
     let failed = 0;
     const errors: string[] = [];
 
-    for (const tokenRecord of usersWithTokens) {
+    for (const user of usersWithTokens) {
       try {
         logger.info('XERO_CRON', 'Refreshing token', {
-          userId: tokenRecord.user_id,
+          userId: user.id,
         });
 
-        // Call the refresh endpoint
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-        const response = await fetch(`${appUrl}/api/xero/oauth/refresh`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId: tokenRecord.user_id }),
-        });
+        // Use existing refreshTokens function from lib/xero-auth.ts
+        await refreshTokens(user.id);
 
-        if (response.ok) {
-          logger.info('XERO_CRON', 'Token refreshed successfully', {
-            userId: tokenRecord.user_id,
-          });
-          refreshed++;
-        } else {
-          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-          logger.error('XERO_CRON', 'Failed to refresh token', {
-            userId: tokenRecord.user_id,
-            status: response.status,
-            error: errorData,
-          });
-          errors.push(`User ${tokenRecord.user_id}: ${errorData.error || response.statusText}`);
-          failed++;
-        }
+        logger.info('XERO_CRON', 'Token refreshed successfully', {
+          userId: user.id,
+        });
+        refreshed++;
       } catch (error: any) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('XERO_CRON', 'Error refreshing token', {
-          userId: tokenRecord.user_id,
+          userId: user.id,
           error: errorMessage,
         });
-        errors.push(`User ${tokenRecord.user_id}: ${errorMessage}`);
+        errors.push(`User ${user.id}: ${errorMessage}`);
         failed++;
       }
     }
