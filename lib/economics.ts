@@ -1,10 +1,14 @@
 /**
  * Club 19 Sales OS - Economics & VAT Calculations
  *
- * Centralized module for all financial calculations including VAT,
+ * SINGLE SOURCE OF TRUTH for all financial calculations including VAT,
  * margins, and commissionable profit.
  *
  * UK VAT Rate: 20% (1.2 multiplier)
+ *
+ * CRITICAL FORMULAS:
+ * - Gross Margin = Sale Price (ex VAT) - Buy Price ONLY
+ * - Commissionable Margin = Gross Margin - Shipping - Card Fees - Direct Costs - Introducer Commission
  */
 
 /**
@@ -12,6 +16,18 @@
  */
 export const VAT_RATE = 0.2;
 export const VAT_MULTIPLIER = 1 + VAT_RATE; // 1.2
+
+/**
+ * Safely convert any value to a number, handling strings, nulls, etc.
+ * This prevents NaN bugs from string arithmetic like "1000" - "500" = NaN
+ */
+export function toNumber(value: unknown): number {
+  if (value === null || value === undefined || value === '') {
+    return 0;
+  }
+  const num = typeof value === 'number' ? value : parseFloat(String(value));
+  return isNaN(num) ? 0 : num;
+}
 
 /**
  * Calculate amount excluding VAT from amount including VAT
@@ -22,10 +38,8 @@ export const VAT_MULTIPLIER = 1 + VAT_RATE; // 1.2
  * @returns Amount excluding VAT
  */
 export function calculateExVat(amountIncVat: number): number {
-  if (typeof amountIncVat !== 'number' || isNaN(amountIncVat)) {
-    return 0;
-  }
-  return amountIncVat / VAT_MULTIPLIER;
+  const amount = toNumber(amountIncVat);
+  return amount / VAT_MULTIPLIER;
 }
 
 /**
@@ -37,10 +51,8 @@ export function calculateExVat(amountIncVat: number): number {
  * @returns VAT amount (20%)
  */
 export function calculateVat(amountExVat: number): number {
-  if (typeof amountExVat !== 'number' || isNaN(amountExVat)) {
-    return 0;
-  }
-  return amountExVat * VAT_RATE;
+  const amount = toNumber(amountExVat);
+  return amount * VAT_RATE;
 }
 
 /**
@@ -52,54 +64,131 @@ export function calculateVat(amountExVat: number): number {
  * @returns VAT amount
  */
 export function calculateVatFromIncVat(amountIncVat: number): number {
-  const exVat = calculateExVat(amountIncVat);
-  return amountIncVat - exVat;
+  const amount = toNumber(amountIncVat);
+  const exVat = calculateExVat(amount);
+  return amount - exVat;
 }
 
 /**
  * Calculate gross margin
  *
- * Gross Margin = Sale Price (ex VAT) - Buy Price - Direct Costs
+ * CRITICAL: Gross Margin = Sale Price (ex VAT) - Buy Price ONLY
+ * Do NOT subtract direct costs, shipping, or other expenses here!
  *
  * @param saleExVat - Sale amount excluding VAT
- * @param buyPrice - Purchase price
- * @param directCosts - Optional direct costs (defaults to 0)
+ * @param buyPrice - Purchase price (what we paid for the item)
  * @returns Gross margin
  */
 export function calculateGrossMargin(
-  saleExVat: number,
-  buyPrice: number,
-  directCosts: number = 0
+  saleExVat: number | string | null | undefined,
+  buyPrice: number | string | null | undefined
 ): number {
-  if (typeof saleExVat !== 'number' || isNaN(saleExVat)) return 0;
-  if (typeof buyPrice !== 'number' || isNaN(buyPrice)) return 0;
-  if (typeof directCosts !== 'number' || isNaN(directCosts)) directCosts = 0;
-
-  return saleExVat - buyPrice - directCosts;
+  const sale = toNumber(saleExVat);
+  const buy = toNumber(buyPrice);
+  return sale - buy;
 }
 
 /**
- * Calculate commissionable margin
+ * Input for margin calculations
+ */
+export interface MarginInputs {
+  saleAmountExVat: number | string | null | undefined;
+  buyPrice: number | string | null | undefined;
+  shippingCost?: number | string | null | undefined;
+  cardFees?: number | string | null | undefined;
+  directCosts?: number | string | null | undefined;
+  introducerCommission?: number | string | null | undefined;
+}
+
+/**
+ * Result of margin calculations
+ */
+export interface MarginResult {
+  grossMargin: number;
+  commissionableMargin: number;
+  breakdown: {
+    saleAmountExVat: number;
+    buyPrice: number;
+    shippingCost: number;
+    cardFees: number;
+    directCosts: number;
+    introducerCommission: number;
+    totalDeductions: number;
+  };
+}
+
+/**
+ * Calculate both gross margin and commissionable margin
  *
- * Commissionable Margin = Gross Margin - Card Fees - Shipping Costs
+ * CRITICAL FORMULAS:
+ * - Gross Margin = Sale Price (ex VAT) - Buy Price ONLY
+ * - Commissionable Margin = Gross Margin - Shipping - Card Fees - Direct Costs - Introducer Commission
+ *
+ * This is the SINGLE SOURCE OF TRUTH for margin calculations.
+ * All other code should use this function.
+ *
+ * @param inputs - All financial inputs for the calculation
+ * @returns Margin results with breakdown
+ */
+export function calculateMargins(inputs: MarginInputs): MarginResult {
+  // Convert all inputs to numbers safely
+  const saleAmountExVat = toNumber(inputs.saleAmountExVat);
+  const buyPrice = toNumber(inputs.buyPrice);
+  const shippingCost = toNumber(inputs.shippingCost);
+  const cardFees = toNumber(inputs.cardFees);
+  const directCosts = toNumber(inputs.directCosts);
+  const introducerCommission = toNumber(inputs.introducerCommission);
+
+  // CRITICAL: Gross Margin = Sale - Buy ONLY
+  const grossMargin = saleAmountExVat - buyPrice;
+
+  // Commissionable Margin = Gross Margin - All Deductions
+  const totalDeductions = shippingCost + cardFees + directCosts + introducerCommission;
+  const commissionableMargin = grossMargin - totalDeductions;
+
+  return {
+    grossMargin,
+    commissionableMargin,
+    breakdown: {
+      saleAmountExVat,
+      buyPrice,
+      shippingCost,
+      cardFees,
+      directCosts,
+      introducerCommission,
+      totalDeductions,
+    },
+  };
+}
+
+/**
+ * Calculate commissionable margin from gross margin
+ *
+ * Commissionable Margin = Gross Margin - Shipping - Card Fees - Direct Costs - Introducer Commission
  *
  * This is the margin on which shopper commission is calculated.
  *
- * @param grossMargin - Gross margin (sale ex VAT - buy price - direct costs)
+ * @param grossMargin - Gross margin (sale ex VAT - buy price ONLY)
+ * @param shippingCost - Shipping costs
  * @param cardFees - Card processing fees
- * @param shippingCost - Shipping costs (defaults to 0)
+ * @param directCosts - Other direct costs
+ * @param introducerCommission - Introducer commission (if applicable)
  * @returns Commissionable margin
  */
 export function calculateCommissionableMargin(
-  grossMargin: number,
-  cardFees: number,
-  shippingCost: number = 0
+  grossMargin: number | string | null | undefined,
+  shippingCost: number | string | null | undefined = 0,
+  cardFees: number | string | null | undefined = 0,
+  directCosts: number | string | null | undefined = 0,
+  introducerCommission: number | string | null | undefined = 0
 ): number {
-  if (typeof grossMargin !== 'number' || isNaN(grossMargin)) return 0;
-  if (typeof cardFees !== 'number' || isNaN(cardFees)) cardFees = 0;
-  if (typeof shippingCost !== 'number' || isNaN(shippingCost)) shippingCost = 0;
+  const margin = toNumber(grossMargin);
+  const shipping = toNumber(shippingCost);
+  const fees = toNumber(cardFees);
+  const direct = toNumber(directCosts);
+  const introducer = toNumber(introducerCommission);
 
-  return grossMargin - cardFees - shippingCost;
+  return margin - shipping - fees - direct - introducer;
 }
 
 /**
@@ -111,9 +200,14 @@ export function calculateCommissionableMargin(
  * @param saleExVat - Sale amount excluding VAT
  * @returns Margin as percentage
  */
-export function calculateMarginPercent(margin: number, saleExVat: number): number {
-  if (saleExVat === 0 || isNaN(saleExVat)) return 0;
-  return (margin / saleExVat) * 100;
+export function calculateMarginPercent(
+  margin: number | string | null | undefined,
+  saleExVat: number | string | null | undefined
+): number {
+  const m = toNumber(margin);
+  const sale = toNumber(saleExVat);
+  if (sale === 0) return 0;
+  return (m / sale) * 100;
 }
 
 /**
@@ -122,19 +216,20 @@ export function calculateMarginPercent(margin: number, saleExVat: number): numbe
  * Calculates all economic values in one go:
  * - Sale amount ex VAT
  * - VAT amount
- * - Gross margin
- * - Commissionable margin
+ * - Gross margin (Sale ex VAT - Buy Price ONLY)
+ * - Commissionable margin (Gross - Shipping - Fees - Costs - Introducer)
  * - Margin percentages
  *
  * @param params - Sale financial parameters
  * @returns Complete economics breakdown
  */
 export interface SaleEconomicsParams {
-  sale_amount_inc_vat: number;
-  buy_price: number;
-  card_fees?: number;
-  shipping_cost?: number;
-  direct_costs?: number;
+  sale_amount_inc_vat: number | string | null | undefined;
+  buy_price: number | string | null | undefined;
+  card_fees?: number | string | null | undefined;
+  shipping_cost?: number | string | null | undefined;
+  direct_costs?: number | string | null | undefined;
+  introducer_commission?: number | string | null | undefined;
 }
 
 export interface SaleEconomics {
@@ -146,19 +241,20 @@ export interface SaleEconomics {
   gross_margin: number;
   card_fees: number;
   shipping_cost: number;
+  introducer_commission: number;
   commissionable_margin: number;
   gross_margin_percent: number;
   commissionable_margin_percent: number;
 }
 
 export function calculateSaleEconomics(params: SaleEconomicsParams): SaleEconomics {
-  const {
-    sale_amount_inc_vat,
-    buy_price,
-    card_fees = 0,
-    shipping_cost = 0,
-    direct_costs = 0,
-  } = params;
+  // Convert all inputs safely
+  const sale_amount_inc_vat = toNumber(params.sale_amount_inc_vat);
+  const buy_price = toNumber(params.buy_price);
+  const card_fees = toNumber(params.card_fees);
+  const shipping_cost = toNumber(params.shipping_cost);
+  const direct_costs = toNumber(params.direct_costs);
+  const introducer_commission = toNumber(params.introducer_commission);
 
   // Step 1: Calculate sale amount ex VAT
   const sale_amount_ex_vat = calculateExVat(sale_amount_inc_vat);
@@ -166,14 +262,16 @@ export function calculateSaleEconomics(params: SaleEconomicsParams): SaleEconomi
   // Step 2: Calculate VAT amount
   const vat_amount = sale_amount_inc_vat - sale_amount_ex_vat;
 
-  // Step 3: Calculate gross margin
-  const gross_margin = calculateGrossMargin(sale_amount_ex_vat, buy_price, direct_costs);
+  // Step 3: Calculate gross margin (CRITICAL: Sale - Buy ONLY)
+  const gross_margin = calculateGrossMargin(sale_amount_ex_vat, buy_price);
 
-  // Step 4: Calculate commissionable margin
+  // Step 4: Calculate commissionable margin (Gross - All Deductions)
   const commissionable_margin = calculateCommissionableMargin(
     gross_margin,
+    shipping_cost,
     card_fees,
-    shipping_cost
+    direct_costs,
+    introducer_commission
   );
 
   // Step 5: Calculate margin percentages
@@ -192,6 +290,7 @@ export function calculateSaleEconomics(params: SaleEconomicsParams): SaleEconomi
     gross_margin,
     card_fees,
     shipping_cost,
+    introducer_commission,
     commissionable_margin,
     gross_margin_percent,
     commissionable_margin_percent,

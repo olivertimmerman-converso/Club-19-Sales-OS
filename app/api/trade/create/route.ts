@@ -7,6 +7,8 @@ import * as logger from "@/lib/logger";
 import { getBrandingThemeMapping, XERO_BRANDING_THEMES } from "@/lib/branding-theme-mappings";
 import { getValidTokens } from "@/lib/xero-auth";
 import { createXeroInvoice } from "@/lib/xero";
+import { calculateMargins } from "@/lib/economics";
+import { calculateVAT } from "@/lib/calculations/vat";
 
 // Initialize Xata client
 const xata = new XataClient();
@@ -378,103 +380,68 @@ export async function POST(request: NextRequest) {
         sum + (item.buyPriceGBP || item.buyPrice), 0
       );
 
-      // Note: totalSellPrice and brandingThemeMapping were already calculated above for invoice creation
-      // Determine VAT rate based on branding theme
+      // ==========================================================================
+      // VAT CALCULATION - USING SINGLE SOURCE OF TRUTH (lib/calculations/vat.ts)
+      // ==========================================================================
+      // CRITICAL: All VAT calculations MUST use calculateVAT() to prevent bugs
+      // where export sales incorrectly get 20% VAT applied.
 
-      // CRITICAL: Do NOT default to 20% - this causes incorrect VAT on export sales
-      if (!brandingThemeMapping) {
-        logger.error('TRADE_CREATE', 'Unknown branding theme - cannot determine VAT rate', {
-          brandTheme: firstItem.brandTheme,
-          availableThemes: Object.keys(XERO_BRANDING_THEMES)
-        });
-        throw new Error(`Unknown branding theme: ${firstItem.brandTheme}. Cannot determine correct VAT rate.`);
-      }
-
-      const vatRate = brandingThemeMapping.expectedVAT;
-      const vatRateDecimal = vatRate / 100;
-
-      logger.info('TRADE_CREATE', 'VAT calculation', {
+      logger.info('TRADE_CREATE', 'Calculating VAT using lib/calculations/vat', {
         brandTheme: firstItem.brandTheme,
-        mappingFound: true,
-        themeName: brandingThemeMapping.name,
-        vatRate: vatRate,
-        accountCode: brandingThemeMapping.accountCode,
-        treatment: brandingThemeMapping.treatment
-      });
-
-      // Calculate VAT amounts
-      // Note: User enters sell price (assumed ex VAT for standard rate, total for zero-rated)
-      let saleAmountExVat: number;
-      let saleAmountIncVat: number;
-
-      if (vatRate === 0) {
-        // Zero-rated: inc VAT = ex VAT (no VAT added)
-        saleAmountExVat = totalSellPrice;
-        saleAmountIncVat = totalSellPrice;
-      } else {
-        // Standard rate (20%): calculate VAT
-        saleAmountExVat = totalSellPrice;
-        saleAmountIncVat = saleAmountExVat * (1 + vatRateDecimal);
-      }
-
-      const vatAmount = saleAmountIncVat - saleAmountExVat;
-
-      logger.info('TRADE_CREATE', 'VAT amounts calculated', {
         totalSellPrice,
-        vatRate,
-        saleAmountExVat,
-        saleAmountIncVat,
-        vatAmount
       });
 
-      // CRITICAL VALIDATION: Ensure VAT rate matches expected VAT
-      // This catches bugs where export sales incorrectly have 20% VAT applied
-      if (vatRate === 0 && vatAmount > 0.01) {
-        logger.error('TRADE_CREATE', 'VAT CALCULATION ERROR: Zero-rated sale has non-zero VAT!', {
+      let vatResult;
+      try {
+        vatResult = calculateVAT({
           brandTheme: firstItem.brandTheme,
-          themeName: brandingThemeMapping.name,
-          treatment: brandingThemeMapping.treatment,
-          expectedVAT: vatRate,
-          actualVATAmount: vatAmount,
-          saleAmountExVat,
-          saleAmountIncVat
+          saleAmountExVat: totalSellPrice,
         });
-        throw new Error(`VAT calculation error: ${brandingThemeMapping.treatment} should have 0% VAT but calculated ${vatAmount.toFixed(2)} VAT. Check branding theme configuration.`);
+      } catch (error: any) {
+        logger.error('TRADE_CREATE', 'VAT calculation failed', {
+          brandTheme: firstItem.brandTheme,
+          error: error.message,
+        });
+        throw error;
       }
 
-      if (vatRate === 20) {
-        const expectedVAT = saleAmountExVat * 0.20;
-        const vatDifference = Math.abs(vatAmount - expectedVAT);
-        if (vatDifference > 0.01) {
-          logger.error('TRADE_CREATE', 'VAT CALCULATION ERROR: Standard rate VAT mismatch!', {
-            brandTheme: firstItem.brandTheme,
-            themeName: brandingThemeMapping.name,
-            treatment: brandingThemeMapping.treatment,
-            expectedVAT: vatRate,
-            expectedVATAmount: expectedVAT,
-            actualVATAmount: vatAmount,
-            difference: vatDifference,
-            saleAmountExVat,
-            saleAmountIncVat
-          });
-          throw new Error(`VAT calculation error: Expected ${expectedVAT.toFixed(2)} VAT for 20% rate but calculated ${vatAmount.toFixed(2)}. Check amounts.`);
-        }
-      }
+      const saleAmountExVat = vatResult.saleAmountExVat;
+      const saleAmountIncVat = vatResult.saleAmountIncVat;
+      const vatAmount = vatResult.vatAmount;
+      const vatRate = vatResult.vatRate;
 
-      // Calculate margins server-side for accuracy
-      // GROSS MARGIN = Sale Price (ex VAT) - Buy Price ONLY
-      const grossMargin = saleAmountExVat - totalBuyPrice;
-
-      // COMMISSIONABLE MARGIN = Gross Margin - Shipping - Card Fees - Direct Costs
-      // (Introducer commission will be deducted later if applicable)
-      const commissionableMargin = grossMargin - trade.impliedCosts.shipping - trade.impliedCosts.cardFees - trade.impliedCosts.total;
-
-      logger.info('TRADE_CREATE', 'Margins calculated', {
+      logger.info('TRADE_CREATE', 'VAT calculated successfully', {
+        brandTheme: firstItem.brandTheme,
+        themeName: vatResult.brandingTheme.name,
+        treatment: vatResult.brandingTheme.treatment,
+        vatRate,
+        isZeroRated: vatResult.isZeroRated,
         saleAmountExVat,
-        totalBuyPrice,
-        shipping: trade.impliedCosts.shipping,
+        vatAmount,
+        saleAmountIncVat,
+      });
+
+      // Calculate margins using SINGLE SOURCE OF TRUTH (lib/economics.ts)
+      // CRITICAL: Use calculateMargins() for all margin calculations
+      const marginResult = calculateMargins({
+        saleAmountExVat: saleAmountExVat,
+        buyPrice: totalBuyPrice,
+        shippingCost: trade.impliedCosts.shipping,
         cardFees: trade.impliedCosts.cardFees,
         directCosts: trade.impliedCosts.total,
+        introducerCommission: 0, // Introducer commission added later in Sales OS if applicable
+      });
+
+      const grossMargin = marginResult.grossMargin;
+      const commissionableMargin = marginResult.commissionableMargin;
+
+      logger.info('TRADE_CREATE', 'Margins calculated using lib/economics', {
+        saleAmountExVat: marginResult.breakdown.saleAmountExVat,
+        buyPrice: marginResult.breakdown.buyPrice,
+        shipping: marginResult.breakdown.shippingCost,
+        cardFees: marginResult.breakdown.cardFees,
+        directCosts: marginResult.breakdown.directCosts,
+        totalDeductions: marginResult.breakdown.totalDeductions,
         grossMargin,
         commissionableMargin
       });

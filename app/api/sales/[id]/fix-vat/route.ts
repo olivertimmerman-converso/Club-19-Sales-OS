@@ -19,6 +19,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getUserRole } from '@/lib/getUserRole';
 import { getXataClient } from '@/src/xata';
 import { getBrandingThemeMapping } from '@/lib/branding-theme-mappings';
+import { calculateVAT, validateSaleVAT } from '@/lib/calculations/vat';
 import * as logger from '@/lib/logger';
 
 export async function POST(
@@ -82,12 +83,27 @@ export async function POST(
       );
     }
 
+    // First, validate current VAT to detect the bug
+    const validation = validateSaleVAT(
+      sale.branding_theme || '',
+      sale.sale_amount_ex_vat,
+      sale.sale_amount_inc_vat
+    );
+
+    logger.info('FIX_VAT', 'Current VAT validation', {
+      isValid: validation.isValid,
+      expectedVATRate: validation.expectedVATRate,
+      actualVATAmount: validation.actualVATAmount,
+      expectedVATAmount: validation.expectedVATAmount,
+      discrepancy: validation.discrepancy,
+    });
+
     const vatRate = brandingThemeMapping.expectedVAT;
-    const vatRateDecimal = vatRate / 100;
 
     // Calculate correct VAT amounts
     let saleAmountExVat: number;
     let saleAmountIncVat: number;
+    let vatAmount: number;
 
     if (vatRate === 0) {
       // Zero-rated (export/margin scheme): inc VAT = ex VAT (no VAT)
@@ -106,23 +122,33 @@ export async function POST(
         // The user entered inc_vat as the sale price (which for 0% VAT IS the ex_vat amount)
         saleAmountExVat = currentIncVat; // User's original input
         saleAmountIncVat = currentIncVat; // Same for 0% VAT
+        vatAmount = 0;
         logger.info('FIX_VAT', 'Detected VAT bug - using inc_vat as base', {
           originalIncVat: currentIncVat,
           originalExVat: currentExVat,
           correctedBoth: saleAmountIncVat
         });
       } else {
-        // Already correct or different issue - use ex_vat as base
-        saleAmountExVat = currentExVat;
-        saleAmountIncVat = currentExVat;
+        // Use the VAT utility to recalculate properly
+        const vatResult = calculateVAT({
+          brandTheme: sale.branding_theme || '',
+          saleAmountExVat: currentExVat,
+        });
+        saleAmountExVat = vatResult.saleAmountExVat;
+        saleAmountIncVat = vatResult.saleAmountIncVat;
+        vatAmount = vatResult.vatAmount;
       }
     } else {
-      // Standard rate: add VAT to ex_vat amount
-      saleAmountExVat = sale.sale_amount_ex_vat || 0;
-      saleAmountIncVat = saleAmountExVat * (1 + vatRateDecimal);
+      // Standard rate: use the VAT utility
+      const currentExVat = sale.sale_amount_ex_vat || 0;
+      const vatResult = calculateVAT({
+        brandTheme: sale.branding_theme || '',
+        saleAmountExVat: currentExVat,
+      });
+      saleAmountExVat = vatResult.saleAmountExVat;
+      saleAmountIncVat = vatResult.saleAmountIncVat;
+      vatAmount = vatResult.vatAmount;
     }
-
-    const vatAmount = saleAmountIncVat - saleAmountExVat;
 
     logger.info('FIX_VAT', 'VAT recalculated', {
       themeName: brandingThemeMapping.name,
