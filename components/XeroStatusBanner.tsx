@@ -8,7 +8,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 
 interface XeroStatusBannerProps {
   role: string | null;
@@ -67,12 +66,12 @@ export function XeroStatusBanner({ role }: XeroStatusBannerProps) {
         Xero is disconnected. Invoices cannot be created.
       </span>
       {role === 'superadmin' || role === 'admin' || role === 'founder' ? (
-        <Link
-          href="/admin/xero"
+        <a
+          href="/api/xero/oauth/authorize"
           className="underline ml-2 hover:text-red-100"
         >
           Reconnect now
-        </Link>
+        </a>
       ) : (
         <span className="ml-2 text-red-200">
           Please contact an admin to reconnect.
