@@ -1,17 +1,20 @@
 /**
  * Club 19 Sales OS - Xero Token Refresh Cron Job
  *
- * Automatically refreshes Xero tokens to keep connection alive indefinitely.
- * Xero tokens expire after 30 minutes, but refresh tokens last 60 days.
- * By refreshing daily, we ensure the connection never expires.
+ * Automatically refreshes Xero tokens to keep connection alive PERMANENTLY.
+ * Xero access tokens expire after 30 minutes, refresh tokens after 60 days of non-use.
+ * By refreshing every 4 hours (6x/day), we ensure tokens never expire.
  *
  * This endpoint is called by Vercel Cron (configured in vercel.json).
- * Runs daily at 6am UTC to refresh all active Xero connections.
+ * Runs every 4 hours to refresh all active Xero connections.
+ *
+ * After refresh, we verify the tokens work by making a test API call.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { clerkClient } from '@clerk/nextjs/server';
-import { refreshTokens } from '@/lib/xero-auth';
+import { refreshTokens, getValidTokens } from '@/lib/xero-auth';
+import { getXataClient } from '@/src/xata';
 import * as logger from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -79,10 +82,27 @@ export async function GET(request: NextRequest) {
           userId: user.id,
         });
 
-        // Use existing refreshTokens function from lib/xero-auth.ts
+        // Force refresh tokens regardless of expiry time
         await refreshTokens(user.id);
 
-        logger.info('XERO_CRON', 'Token refreshed successfully', {
+        // Verify the refresh worked by making a test API call
+        const tokens = await getValidTokens(user.id);
+        if (!tokens || !tokens.accessToken) {
+          throw new Error('Token refresh succeeded but no access token returned');
+        }
+
+        const testResponse = await fetch('https://api.xero.com/connections', {
+          headers: {
+            'Authorization': `Bearer ${tokens.accessToken}`,
+            'Accept': 'application/json',
+          },
+        });
+
+        if (!testResponse.ok) {
+          throw new Error(`Xero API verification failed: ${testResponse.status}`);
+        }
+
+        logger.info('XERO_CRON', 'Token refreshed and verified successfully', {
           userId: user.id,
         });
         refreshed++;
@@ -94,6 +114,22 @@ export async function GET(request: NextRequest) {
         });
         errors.push(`User ${user.id}: ${errorMessage}`);
         failed++;
+
+        // Log critical error to Xata for visibility
+        try {
+          const xata = getXataClient();
+          await xata.db.Errors.create({
+            severity: 'high',
+            source: 'xero-cron',
+            message: [`Cron refresh failed for user ${user.id}: ${errorMessage}`],
+            timestamp: new Date(),
+            resolved: false,
+          });
+        } catch (logErr) {
+          logger.error('XERO_CRON', 'Failed to log error to Xata', {
+            error: logErr instanceof Error ? logErr.message : String(logErr),
+          });
+        }
       }
     }
 
