@@ -139,6 +139,11 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
   const [fixVATError, setFixVATError] = useState<string | null>(null);
   const [fixVATSuccess, setFixVATSuccess] = useState(false);
 
+  // Fix Margin state
+  const [isFixingMargin, setIsFixingMargin] = useState(false);
+  const [fixMarginError, setFixMarginError] = useState<string | null>(null);
+  const [fixMarginSuccess, setFixMarginSuccess] = useState<string | null>(null);
+
   // Introducer management state
   const [introducers, setIntroducers] = useState<Introducer[]>([]);
   const [selectedIntroducerId, setSelectedIntroducerId] = useState(sale.introducer?.id || '');
@@ -333,6 +338,44 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
       setFixVATError(error instanceof Error ? error.message : 'Failed to fix VAT');
     } finally {
       setIsFixingVAT(false);
+    }
+  };
+
+  const handleFixMargin = async () => {
+    setIsFixingMargin(true);
+    setFixMarginError(null);
+    setFixMarginSuccess(null);
+
+    try {
+      const response = await fetch(`/api/sales/${sale.id}/fix-margin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fix margin');
+      }
+
+      const data = await response.json();
+
+      if (data.noChanges) {
+        setFixMarginSuccess('Margins are already correct - no changes needed');
+      } else {
+        setFixMarginSuccess(`Margin fixed: ${formatCurrency(data.previous.grossMargin)} → ${formatCurrency(data.updated.grossMargin)}`);
+      }
+
+      // Refresh the page data after a short delay to show success message
+      setTimeout(() => {
+        router.refresh();
+      }, 1500);
+    } catch (error) {
+      console.error('Error fixing margin:', error);
+      setFixMarginError(error instanceof Error ? error.message : 'Failed to fix margin');
+    } finally {
+      setIsFixingMargin(false);
     }
   };
 
@@ -1109,6 +1152,30 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
                   <dd className="text-sm font-medium text-green-900">
                     {formatCurrency(sale.commissionable_margin)}
                   </dd>
+                </div>
+              )}
+
+              {/* Fix Margin Button - Superadmin only */}
+              {userRole === 'superadmin' && (
+                <div className="mt-4 pt-3 border-t border-green-200">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-green-700">
+                      Recalculate margin using: Sale (ex VAT) - Buy Price
+                    </p>
+                    <button
+                      onClick={handleFixMargin}
+                      disabled={isFixingMargin}
+                      className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                    >
+                      {isFixingMargin ? 'Fixing...' : 'Fix Margin'}
+                    </button>
+                  </div>
+                  {fixMarginError && (
+                    <p className="mt-2 text-sm text-red-600">Error: {fixMarginError}</p>
+                  )}
+                  {fixMarginSuccess && (
+                    <p className="mt-2 text-sm text-green-800 font-medium">{fixMarginSuccess}</p>
+                  )}
                 </div>
               )}
             </div>
