@@ -25,15 +25,15 @@ export function StepReview() {
     commissionableMarginGBP: number;
   } | null>(null);
 
-  // Update items with tax scenario and supplier info when entering review step
+  // Update items with tax scenario when entering review step
   // This ensures all items have the correct tax codes for Xero
+  // Note: Suppliers are now per-item (set in Pricing step), not global
   useEffect(() => {
-    if (state.taxScenario && state.currentSupplier && state.items.length > 0) {
+    if (state.taxScenario && state.items.length > 0) {
       state.items.forEach(item => {
         // Only update if missing tax scenario fields
         if (!item.accountCode || !item.taxType) {
           updateItem(item.id, {
-            supplier: item.supplier?.name ? item.supplier : (state.currentSupplier || undefined),
             accountCode: state.taxScenario!.accountCode,
             taxType: state.taxScenario!.taxType,
             taxLabel: state.taxScenario!.taxLabel,
@@ -45,7 +45,7 @@ export function StepReview() {
         }
       });
     }
-  }, [state.taxScenario, state.currentSupplier, state.items, updateItem]);
+  }, [state.taxScenario, state.items, updateItem]);
 
   // Calculate totals and margins
   const { totalBuyGBP, totalSellGBP, grossMarginGBP } = useMemo(() => {
@@ -558,7 +558,7 @@ export function StepReview() {
       {showResetConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Start a new deal?</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Start a new invoice?</h3>
             <p className="text-sm text-gray-600 mb-6">
               This will clear all fields for this deal and take you back to the first step. This
               action can&apos;t be undone.

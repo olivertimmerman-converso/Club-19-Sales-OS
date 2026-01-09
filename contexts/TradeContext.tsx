@@ -145,19 +145,17 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
                  item.description !== "" &&
                  item.quantity > 0
                );
-      case 1: // Pricing - all items need buy and sell prices
+      case 1: // Pricing & Suppliers - all items need buy/sell prices and supplier names
         return state.items.length > 0 &&
                state.items.every(item =>
                  item.buyPrice !== undefined &&
                  item.buyPrice >= 0 &&
                  item.sellPrice !== undefined &&
-                 item.sellPrice > 0
+                 item.sellPrice > 0 &&
+                 item.supplier?.name && item.supplier.name.trim() !== ""
                );
-      case 2: // Supplier & Buyer
-        return state.currentSupplier !== null &&
-               state.currentSupplier.name.trim() !== "" &&
-               state.currentSupplier.country.trim() !== "" &&
-               state.currentPaymentMethod !== null &&
+      case 2: // Client & Payment - buyer details only (suppliers now per-item)
+        return state.currentPaymentMethod !== null &&
                state.buyer !== null &&
                state.buyer.name.trim() !== "" &&
                state.buyer.buyer_type !== undefined &&
@@ -184,19 +182,17 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
                  item.description !== "" &&
                  item.quantity > 0
                );
-      case 1: // Pricing - all items need prices
+      case 1: // Pricing & Suppliers - all items need prices and supplier names
         return state.items.length > 0 &&
                state.items.every(item =>
                  item.buyPrice !== undefined &&
                  item.buyPrice >= 0 &&
                  item.sellPrice !== undefined &&
-                 item.sellPrice > 0
+                 item.sellPrice > 0 &&
+                 item.supplier?.name && item.supplier.name.trim() !== ""
                );
-      case 2: // Supplier & Buyer
-        return state.currentSupplier !== null &&
-               state.currentSupplier.name.trim() !== "" &&
-               state.currentSupplier.country.trim() !== "" &&
-               state.currentPaymentMethod !== null &&
+      case 2: // Client & Payment - buyer details only (suppliers now per-item)
+        return state.currentPaymentMethod !== null &&
                state.buyer !== null &&
                state.buyer.name.trim() !== "" &&
                state.buyer.buyer_type !== undefined &&
@@ -208,7 +204,7 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
       default:
         return false;
     }
-  }, [state.items, state.currentSupplier, state.buyer, state.deliveryCountry, state.currentPaymentMethod, state.taxScenario]);
+  }, [state.items, state.buyer, state.deliveryCountry, state.currentPaymentMethod, state.taxScenario]);
 
   // Check if user can navigate to a target step
   const canGoToStep = useCallback((targetStep: WizardStep): boolean => {

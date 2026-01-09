@@ -139,8 +139,8 @@ export function StepItemDetails() {
     startEditingItem("new");
   };
 
-  // Save item and optionally add another
-  const handleSaveItem = (addAnother: boolean) => {
+  // Save item and clear form for next entry
+  const handleSaveItem = () => {
     if (!isFormValid) return;
 
     const itemData: Partial<TradeItem> = {
@@ -169,13 +169,8 @@ export function StepItemDetails() {
       } as TradeItem);
     }
 
-    // Reset form
+    // Reset form for next item
     resetForm();
-
-    // If not adding another, we're done editing
-    if (!addAnother) {
-      startEditingItem("new");
-    }
   };
 
   // Start editing an item
@@ -481,21 +476,12 @@ export function StepItemDetails() {
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2 pt-2">
             <button
-              onClick={() => handleSaveItem(false)}
+              onClick={handleSaveItem}
               disabled={!isFormValid}
               className="flex-1 min-w-[120px] px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
             >
               {editingItem ? "Update Item" : "Save Item"}
             </button>
-            {!editingItem && canAddMore && state.items.length < MAX_ITEMS - 1 && (
-              <button
-                onClick={() => handleSaveItem(true)}
-                disabled={!isFormValid}
-                className="flex-1 min-w-[140px] px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
-              >
-                Save & Add Another
-              </button>
-            )}
             {editingItem && (
               <button
                 onClick={handleCancelEdit}

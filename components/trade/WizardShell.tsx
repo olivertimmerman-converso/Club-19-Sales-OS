@@ -7,9 +7,9 @@ import { WizardStep } from "@/lib/types/invoice";
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 
-const STEP_LABELS = ["Item Details", "Pricing", "Supplier & Buyer", "Logistics & Tax", "Review & Create"];
+const STEP_LABELS = ["Item Details", "Pricing & Suppliers", "Client & Payment", "Logistics & Tax", "Review & Create"];
 
-const STEP_LABELS_SHORT = ["Item", "Price", "Parties", "Tax", "Review"];
+const STEP_LABELS_SHORT = ["Item", "Price", "Client", "Tax", "Review"];
 
 type WizardShellProps = {
   children: React.ReactNode;
@@ -293,7 +293,7 @@ export function WizardShell({ children }: WizardShellProps) {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Start a new deal?
+                Start a new invoice?
               </h3>
               <p className="text-sm text-gray-600 mb-6">
                 This will clear all progress and return you to the beginning.
@@ -311,7 +311,7 @@ export function WizardShell({ children }: WizardShellProps) {
                   onClick={handleConfirmReset}
                   className="flex-1 px-4 py-2 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors"
                 >
-                  Start new deal
+                  Start new invoice
                 </button>
               </div>
             </div>
