@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, CheckCircle, AlertCircle, UserPlus, Loader2, AlertTriangle } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertCircle, UserPlus, Loader2, AlertTriangle, ChevronDown, ChevronUp, Info } from 'lucide-react';
 
 interface Sale {
   id: string;
@@ -27,66 +27,95 @@ interface Props {
 export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
-  const [syncType, setSyncType] = useState<'invoices' | 'payments' | null>(null);
+  const [syncStep, setSyncStep] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [allocating, setAllocating] = useState<string | null>(null);
   const [allocated, setAllocated] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const syncInvoices = async (fullSync = false) => {
+  // Combined sync function - does both invoices AND payment statuses
+  const syncWithXero = async () => {
     setSyncing(true);
-    setSyncType('invoices');
     setSyncResult(null);
     setError(null);
+
+    const results: { invoices?: any; payments?: any } = {};
+
     try {
-      const url = fullSync ? '/api/sync/xero-invoices?full=true' : '/api/sync/xero-invoices';
-      const res = await fetch(url, { method: 'POST' });
-      const data = await res.json();
-      setSyncResult(data);
-      if (data.success) {
-        setTimeout(() => router.refresh(), 1000);
-      } else {
-        // Show detailed error message
-        const errorMsg = data.details || data.error || 'Sync failed';
-        setError(errorMsg);
-        console.error('[SYNC] Sync failed:', { error: data.error, details: data.details, stack: data.stack });
+      // Step 1: Sync invoices (last 60 days)
+      setSyncStep('Syncing invoices...');
+      const invoicesRes = await fetch('/api/sync/xero-invoices', { method: 'POST' });
+      const invoicesData = await invoicesRes.json();
+      results.invoices = invoicesData;
+
+      if (!invoicesData.success) {
+        throw new Error(invoicesData.details || invoicesData.error || 'Invoice sync failed');
       }
+
+      // Step 2: Update payment statuses
+      setSyncStep('Updating payment statuses...');
+      const paymentsRes = await fetch('/api/sync/payment-status', { method: 'POST' });
+      const paymentsData = await paymentsRes.json();
+      results.payments = paymentsData;
+
+      if (!paymentsData.success) {
+        throw new Error(paymentsData.details || paymentsData.error || 'Payment status sync failed');
+      }
+
+      // Success!
+      setSyncResult({
+        success: true,
+        summary: {
+          invoicesNew: results.invoices?.summary?.new || 0,
+          invoicesUpdated: results.invoices?.summary?.updated || 0,
+          paymentsChecked: results.payments?.summary?.checked || 0,
+          paymentsUpdated: results.payments?.summary?.updated || 0,
+        },
+      });
+      setTimeout(() => router.refresh(), 1000);
+
     } catch (err) {
-      console.error('[SYNC] Invoice sync error:', err);
+      console.error('[SYNC] Sync error:', err);
       const errorMsg = err instanceof Error ? err.message : 'Sync failed';
       setError(errorMsg);
-      setSyncResult({ success: false, error: errorMsg });
+      setSyncResult({ success: false, error: errorMsg, partial: results });
     } finally {
       setSyncing(false);
-      setSyncType(null);
+      setSyncStep(null);
     }
   };
 
-  const syncPayments = async () => {
+  // Full historical sync (advanced)
+  const fullHistoricalSync = async () => {
+    if (!confirm('Full sync will fetch ALL invoices from Xero history and update dates on existing records. This may take several minutes. Continue?')) {
+      return;
+    }
+
     setSyncing(true);
-    setSyncType('payments');
+    setSyncStep('Running full historical sync...');
     setSyncResult(null);
     setError(null);
+
     try {
-      const res = await fetch('/api/sync/payment-status', { method: 'POST' });
+      const res = await fetch('/api/sync/xero-invoices?full=true', { method: 'POST' });
       const data = await res.json();
       setSyncResult(data);
+
       if (data.success) {
         setTimeout(() => router.refresh(), 1000);
       } else {
-        // Show detailed error message
         const errorMsg = data.details || data.error || 'Sync failed';
         setError(errorMsg);
-        console.error('[SYNC] Sync failed:', { error: data.error, details: data.details, stack: data.stack });
       }
     } catch (err) {
-      console.error('[SYNC] Payment sync error:', err);
+      console.error('[SYNC] Full sync error:', err);
       const errorMsg = err instanceof Error ? err.message : 'Sync failed';
       setError(errorMsg);
       setSyncResult({ success: false, error: errorMsg });
     } finally {
       setSyncing(false);
-      setSyncType(null);
+      setSyncStep(null);
     }
   };
 
@@ -155,57 +184,47 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
     <div className="space-y-6">
       {/* Sync Controls */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4 text-gray-900">Sync Controls</h2>
+        <h2 className="text-lg font-semibold mb-2 text-gray-900">Sync Controls</h2>
+
+        {/* Info note */}
+        <div className="flex items-start gap-2 mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+          <p className="text-sm text-blue-800">
+            Invoices sync automatically via webhook. Use this button only if something appears out of sync.
+          </p>
+        </div>
+
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Main sync button */}
           <button
-            onClick={() => syncInvoices(false)}
+            onClick={syncWithXero}
             disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            <RefreshCw className={`w-4 h-4 ${syncing && syncType === 'invoices' ? 'animate-spin' : ''}`} />
-            {syncing && syncType === 'invoices' ? 'Syncing...' : 'Sync Invoices (60 days)'}
+            <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+            {syncing ? (syncStep || 'Syncing...') : 'Sync with Xero'}
           </button>
 
-          <button
-            onClick={() => {
-              if (confirm('Full sync will fetch ALL invoices from Xero history and update dates on existing records. This may take several minutes. Continue?')) {
-                syncInvoices(true);
-              }
-            }}
-            disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-300 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncing && syncType === 'invoices' ? 'animate-spin' : ''}`} />
-            Full Historical Sync
-          </button>
-
-          <button
-            onClick={syncPayments}
-            disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-          >
-            <RefreshCw className={`w-4 h-4 ${syncing && syncType === 'payments' ? 'animate-spin' : ''}`} />
-            {syncing && syncType === 'payments' ? 'Updating...' : 'Update Payment Statuses'}
-          </button>
-
+          {/* Sync result */}
           {syncResult && (
             <div className={`flex items-center gap-2 text-sm font-medium ${syncResult.success ? 'text-green-600' : 'text-red-600'}`}>
               {syncResult.success ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
               {syncResult.success && syncResult.summary ? (
                 <span>
-                  {syncResult.summary.new !== undefined && syncResult.summary.new > 0 && `${syncResult.summary.new} new`}
-                  {syncResult.summary.new !== undefined && syncResult.summary.new > 0 && syncResult.summary.updated !== undefined && syncResult.summary.updated > 0 && ', '}
-                  {syncResult.summary.updated !== undefined && syncResult.summary.updated > 0 && `${syncResult.summary.updated} updated`}
-                  {syncResult.summary.checked !== undefined && `${syncResult.summary.checked} checked`}
-                  {(syncResult.summary.new === 0 && syncResult.summary.updated === 0 && syncResult.summary.checked === 0) && 'No changes'}
+                  {syncResult.summary.invoicesNew > 0 && `${syncResult.summary.invoicesNew} new invoices`}
+                  {syncResult.summary.invoicesNew > 0 && syncResult.summary.invoicesUpdated > 0 && ', '}
+                  {syncResult.summary.invoicesUpdated > 0 && `${syncResult.summary.invoicesUpdated} updated`}
+                  {syncResult.summary.paymentsUpdated > 0 && `, ${syncResult.summary.paymentsUpdated} payment statuses updated`}
+                  {(syncResult.summary.invoicesNew === 0 && syncResult.summary.invoicesUpdated === 0 && syncResult.summary.paymentsUpdated === 0) && 'Already up to date'}
                 </span>
               ) : (
-                <span>{syncResult.error || syncResult.details || 'Error'}</span>
+                <span>{syncResult.error || 'Error'}</span>
               )}
             </div>
           )}
         </div>
 
+        {/* Error display */}
         {error && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex items-start justify-between gap-3">
@@ -229,6 +248,33 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
             </div>
           </div>
         )}
+
+        {/* Advanced section */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            Advanced Options
+          </button>
+
+          {showAdvanced && (
+            <div className="mt-3 p-4 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-500 mb-3">
+                Full historical sync fetches ALL invoices from Xero (not just last 60 days). Only use if you need to backfill historical data.
+              </p>
+              <button
+                onClick={fullHistoricalSync}
+                disabled={syncing}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                Full Historical Sync
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Needs Allocation */}
