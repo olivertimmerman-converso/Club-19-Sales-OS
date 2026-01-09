@@ -221,6 +221,13 @@ export interface SaleEconomicsInput {
   buy_price: number;
   card_fees: number;
   shipping_cost: number;
+  /**
+   * CRITICAL: Branding theme is required to determine the correct VAT rate
+   * - CN Export Sales = 0% VAT
+   * - CN 20% VAT = 20% VAT
+   * - CN Margin Scheme = 0% VAT
+   */
+  branding_theme?: string;
 }
 
 export interface SaleEconomicsResult {
@@ -241,6 +248,8 @@ export function calculateSaleEconomics(
     buy_price: fields.buy_price,
     card_fees: fields.card_fees,
     shipping_cost: fields.shipping_cost,
+    // CRITICAL: Pass branding theme to determine correct VAT rate
+    branding_theme: fields.branding_theme,
   });
 
   return {
@@ -377,6 +386,8 @@ export async function createSaleFromAppPayload(
     buy_price: sanitizedPayload.buy_price,
     card_fees: sanitizedPayload.card_fees || 0,
     shipping_cost: sanitizedPayload.shipping_cost || 0,
+    // CRITICAL: Pass branding theme to determine correct VAT rate
+    branding_theme: sanitizedPayload.branding_theme,
   });
 
   logger.info("XATA", "Economics calculated", {

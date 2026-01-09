@@ -4,18 +4,49 @@
  * SINGLE SOURCE OF TRUTH for all financial calculations including VAT,
  * margins, and commissionable profit.
  *
- * UK VAT Rate: 20% (1.2 multiplier)
+ * CRITICAL: VAT rate MUST be derived from branding theme, NOT hardcoded!
+ * - Export sales (CN Export Sales) = 0% VAT
+ * - UK domestic sales (CN 20% VAT) = 20% VAT
+ * - Margin scheme sales (CN Margin Scheme) = 0% VAT
  *
  * CRITICAL FORMULAS:
  * - Gross Margin = Sale Price (ex VAT) - Buy Price ONLY
  * - Commissionable Margin = Gross Margin - Shipping - Card Fees - Direct Costs - Introducer Commission
  */
 
+import { getBrandingThemeMapping } from "@/lib/branding-theme-mappings";
+
 /**
- * Standard UK VAT rate (20%)
+ * Standard UK VAT rate (20%) - use getVATRateForBrandingTheme() instead of this constant
+ * @deprecated Use getVATRateForBrandingTheme() to get the correct VAT rate based on branding theme
  */
 export const VAT_RATE = 0.2;
 export const VAT_MULTIPLIER = 1 + VAT_RATE; // 1.2
+
+/**
+ * Get the correct VAT rate for a branding theme
+ *
+ * CRITICAL: This is the ONLY way to determine VAT rate. Never hardcode!
+ *
+ * @param brandingTheme - The branding theme name or ID
+ * @returns VAT rate as decimal (0.0 or 0.2)
+ */
+export function getVATRateForBrandingTheme(brandingTheme: string | null | undefined): number {
+  if (!brandingTheme) {
+    console.warn("[ECONOMICS] No branding theme provided, defaulting to 20% VAT");
+    return 0.2;
+  }
+
+  const mapping = getBrandingThemeMapping(brandingTheme);
+  if (!mapping) {
+    console.warn(`[ECONOMICS] Unknown branding theme "${brandingTheme}", defaulting to 20% VAT`);
+    return 0.2;
+  }
+
+  const vatRate = mapping.expectedVAT / 100; // Convert 0/20 to 0.0/0.2
+  console.log(`[ECONOMICS] VAT rate for "${mapping.name}": ${mapping.expectedVAT}% (${vatRate})`);
+  return vatRate;
+}
 
 /**
  * Safely convert any value to a number, handling strings, nulls, etc.
@@ -32,6 +63,8 @@ export function toNumber(value: unknown): number {
 /**
  * Calculate amount excluding VAT from amount including VAT
  *
+ * @deprecated Use calculateExVatWithRate() instead to handle different VAT rates
+ *
  * Formula: amount_inc_vat / 1.2
  *
  * @param amountIncVat - Amount including 20% VAT
@@ -40,6 +73,24 @@ export function toNumber(value: unknown): number {
 export function calculateExVat(amountIncVat: number): number {
   const amount = toNumber(amountIncVat);
   return amount / VAT_MULTIPLIER;
+}
+
+/**
+ * Calculate amount excluding VAT from amount including VAT, with configurable VAT rate
+ *
+ * CRITICAL: Use this function for all VAT calculations to handle export/margin scheme sales correctly
+ *
+ * @param amountIncVat - Amount including VAT
+ * @param vatRate - VAT rate as decimal (0.0 for zero-rated, 0.2 for standard rate)
+ * @returns Amount excluding VAT
+ */
+export function calculateExVatWithRate(amountIncVat: number, vatRate: number): number {
+  const amount = toNumber(amountIncVat);
+  if (vatRate === 0) {
+    // Zero-rated: inc VAT = ex VAT
+    return amount;
+  }
+  return amount / (1 + vatRate);
 }
 
 /**
@@ -230,6 +281,13 @@ export interface SaleEconomicsParams {
   shipping_cost?: number | string | null | undefined;
   direct_costs?: number | string | null | undefined;
   introducer_commission?: number | string | null | undefined;
+  /**
+   * CRITICAL: Branding theme is required to determine the correct VAT rate
+   * - CN Export Sales = 0% VAT
+   * - CN 20% VAT = 20% VAT
+   * - CN Margin Scheme = 0% VAT
+   */
+  branding_theme?: string | null | undefined;
 }
 
 export interface SaleEconomics {
@@ -256,8 +314,18 @@ export function calculateSaleEconomics(params: SaleEconomicsParams): SaleEconomi
   const direct_costs = toNumber(params.direct_costs);
   const introducer_commission = toNumber(params.introducer_commission);
 
-  // Step 1: Calculate sale amount ex VAT
-  const sale_amount_ex_vat = calculateExVat(sale_amount_inc_vat);
+  // CRITICAL: Get the correct VAT rate from branding theme
+  const vatRate = getVATRateForBrandingTheme(params.branding_theme);
+
+  console.log("[ECONOMICS] calculateSaleEconomics inputs:", {
+    sale_amount_inc_vat,
+    buy_price,
+    branding_theme: params.branding_theme,
+    vatRate,
+  });
+
+  // Step 1: Calculate sale amount ex VAT using the CORRECT VAT rate
+  const sale_amount_ex_vat = calculateExVatWithRate(sale_amount_inc_vat, vatRate);
 
   // Step 2: Calculate VAT amount
   const vat_amount = sale_amount_inc_vat - sale_amount_ex_vat;
@@ -280,6 +348,23 @@ export function calculateSaleEconomics(params: SaleEconomicsParams): SaleEconomi
     commissionable_margin,
     sale_amount_ex_vat
   );
+
+  console.log("[ECONOMICS] calculateSaleEconomics result:", {
+    sale_amount_inc_vat,
+    sale_amount_ex_vat,
+    vat_amount,
+    gross_margin,
+    commissionable_margin,
+  });
+
+  // SAFEGUARD: Validate zero-rated sales have zero VAT
+  if (vatRate === 0 && Math.abs(vat_amount) > 0.01) {
+    console.error("[ECONOMICS] BUG: Zero-rated sale has non-zero VAT!", {
+      branding_theme: params.branding_theme,
+      vatRate,
+      vat_amount,
+    });
+  }
 
   return {
     sale_amount_inc_vat,
