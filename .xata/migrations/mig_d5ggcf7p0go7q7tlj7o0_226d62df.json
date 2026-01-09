@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5ggcf7p0go7q7tlj7o0",
+  "parentID": "mig_d5ggcd438mj1psbpcukg",
+  "checksum": "1:226d62df4cca01422e715acf240833e1bfe9d9510a1e343effcb0fef98fe07bd",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "category",
+          "type": "text"
+        },
+        "table": "LineItems"
+      }
+    }
+  ]
+}

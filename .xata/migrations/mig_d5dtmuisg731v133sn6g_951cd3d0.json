@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5dtmuisg731v133sn6g",
+  "parentID": "mig_d5dtmqr2j7svr0s3p5e0",
+  "checksum": "1:951cd3d07fcc5c30ac4389c544ec9457639a849aa3ab91c0651a0d72e8bbe3d3",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "payment_plan_instalments",
+          "type": "int"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

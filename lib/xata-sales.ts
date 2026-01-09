@@ -13,6 +13,7 @@ import type {
   IntroducersRecord,
   CommissionBandsRecord,
   SalesRecord,
+  LineItemsRecord,
 } from "@/src/xata";
 import { calculateCommission } from "./commission-engine";
 import { transitionSaleStatus } from "./deal-lifecycle";
@@ -710,6 +711,106 @@ export async function syncInvoiceAndAppDataToXata(params: {
     // Don't throw - log and continue
     return null;
   }
+}
+
+// ============================================================================
+// LINE ITEMS HELPERS
+// ============================================================================
+
+/**
+ * Line item data for multi-item invoices
+ */
+export interface LineItemData {
+  lineNumber: number;
+  brand: string;
+  category: string;
+  description: string;
+  quantity: number;
+  buyPrice: number;
+  sellPrice: number;
+  lineTotal: number;
+  lineMargin: number;
+  supplierName?: string;
+  supplierId?: string;
+}
+
+/**
+ * Save line items for a sale
+ * Creates LineItems records linked to the parent sale
+ *
+ * @param saleId - The sale record ID
+ * @param lineItems - Array of line item data
+ * @returns Array of created LineItems records
+ */
+export async function saveLineItems(
+  saleId: string,
+  lineItems: LineItemData[]
+): Promise<LineItemsRecord[]> {
+  if (!lineItems || lineItems.length === 0) {
+    logger.info("XATA", "No line items to save");
+    return [];
+  }
+
+  logger.info("XATA", "Saving line items", {
+    saleId,
+    lineItemCount: lineItems.length,
+  });
+
+  const created: LineItemsRecord[] = [];
+
+  for (const item of lineItems) {
+    try {
+      const record = await xata().db.LineItems.create({
+        sale: saleId,
+        line_number: item.lineNumber,
+        brand: item.brand,
+        category: item.category,
+        description: item.description,
+        quantity: item.quantity,
+        buy_price: item.buyPrice,
+        sell_price: item.sellPrice,
+        line_total: item.lineTotal,
+        line_margin: item.lineMargin,
+        supplier: item.supplierId || undefined,
+      });
+
+      created.push(record as LineItemsRecord);
+      logger.debug("XATA", "Line item created", {
+        lineNumber: item.lineNumber,
+        brand: item.brand,
+      });
+    } catch (error) {
+      logger.error("XATA", "Failed to create line item", {
+        lineNumber: item.lineNumber,
+        error: error as any,
+      });
+    }
+  }
+
+  logger.info("XATA", "Line items saved", {
+    saleId,
+    savedCount: created.length,
+    totalCount: lineItems.length,
+  });
+
+  return created;
+}
+
+/**
+ * Get line items for a sale
+ *
+ * @param saleId - The sale record ID
+ * @returns Array of LineItems records
+ */
+export async function getLineItemsForSale(
+  saleId: string
+): Promise<LineItemsRecord[]> {
+  const items = await xata()
+    .db.LineItems.filter({ "sale.id": saleId })
+    .sort("line_number", "asc")
+    .getMany();
+
+  return items as LineItemsRecord[];
 }
 
 // ============================================================================

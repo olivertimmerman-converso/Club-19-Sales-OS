@@ -4,24 +4,49 @@ import { getValidTokens } from "@/lib/xero-auth";
 import { createXeroInvoice } from "@/lib/xero";
 import { getBrandingThemeId } from "@/lib/xero-branding-themes";
 import { syncSaleToMake, buildSalePayload } from "@/lib/make-sync";
-import { syncInvoiceAndAppDataToXata } from "@/lib/xata-sales";
+import { syncInvoiceAndAppDataToXata, saveLineItems } from "@/lib/xata-sales";
 import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /**
+ * Line item for multi-line invoices
+ */
+interface LineItemPayload {
+  lineNumber: number;
+  brand: string;
+  category: string;
+  description: string;
+  quantity: number;
+  buyPrice: number;
+  sellPrice: number;
+  lineTotal: number;
+  lineMargin: number;
+  supplierName?: string;
+}
+
+/**
  * Invoice creation payload from frontend
+ * Supports both single-line (legacy) and multi-line invoices
  */
 interface CreateInvoicePayload {
   buyerContactId: string;
-  description: string;
-  finalPrice: number;
+  // Single-line (legacy) fields
+  description?: string;
+  finalPrice?: number;
+  // Multi-line fields
+  lineItems?: LineItemPayload[];
+  // Common fields
   accountCode: string;
   taxType: string;
   brandingThemeId?: string;
   currency: string;
   lineAmountType: string; // "Inclusive" | "Exclusive" | "NoTax"
+
+  // Summary fields (for multi-line)
+  totalSellPrice?: number;
+  totalBuyPrice?: number;
 
   // Additional fields for Make.com sync (19-field payload)
   supplierName?: string;
@@ -105,10 +130,14 @@ export async function POST(request: NextRequest) {
     let payload: CreateInvoicePayload;
     try {
       payload = await request.json();
+      const isMultiLine = payload.lineItems && payload.lineItems.length > 0;
       logger.info("XERO_INVOICES", "Payload received", {
         buyerContactId: payload.buyerContactId,
-        description: payload.description?.substring(0, 50) + "...",
+        isMultiLine,
+        lineItemCount: payload.lineItems?.length || 0,
+        description: payload.description?.substring(0, 50),
         finalPrice: payload.finalPrice,
+        totalSellPrice: payload.totalSellPrice,
         accountCode: payload.accountCode,
         taxType: payload.taxType,
         currency: payload.currency,
@@ -123,17 +152,18 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Validate required fields
-    const requiredFields = [
+    // For multi-line invoices, we need lineItems instead of description/finalPrice
+    const isMultiLine = payload.lineItems && payload.lineItems.length > 0;
+
+    const commonRequiredFields = [
       "buyerContactId",
-      "description",
-      "finalPrice",
       "accountCode",
       "taxType",
       "currency",
       "lineAmountType",
     ];
 
-    for (const field of requiredFields) {
+    for (const field of commonRequiredFields) {
       if (!payload[field as keyof CreateInvoicePayload]) {
         logger.error("XERO_INVOICES", "Missing required field", { field });
         return NextResponse.json(
@@ -143,13 +173,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate finalPrice is positive
-    if (payload.finalPrice <= 0) {
-      logger.error("XERO_INVOICES", "Invalid finalPrice", { finalPrice: payload.finalPrice });
-      return NextResponse.json(
-        { error: "Validation error", message: "finalPrice must be greater than 0" },
-        { status: 400 }
-      );
+    // Validate multi-line OR single-line fields
+    if (isMultiLine) {
+      // Multi-line: validate each line item
+      for (const [index, item] of payload.lineItems!.entries()) {
+        if (!item.description || item.quantity <= 0 || item.sellPrice <= 0) {
+          logger.error("XERO_INVOICES", "Invalid line item", { index, lineNumber: item.lineNumber });
+          return NextResponse.json(
+            { error: "Validation error", message: `Line item ${index + 1} is invalid` },
+            { status: 400 }
+          );
+        }
+      }
+    } else {
+      // Single-line (legacy): require description and finalPrice
+      if (!payload.description || !payload.finalPrice || payload.finalPrice <= 0) {
+        logger.error("XERO_INVOICES", "Invalid single-line payload", {
+          hasDescription: !!payload.description,
+          finalPrice: payload.finalPrice,
+        });
+        return NextResponse.json(
+          { error: "Validation error", message: "Either lineItems or description+finalPrice required" },
+          { status: 400 }
+        );
+      }
     }
 
     // 4. Get valid Xero OAuth tokens (auto-refreshes if needed)
@@ -318,7 +365,12 @@ export async function POST(request: NextRequest) {
       const user = await clerkClient().users.getUser(userId);
       const shopperEmail = user.primaryEmailAddress?.emailAddress || undefined;
 
-      await syncInvoiceAndAppDataToXata({
+      // Use multi-line values if available, otherwise fall back to legacy
+      const totalBuyPrice = isMultiLine && payload.lineItems
+        ? payload.lineItems.reduce((sum, item) => sum + (item.buyPrice * item.quantity), 0)
+        : (payload.buyPrice || 0);
+
+      const sale = await syncInvoiceAndAppDataToXata({
         xeroInvoice: {
           InvoiceNumber: invoice.InvoiceNumber,
           Date: invoice.DateString || new Date().toISOString().split("T")[0],
@@ -347,14 +399,14 @@ export async function POST(request: NextRequest) {
           introducerName: undefined, // Not available in current payload
           introducerCommission: undefined,
 
-          // Item metadata
+          // Item metadata (use first item for legacy compatibility)
           brand: payload.brand,
           category: payload.category,
           itemTitle: payload.itemTitle || payload.description,
           quantity: payload.quantity,
 
           // Financials
-          buyPrice: payload.buyPrice || 0,
+          buyPrice: totalBuyPrice,
           cardFees: payload.cardFees || 0,
           shippingCost: payload.shippingCost || 0,
 
@@ -363,7 +415,16 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      logger.info("XATA", "Sale synced to Xata database");
+      logger.info("XATA", "Sale synced to Xata database", { saleId: sale?.id });
+
+      // Save line items if multi-line invoice
+      if (sale && isMultiLine && payload.lineItems && payload.lineItems.length > 0) {
+        await saveLineItems(sale.id, payload.lineItems);
+        logger.info("XATA", "Line items saved", {
+          saleId: sale.id,
+          lineItemCount: payload.lineItems.length,
+        });
+      }
     } catch (err) {
       logger.error("XATA", "Sync failed (non-critical)", { error: err as any } as any);
     }

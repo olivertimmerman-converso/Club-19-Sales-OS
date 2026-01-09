@@ -1,0 +1,19 @@
+{
+  "id": "mig_d5ggbqs38mj1psbpcuig",
+  "parentID": "mig_d5ggbkk38mj1psbpcuhg",
+  "checksum": "1:924147385b5c7a2f89168fbcba9d3d17ec76d020d79f826ab105d5de98f609a4",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "sale",
+          "type": "link",
+          "link": {
+            "table": "Sales"
+          }
+        },
+        "table": "LineItems"
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5ggbvc38mj1psbpcujg",
+  "parentID": "mig_d5ggbqs38mj1psbpcuig",
+  "checksum": "1:b821a064b161cbcb3ae07e6ab9a80a3f0b94871fd2f77abe61b7d0c8aca8f889",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "line_number",
+          "type": "int"
+        },
+        "table": "LineItems"
+      }
+    }
+  ]
+}

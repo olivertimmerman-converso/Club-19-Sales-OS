@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5dtmemmm3piikvkut2g",
+  "parentID": "mig_d5dtmb6mm3piikvkut1g",
+  "checksum": "1:f2e4b3086eb7f10e99948f59135fdb266a3f7b9fc3b50f9f032c34a1be92cab8",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "xero_invoice_id",
+          "type": "text"
+        },
+        "table": "PaymentSchedule"
+      }
+    }
+  ]
+}

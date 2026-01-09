@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5dtlfasg731v133sn2g",
+  "parentID": "mig_d5dtl9umm3piikvkusvg",
+  "checksum": "1:de80ba8d5cace7458abb2b8963cd7052427836cca5617b8bbf64fbcc0f8ebfdf",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "instalment_number",
+          "type": "int"
+        },
+        "table": "PaymentSchedule"
+      }
+    }
+  ]
+}

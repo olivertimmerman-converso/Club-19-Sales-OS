@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5f6oa2sg731v133spdg",
+  "parentID": "mig_d5dugn32j7svr0s3p5gg",
+  "checksum": "1:945ec6b6089fe6aa20dc40bcbac52c81fef65e706d12e6ffe06ee92b098c679e",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "shipping_method",
+          "type": "text"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

@@ -80,6 +80,20 @@ interface XeroImport {
   buyer_name: string;
 }
 
+interface LineItem {
+  id: string;
+  lineNumber: number;
+  brand: string;
+  category: string;
+  description: string;
+  quantity: number;
+  buyPrice: number;
+  sellPrice: number;
+  lineTotal: number;
+  lineMargin: number;
+  supplierId?: string;
+}
+
 interface SaleDetailClientProps {
   sale: Sale;
   shoppers: Shopper[];
@@ -181,6 +195,10 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
   const [isProcessingClawback, setIsProcessingClawback] = useState(false);
   const [clawbackError, setClawbackError] = useState<string | null>(null);
 
+  // Line items state (for multi-item invoices)
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [isLoadingLineItems, setIsLoadingLineItems] = useState(false);
+
   // Fetch introducers on mount
   useEffect(() => {
     const fetchIntroducers = async () => {
@@ -224,6 +242,27 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
 
     fetchInstalments();
   }, [sale.is_payment_plan, sale.id]);
+
+  // Fetch line items for multi-item invoices
+  useEffect(() => {
+    const fetchLineItems = async () => {
+      setIsLoadingLineItems(true);
+      try {
+        const response = await fetch(`/api/sales/${sale.id}/line-items`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch line items');
+        }
+        const data = await response.json();
+        setLineItems(data.lineItems || []);
+      } catch (error) {
+        console.error('Error fetching line items:', error);
+      } finally {
+        setIsLoadingLineItems(false);
+      }
+    };
+
+    fetchLineItems();
+  }, [sale.id]);
 
   const hasChanges = selectedShopperId !== (sale.shopper?.id || '');
 
@@ -841,6 +880,70 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
               <dd className="mt-1 text-sm text-gray-900">{sale.quantity || 1}</dd>
             </div>
           </dl>
+
+          {/* Line Items Section (for multi-item invoices) */}
+          {lineItems.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                Line Items ({lineItems.length})
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Qty</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Buy</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Sell</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Margin</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 bg-white">
+                    {lineItems.map((item) => (
+                      <tr key={item.id}>
+                        <td className="px-3 py-2 text-gray-500">{item.lineNumber}</td>
+                        <td className="px-3 py-2">
+                          <div className="font-medium text-gray-900">{item.brand} {item.category}</div>
+                          <div className="text-gray-500 text-xs truncate max-w-[200px]">{item.description}</div>
+                        </td>
+                        <td className="px-3 py-2 text-center text-gray-900">{item.quantity}</td>
+                        <td className="px-3 py-2 text-right text-gray-900">£{item.buyPrice.toFixed(2)}</td>
+                        <td className="px-3 py-2 text-right text-gray-900">£{item.sellPrice.toFixed(2)}</td>
+                        <td className={`px-3 py-2 text-right font-medium ${item.lineMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          £{item.lineMargin.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50">
+                    <tr>
+                      <td className="px-3 py-2 font-semibold text-gray-900" colSpan={2}>Totals</td>
+                      <td className="px-3 py-2 text-center font-medium text-gray-900">
+                        {lineItems.reduce((sum, item) => sum + item.quantity, 0)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium text-gray-900">
+                        £{lineItems.reduce((sum, item) => sum + (item.buyPrice * item.quantity), 0).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-medium text-gray-900">
+                        £{lineItems.reduce((sum, item) => sum + item.lineTotal, 0).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-green-600">
+                        £{lineItems.reduce((sum, item) => sum + item.lineMargin, 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Loading state for line items */}
+          {isLoadingLineItems && (
+            <div className="mt-4 text-center text-sm text-gray-500">
+              Loading line items...
+            </div>
+          )}
         </div>
 
         {/* Parties Card with Editable Shopper */}

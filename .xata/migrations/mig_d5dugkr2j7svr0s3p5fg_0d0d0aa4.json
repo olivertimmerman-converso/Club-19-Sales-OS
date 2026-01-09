@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5dugkr2j7svr0s3p5fg",
+  "parentID": "mig_d5dugiisg731v133snag",
+  "checksum": "1:0d0d0aa45259c2a7102b4735fdbc00a3fce87df80e1f85799e0d9e5d1f8a6445",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "commission_clawback_date",
+          "type": "datetime"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

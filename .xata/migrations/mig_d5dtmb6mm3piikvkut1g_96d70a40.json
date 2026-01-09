@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5dtmb6mm3piikvkut1g",
+  "parentID": "mig_d5dtm7isg731v133sn3g",
+  "checksum": "1:96d70a4025d116c9fccc885865357355b2c0bb6fd348c33e3664eade727c6f7b",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "status",
+          "type": "text"
+        },
+        "table": "PaymentSchedule"
+      }
+    }
+  ]
+}

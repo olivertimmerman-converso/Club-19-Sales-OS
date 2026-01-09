@@ -1,0 +1,19 @@
+{
+  "id": "mig_d5dtl9umm3piikvkusvg",
+  "parentID": "mig_d5dtj52sg731v133sn1g",
+  "checksum": "1:471a8ed825a17ca509544f3540706e9df75f17fdd8f4f93d29911dacef68dae8",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "sale",
+          "type": "link",
+          "link": {
+            "table": "Sales"
+          }
+        },
+        "table": "PaymentSchedule"
+      }
+    }
+  ]
+}

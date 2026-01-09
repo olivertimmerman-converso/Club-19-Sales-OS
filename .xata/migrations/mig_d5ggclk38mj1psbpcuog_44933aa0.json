@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5ggclk38mj1psbpcuog",
+  "parentID": "mig_d5ggck438mj1psbpcung",
+  "checksum": "1:44933aa065b298a55b0db0deefe0c43717a0f4e428c847011d4882d08a2e6b9f",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "sell_price",
+          "type": "float"
+        },
+        "table": "LineItems"
+      }
+    }
+  ]
+}

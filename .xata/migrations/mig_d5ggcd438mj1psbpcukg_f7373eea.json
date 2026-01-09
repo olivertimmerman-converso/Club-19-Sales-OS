@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5ggcd438mj1psbpcukg",
+  "parentID": "mig_d5ggbvc38mj1psbpcujg",
+  "checksum": "1:f7373eeacee32245955e62ef5664373f68402d65c86a5e5c327dbf8733485534",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "brand",
+          "type": "text"
+        },
+        "table": "LineItems"
+      }
+    }
+  ]
+}

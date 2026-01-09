@@ -186,12 +186,33 @@ interface XeroInvoiceResponse {
 }
 
 /**
+ * Line item for multi-line invoices
+ */
+export interface InvoiceLineItem {
+  lineNumber: number;
+  brand: string;
+  category: string;
+  description: string;
+  quantity: number;
+  buyPrice: number;
+  sellPrice: number;
+  lineTotal: number;
+  lineMargin: number;
+  supplierName?: string;
+}
+
+/**
  * Invoice creation payload
+ * Supports both single-line (legacy) and multi-line invoices
  */
 interface CreateInvoicePayload {
   buyerContactId: string;
-  description: string;
-  finalPrice: number;
+  // Single-line (legacy) fields
+  description?: string;
+  finalPrice?: number;
+  // Multi-line fields
+  lineItems?: InvoiceLineItem[];
+  // Common fields
   accountCode: string;
   taxType: string;
   brandingThemeId?: string;
@@ -204,7 +225,8 @@ interface CreateInvoicePayload {
  *
  * Features:
  * - Auto-generated invoice numbers (Xero handles this)
- * - Single line item representing final client price
+ * - Supports multi-line invoices (multiple items per invoice)
+ * - Falls back to single-line for legacy compatibility
  * - Returns complete invoice object
  *
  * @param tenantId - Xero tenant/organization ID
@@ -218,13 +240,47 @@ export async function createXeroInvoice(
   accessToken: string,
   payload: CreateInvoicePayload
 ): Promise<XeroInvoice> {
+  // Determine if this is a multi-line or single-line invoice
+  const isMultiLine = payload.lineItems && payload.lineItems.length > 0;
+
   logger.info('XERO', 'Creating invoice with payload', {
     contactId: payload.buyerContactId,
-    amount: payload.finalPrice,
+    isMultiLine,
+    lineItemCount: payload.lineItems?.length || 1,
     currency: payload.currency,
     accountCode: payload.accountCode,
     taxType: payload.taxType,
   });
+
+  // Build Xero line items array
+  let xeroLineItems;
+
+  if (isMultiLine && payload.lineItems) {
+    // Multi-line invoice: one line item per product
+    xeroLineItems = payload.lineItems.map(item => ({
+      Description: item.description,
+      Quantity: item.quantity,
+      UnitAmount: item.sellPrice, // Unit price (per item)
+      AccountCode: payload.accountCode,
+      TaxType: payload.taxType,
+    }));
+
+    logger.info('XERO', 'Multi-line invoice', {
+      lineCount: xeroLineItems.length,
+      totalAmount: payload.lineItems.reduce((sum, item) => sum + item.lineTotal, 0),
+    });
+  } else {
+    // Single-line (legacy) invoice
+    xeroLineItems = [
+      {
+        Description: payload.description || '',
+        Quantity: 1,
+        UnitAmount: payload.finalPrice || 0,
+        AccountCode: payload.accountCode,
+        TaxType: payload.taxType,
+      },
+    ];
+  }
 
   // Build Xero invoice payload
   // IMPORTANT: Do NOT include InvoiceNumber - Xero auto-generates it
@@ -235,15 +291,7 @@ export async function createXeroInvoice(
     },
     DueDate: new Date().toISOString().split("T")[0], // YYYY-MM-DD format (UTC today)
     LineAmountTypes: payload.lineAmountType, // "Inclusive" | "Exclusive" | "NoTax"
-    LineItems: [
-      {
-        Description: payload.description,
-        Quantity: 1,
-        UnitAmount: payload.finalPrice,
-        AccountCode: payload.accountCode,
-        TaxType: payload.taxType, // e.g., "OUTPUT2" (20% VAT), "ZERORATEDOUTPUT" (0%)
-      },
-    ],
+    LineItems: xeroLineItems,
     CurrencyCode: payload.currency,
     ...(payload.brandingThemeId && { BrandingThemeID: payload.brandingThemeId }),
   };

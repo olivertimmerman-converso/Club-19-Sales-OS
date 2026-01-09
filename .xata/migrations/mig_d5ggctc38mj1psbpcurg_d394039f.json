@@ -1,0 +1,19 @@
+{
+  "id": "mig_d5ggctc38mj1psbpcurg",
+  "parentID": "mig_d5ggcoc38mj1psbpcuqg",
+  "checksum": "1:d394039fbf9c43c2322fdd46cd5dcea4c492bd6483eb8e98188b285e0b679d33",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "supplier",
+          "type": "link",
+          "link": {
+            "table": "Suppliers"
+          }
+        },
+        "table": "LineItems"
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "mig_d5dce4qsg731v133smcg",
+  "parentID": "mig_d5codfr2j7svr0s3p3v0",
+  "checksum": "1:06f861bf03ae89568b568e3c6e44bec0b36075f1ad1a01444166156ade572baa",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "has_introducer",
+          "type": "bool",
+          "defaultValue": "false"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

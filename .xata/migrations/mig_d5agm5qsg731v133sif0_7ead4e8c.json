@@ -1,0 +1,17 @@
+{
+  "id": "mig_d5agm5qsg731v133sif0",
+  "parentID": "mig_d4o5tq24lks28pk5f4m0",
+  "checksum": "1:7ead4e8ce2f088d7e1b0393a987d5451381c3157f820b530098b7c04a6d34f3a",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "needs_allocation",
+          "type": "bool",
+          "defaultValue": "false"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

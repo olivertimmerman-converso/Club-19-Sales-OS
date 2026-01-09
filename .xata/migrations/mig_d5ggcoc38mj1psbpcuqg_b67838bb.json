@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5ggcoc38mj1psbpcuqg",
+  "parentID": "mig_d5ggcms38mj1psbpcupg",
+  "checksum": "1:b67838bbbf6c85c6622b1acc58af01e04f9bdb13dbc657ca4e525b7b7940b381",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "line_margin",
+          "type": "float"
+        },
+        "table": "LineItems"
+      }
+    }
+  ]
+}

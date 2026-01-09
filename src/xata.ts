@@ -33,7 +33,10 @@ const tables = [
       { name: "email", type: "text" },
       { name: "xero_contact_id", type: "text" },
     ],
-    revLinks: [{ column: "supplier", table: "Sales" }],
+    revLinks: [
+      { column: "supplier", table: "Sales" },
+      { column: "supplier", table: "LineItems" },
+    ],
   },
   {
     name: "Introducers",
@@ -119,6 +122,7 @@ const tables = [
     revLinks: [
       { column: "sale", table: "Errors" },
       { column: "sale", table: "PaymentSchedule" },
+      { column: "sale", table: "LineItems" },
     ],
   },
   {
@@ -196,6 +200,22 @@ const tables = [
       { name: "notes", type: "text" },
     ],
   },
+  {
+    name: "LineItems",
+    columns: [
+      { name: "sale", type: "link", link: { table: "Sales" } },
+      { name: "line_number", type: "int" },
+      { name: "brand", type: "text" },
+      { name: "category", type: "text" },
+      { name: "description", type: "text" },
+      { name: "quantity", type: "int" },
+      { name: "buy_price", type: "float" },
+      { name: "sell_price", type: "float" },
+      { name: "line_total", type: "float" },
+      { name: "line_margin", type: "float" },
+      { name: "supplier", type: "link", link: { table: "Suppliers" } },
+    ],
+  },
 ] as const;
 
 export type SchemaTables = typeof tables;
@@ -234,6 +254,9 @@ export type LegacyTradesRecord = LegacyTrades & XataRecord;
 export type PaymentSchedule = InferredTypes["PaymentSchedule"];
 export type PaymentScheduleRecord = PaymentSchedule & XataRecord;
 
+export type LineItems = InferredTypes["LineItems"];
+export type LineItemsRecord = LineItems & XataRecord;
+
 export type DatabaseSchema = {
   Shoppers: ShoppersRecord;
   Buyers: BuyersRecord;
@@ -246,6 +269,7 @@ export type DatabaseSchema = {
   legacy_clients: LegacyClientsRecord;
   legacy_trades: LegacyTradesRecord;
   PaymentSchedule: PaymentScheduleRecord;
+  LineItems: LineItemsRecord;
 };
 
 const DatabaseClient = buildClient();

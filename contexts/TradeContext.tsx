@@ -137,18 +137,22 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
 
   const canGoNext = (() => {
     switch (state.currentStep) {
-      case 0: // Item Details
-        return state.currentItem !== null &&
-               state.currentItem.brand !== "" &&
-               state.currentItem.category !== "" &&
-               state.currentItem.description !== "" &&
-               state.currentItem.quantity > 0;
-      case 1: // Pricing
-        return state.currentItem !== null &&
-               state.currentItem.buyPrice !== undefined &&
-               state.currentItem.buyPrice > 0 &&
-               state.currentItem.sellPrice !== undefined &&
-               state.currentItem.sellPrice > 0;
+      case 0: // Item Details - require at least one complete item in the items array
+        return state.items.length > 0 &&
+               state.items.every(item =>
+                 item.brand !== "" &&
+                 item.category !== "" &&
+                 item.description !== "" &&
+                 item.quantity > 0
+               );
+      case 1: // Pricing - all items need buy and sell prices
+        return state.items.length > 0 &&
+               state.items.every(item =>
+                 item.buyPrice !== undefined &&
+                 item.buyPrice >= 0 &&
+                 item.sellPrice !== undefined &&
+                 item.sellPrice > 0
+               );
       case 2: // Supplier & Buyer
         return state.currentSupplier !== null &&
                state.currentSupplier.name.trim() !== "" &&
@@ -172,18 +176,22 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
   // Helper function to check if a specific step is valid
   const isStepValid = useCallback((step: WizardStep): boolean => {
     switch (step) {
-      case 0: // Item Details
-        return state.currentItem !== null &&
-               state.currentItem.brand !== "" &&
-               state.currentItem.category !== "" &&
-               state.currentItem.description !== "" &&
-               state.currentItem.quantity > 0;
-      case 1: // Pricing
-        return state.currentItem !== null &&
-               state.currentItem.buyPrice !== undefined &&
-               state.currentItem.buyPrice > 0 &&
-               state.currentItem.sellPrice !== undefined &&
-               state.currentItem.sellPrice > 0;
+      case 0: // Item Details - require at least one complete item
+        return state.items.length > 0 &&
+               state.items.every(item =>
+                 item.brand !== "" &&
+                 item.category !== "" &&
+                 item.description !== "" &&
+                 item.quantity > 0
+               );
+      case 1: // Pricing - all items need prices
+        return state.items.length > 0 &&
+               state.items.every(item =>
+                 item.buyPrice !== undefined &&
+                 item.buyPrice >= 0 &&
+                 item.sellPrice !== undefined &&
+                 item.sellPrice > 0
+               );
       case 2: // Supplier & Buyer
         return state.currentSupplier !== null &&
                state.currentSupplier.name.trim() !== "" &&
@@ -200,7 +208,7 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
       default:
         return false;
     }
-  }, [state.currentItem, state.currentSupplier, state.buyer, state.deliveryCountry, state.currentPaymentMethod, state.taxScenario]);
+  }, [state.items, state.currentSupplier, state.buyer, state.deliveryCountry, state.currentPaymentMethod, state.taxScenario]);
 
   // Check if user can navigate to a target step
   const canGoToStep = useCallback((targetStep: WizardStep): boolean => {

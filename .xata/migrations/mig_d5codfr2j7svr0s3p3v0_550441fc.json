@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5codfr2j7svr0s3p3v0",
+  "parentID": "mig_d5cln9umm3piikvkuqrg",
+  "checksum": "1:550441fc2452583a31fb65a3c6d9af6da38ebc608f97a417c7afb6246f46f8bf",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "deleted_at",
+          "type": "datetime"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

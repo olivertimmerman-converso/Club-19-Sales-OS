@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5dugiisg731v133snag",
+  "parentID": "mig_d5dtmuisg731v133sn6g",
+  "checksum": "1:1ba0e593f17db5321d2b9c8aaaea775eb1972a07b0a7084f297e7860dc2366b3",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "commission_clawback",
+          "type": "bool"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

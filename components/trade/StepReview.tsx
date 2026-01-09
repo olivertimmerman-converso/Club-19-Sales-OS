@@ -2,10 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useTrade } from "@/contexts/TradeContext";
-import { buildTradePayload } from "@/lib/trade-payload";
 import { calculateImpliedCosts } from "@/lib/implied-costs";
-import { TradeItem } from "@/lib/types/invoice";
-import { v4 as uuidv4 } from "uuid";
 import { FileText, CheckCircle } from "lucide-react";
 import * as logger from '@/lib/logger';
 
@@ -18,7 +15,6 @@ export function StepReview() {
     setError,
     resetWizard,
     goToStep,
-    addItem,
     updateItem
   } = useTrade();
 
@@ -29,50 +25,27 @@ export function StepReview() {
     commissionableMarginGBP: number;
   } | null>(null);
 
-  // Convert currentItem to TradeItem automatically when entering this step
-  // Updates existing item if prices change (when user goes back and edits)
+  // Update items with tax scenario and supplier info when entering review step
+  // This ensures all items have the correct tax codes for Xero
   useEffect(() => {
-    if (
-      state.currentItem &&
-      state.currentSupplier &&
-      state.taxScenario &&
-      state.currentItem.buyPrice &&
-      state.currentItem.sellPrice
-    ) {
-      const tradeItem: TradeItem = {
-        id: state.items[0]?.id || uuidv4(), // Reuse existing ID or create new
-        brand: state.currentItem.brand,
-        category: state.currentItem.category,
-        description: state.currentItem.description,
-        quantity: state.currentItem.quantity,
-        supplier: state.currentSupplier,
-        buyPrice: state.currentItem.buyPrice,
-        buyCurrency: "GBP", // GBP only as per requirements
-        sellPrice: state.currentItem.sellPrice,
-        sellCurrency: "GBP", // GBP only as per requirements
-        accountCode: state.taxScenario.accountCode,
-        taxType: state.taxScenario.taxType,
-        taxLabel: state.taxScenario.taxLabel,
-        lineAmountTypes: state.taxScenario.lineAmountTypes,
-        brandTheme: state.taxScenario.brandTheme,
-      };
-
-      if (state.items.length === 0) {
-        // Add new item if array is empty
-        addItem(tradeItem);
-      } else {
-        // Update existing item with new prices/data
-        updateItem(state.items[0].id, tradeItem);
-      }
+    if (state.taxScenario && state.currentSupplier && state.items.length > 0) {
+      state.items.forEach(item => {
+        // Only update if missing tax scenario fields
+        if (!item.accountCode || !item.taxType) {
+          updateItem(item.id, {
+            supplier: item.supplier?.name ? item.supplier : (state.currentSupplier || undefined),
+            accountCode: state.taxScenario!.accountCode,
+            taxType: state.taxScenario!.taxType,
+            taxLabel: state.taxScenario!.taxLabel,
+            lineAmountTypes: state.taxScenario!.lineAmountTypes,
+            brandTheme: state.taxScenario!.brandTheme,
+            buyCurrency: "GBP",
+            sellCurrency: "GBP",
+          });
+        }
+      });
     }
-  }, [
-    state.currentItem,
-    state.currentSupplier,
-    state.taxScenario,
-    state.items.length,
-    addItem,
-    updateItem,
-  ]);
+  }, [state.taxScenario, state.currentSupplier, state.items, updateItem]);
 
   // Calculate totals and margins
   const { totalBuyGBP, totalSellGBP, grossMarginGBP } = useMemo(() => {
@@ -144,41 +117,55 @@ export function StepReview() {
     setError(null);
 
     try {
-      // Prepare invoice description from items
-      const itemDescriptions = state.items
-        .map((item) => `${item.brand} · ${item.category} - ${item.description} (Qty: ${item.quantity})`)
-        .join("\n");
-
       // Get tax scenario from first item (all items should have same tax scenario)
       const firstItem = state.items[0];
 
-      // Create invoice payload for native Xero API (with Make.com sync fields - 19 fields)
+      // Build line items array for multi-line invoice
+      const lineItems = state.items.map((item, index) => ({
+        lineNumber: index + 1,
+        brand: item.brand,
+        category: item.category,
+        description: `${item.brand} ${item.category} - ${item.description}`,
+        quantity: item.quantity,
+        buyPrice: item.buyPrice,
+        sellPrice: item.sellPrice,
+        lineTotal: item.sellPrice * item.quantity,
+        lineMargin: (item.sellPrice - item.buyPrice) * item.quantity,
+        supplierName: item.supplier?.name || state.currentSupplier?.name,
+      }));
+
+      // Create invoice payload for native Xero API with multi-line items
       const invoicePayload = {
         buyerContactId: state.buyer.xeroContactId,
-        description: itemDescriptions,
-        finalPrice: totalSellGBP, // Single line item with total sell price
+        lineItems, // Array of line items for Xero
         accountCode: firstItem.accountCode,
         taxType: firstItem.taxType,
         brandingThemeId: firstItem.brandTheme || undefined,
         currency: "GBP",
         lineAmountType: firstItem.lineAmountTypes,
 
-        // Additional fields for Make.com sync (19-field payload)
-        supplierName: firstItem.supplier?.name,
+        // Summary fields for Sales record
+        totalSellPrice: totalSellGBP,
+        totalBuyPrice: totalBuyGBP,
+        grossMargin: grossMarginGBP,
+        commissionableMargin: commissionableMarginGBP,
+        cardFees: impliedCosts.cardFees,
+        shippingCost: impliedCosts.shipping,
+        notes: state.notes || undefined,
+
+        // Legacy fields for backward compatibility (use first item)
+        supplierName: firstItem.supplier?.name || state.currentSupplier?.name,
         brand: firstItem.brand,
         category: firstItem.category,
         itemTitle: firstItem.description,
         quantity: state.items.reduce((sum, item) => sum + item.quantity, 0),
-        buyPrice: totalBuyGBP,
-        cardFees: impliedCosts.cardFees,
-        shippingCost: impliedCosts.shipping,
-        impliedShipping: impliedCosts.shipping,
-        grossMargin: grossMarginGBP,
-        commissionableMargin: commissionableMarginGBP,
-        notes: state.notes || undefined,
       };
 
-      logger.info('TRADE_UI', 'Sending invoice to Xero API', { invoicePayload });
+      logger.info('TRADE_UI', 'Sending multi-line invoice to Xero API', {
+        itemCount: lineItems.length,
+        totalSell: totalSellGBP,
+        totalBuy: totalBuyGBP,
+      });
 
       // Call native Xero API
       const response = await fetch("/api/xero/invoices", {

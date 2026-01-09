@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5f6oeisg731v133speg",
+  "parentID": "mig_d5f6oa2sg731v133spdg",
+  "checksum": "1:a5520b1873913485762c948331a1dcdae92a7570ec1cfca5cc41ed986f2dec2e",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "shipping_cost_confirmed",
+          "type": "bool"
+        },
+        "table": "Sales"
+      }
+    }
+  ]
+}

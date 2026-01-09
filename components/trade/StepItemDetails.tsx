@@ -3,27 +3,69 @@
 import React, { useState, useEffect } from "react";
 import { useTrade } from "@/contexts/TradeContext";
 import { BRANDS, CATEGORIES } from "@/lib/constants";
+import { TradeItem, TaxRegime } from "@/lib/types/invoice";
+import { v4 as uuidv4 } from "uuid";
 import * as logger from '@/lib/logger';
 
+const MAX_ITEMS = 10;
+
 export function StepItemDetails() {
-  const { state, setCurrentItem } = useTrade();
+  const { state, addItem, updateItem, removeItem, startEditingItem } = useTrade();
 
   // Xero connection state
   const [xeroError, setXeroError] = useState<string | null>(null);
   const [showXeroSuccess, setShowXeroSuccess] = useState(false);
   const [isCheckingConnection, setIsCheckingConnection] = useState(true);
 
-  // Initialize from context if available
-  const [brand, setBrand] = useState(state.currentItem?.brand || "");
+  // Form state for the current item being edited
+  const [brand, setBrand] = useState("");
   const [brandOther, setBrandOther] = useState("");
-  const [category, setCategory] = useState(state.currentItem?.category || "");
+  const [category, setCategory] = useState("");
   const [categoryOther, setCategoryOther] = useState("");
-  const [description, setDescription] = useState(state.currentItem?.description || "");
-  const [quantity, setQuantity] = useState(state.currentItem?.quantity || 1);
+  const [description, setDescription] = useState("");
+  const [quantity, setQuantity] = useState(1);
 
   // Show "Other" input fields
   const showBrandOther = brand === "Other";
   const showCategoryOther = category === "Other";
+
+  // Get final brand/category values
+  const finalBrand = showBrandOther ? brandOther : brand;
+  const finalCategory = showCategoryOther ? categoryOther : category;
+
+  // Check if form is valid
+  const isFormValid = finalBrand !== "" && finalCategory !== "" && description !== "" && quantity > 0;
+
+  // Check if we're editing an existing item
+  const editingItem = state.editingItemId && state.editingItemId !== "new"
+    ? state.items.find(item => item.id === state.editingItemId)
+    : null;
+
+  // Load item data when editing
+  useEffect(() => {
+    if (editingItem) {
+      // Check if brand is in the standard list (cast to any for includes check)
+      if ((BRANDS as readonly string[]).includes(editingItem.brand)) {
+        setBrand(editingItem.brand);
+        setBrandOther("");
+      } else {
+        setBrand("Other");
+        setBrandOther(editingItem.brand);
+      }
+
+      // Check if category is in the standard list (cast to any for includes check)
+      if ((CATEGORIES as readonly string[]).includes(editingItem.category)) {
+        setCategory(editingItem.category);
+        setCategoryOther("");
+      } else {
+        setCategory("Other");
+        setCategoryOther(editingItem.category);
+      }
+
+      setDescription(editingItem.description);
+      setQuantity(editingItem.quantity);
+    }
+  }, [editingItem]);
 
   // Check for Xero connection status on mount
   useEffect(() => {
@@ -81,37 +123,81 @@ export function StepItemDetails() {
     }
   }, []);
 
-  // Sync to context whenever values change
-  useEffect(() => {
-    const finalBrand = showBrandOther ? brandOther : brand;
-    const finalCategory = showCategoryOther ? categoryOther : category;
-
-    if (finalBrand && finalCategory && description && quantity > 0) {
-      setCurrentItem({
-        brand: finalBrand,
-        category: finalCategory,
-        description,
-        quantity,
-        buyPrice: state.currentItem?.buyPrice,
-        sellPrice: state.currentItem?.sellPrice,
-      });
-    } else if (finalBrand || finalCategory || description) {
-      // Partial data - store what we have
-      setCurrentItem({
-        brand: finalBrand,
-        category: finalCategory,
-        description,
-        quantity,
-        buyPrice: state.currentItem?.buyPrice,
-        sellPrice: state.currentItem?.sellPrice,
-      });
-    }
-  }, [brand, brandOther, category, categoryOther, description, quantity, showBrandOther, showCategoryOther, setCurrentItem, state.currentItem?.buyPrice, state.currentItem?.sellPrice]);
-
   // Handler to initiate Xero OAuth flow
   const handleConnectXero = () => {
     window.location.href = "/api/xero/oauth/authorize";
   };
+
+  // Reset form to empty state
+  const resetForm = () => {
+    setBrand("");
+    setBrandOther("");
+    setCategory("");
+    setCategoryOther("");
+    setDescription("");
+    setQuantity(1);
+    startEditingItem("new");
+  };
+
+  // Save item and optionally add another
+  const handleSaveItem = (addAnother: boolean) => {
+    if (!isFormValid) return;
+
+    const itemData: Partial<TradeItem> = {
+      brand: finalBrand,
+      category: finalCategory,
+      description,
+      quantity,
+    };
+
+    if (editingItem) {
+      // Update existing item
+      updateItem(editingItem.id, itemData);
+    } else {
+      // Add new item with generated ID
+      // Supplier will be set later in the supplier step
+      addItem({
+        ...itemData,
+        id: uuidv4(),
+        supplier: { name: "", country: "", taxRegime: TaxRegime.UK_VAT }, // Placeholder, set in supplier step
+        buyPrice: 0,
+        buyCurrency: "GBP",
+        sellPrice: 0,
+        sellCurrency: "GBP",
+        accountCode: "",
+        taxType: "",
+      } as TradeItem);
+    }
+
+    // Reset form
+    resetForm();
+
+    // If not adding another, we're done editing
+    if (!addAnother) {
+      startEditingItem("new");
+    }
+  };
+
+  // Start editing an item
+  const handleEditItem = (itemId: string) => {
+    startEditingItem(itemId);
+  };
+
+  // Delete an item
+  const handleRemoveItem = (itemId: string) => {
+    removeItem(itemId);
+    // If we were editing this item, reset to new item mode
+    if (state.editingItemId === itemId) {
+      resetForm();
+    }
+  };
+
+  // Cancel editing (if editing an existing item)
+  const handleCancelEdit = () => {
+    resetForm();
+  };
+
+  const canAddMore = state.items.length < MAX_ITEMS;
 
   return (
     <div className="space-y-6">
@@ -121,7 +207,7 @@ export function StepItemDetails() {
           Item Details
         </h2>
         <p className="text-sm text-gray-600">
-          Tell us about the item you&apos;re sourcing
+          Add items to this invoice (up to {MAX_ITEMS} items)
         </p>
       </div>
 
@@ -224,124 +310,219 @@ export function StepItemDetails() {
         </div>
       )}
 
-      {/* Item Details Card */}
-      <div className="border-t-4 border-blue-600 bg-blue-50 p-4 rounded-lg space-y-4">
-        <h3 className="font-semibold text-gray-900">What is the item?</h3>
-
-        {/* Brand */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Brand <span className="text-red-600">*</span>
-          </label>
-          <select
-            value={brand}
-            onChange={(e) => {
-              setBrand(e.target.value);
-              if (e.target.value !== "Other") {
-                setBrandOther("");
-              }
-            }}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-            <option value="">Select brand...</option>
-            {BRANDS.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
+      {/* Added Items List */}
+      {state.items.length > 0 && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium text-gray-900">
+              Items ({state.items.length}/{MAX_ITEMS})
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {state.items.map((item, index) => (
+              <div
+                key={item.id}
+                className={`flex items-center justify-between p-3 bg-white rounded-lg border ${
+                  state.editingItemId === item.id
+                    ? "border-blue-500 ring-1 ring-blue-500"
+                    : "border-gray-200"
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {index + 1}. {item.brand} {item.category}
+                  </p>
+                  <p className="text-sm text-gray-500 truncate">
+                    {item.description} (Qty: {item.quantity})
+                  </p>
+                </div>
+                <div className="flex items-center space-x-2 ml-4">
+                  <button
+                    onClick={() => handleEditItem(item.id)}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    disabled={state.editingItemId === item.id}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleRemoveItem(item.id)}
+                    className="text-red-600 hover:text-red-800 text-sm font-medium"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
             ))}
-          </select>
+          </div>
         </div>
+      )}
 
-        {/* Brand Other Input */}
-        {showBrandOther && (
+      {/* Item Form */}
+      {(canAddMore || editingItem) && (
+        <div className="border-t-4 border-blue-600 bg-blue-50 p-4 rounded-lg space-y-4">
+          <h3 className="font-semibold text-gray-900">
+            {editingItem ? "Edit Item" : state.items.length === 0 ? "Add First Item" : "Add Another Item"}
+          </h3>
+
+          {/* Brand */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Specify brand <span className="text-red-600">*</span>
+              Brand <span className="text-red-600">*</span>
             </label>
-            <input
-              type="text"
-              value={brandOther}
-              onChange={(e) => setBrandOther(e.target.value)}
-              placeholder="Enter brand name"
+            <select
+              value={brand}
+              onChange={(e) => {
+                setBrand(e.target.value);
+                if (e.target.value !== "Other") {
+                  setBrandOther("");
+                }
+              }}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select brand...</option>
+              {BRANDS.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Brand Other Input */}
+          {showBrandOther && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Specify brand <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                value={brandOther}
+                onChange={(e) => setBrandOther(e.target.value)}
+                placeholder="Enter brand name"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+          )}
+
+          {/* Category */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Category <span className="text-red-600">*</span>
+            </label>
+            <select
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                if (e.target.value !== "Other") {
+                  setCategoryOther("");
+                }
+              }}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">Select category...</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Category Other Input */}
+          {showCategoryOther && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Specify category <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                value={categoryOther}
+                onChange={(e) => setCategoryOther(e.target.value)}
+                placeholder="Enter category name"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+          )}
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description <span className="text-red-600">*</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              placeholder="e.g., B25 Black Togo GHW"
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
-        )}
 
-        {/* Category */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Category <span className="text-red-600">*</span>
-          </label>
-          <select
-            value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
-              if (e.target.value !== "Other") {
-                setCategoryOther("");
-              }
-            }}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-            <option value="">Select category...</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Category Other Input */}
-        {showCategoryOther && (
+          {/* Quantity */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Specify category <span className="text-red-600">*</span>
+              Quantity <span className="text-red-600">*</span>
             </label>
             <input
-              type="text"
-              value={categoryOther}
-              onChange={(e) => setCategoryOther(e.target.value)}
-              placeholder="Enter category name"
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+              min="1"
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
-        )}
 
-        {/* Description */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Description <span className="text-red-600">*</span>
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            placeholder="e.g., B25 Black Togo GHW"
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2 pt-2">
+            <button
+              onClick={() => handleSaveItem(false)}
+              disabled={!isFormValid}
+              className="flex-1 min-w-[120px] px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+            >
+              {editingItem ? "Update Item" : "Save Item"}
+            </button>
+            {!editingItem && canAddMore && state.items.length < MAX_ITEMS - 1 && (
+              <button
+                onClick={() => handleSaveItem(true)}
+                disabled={!isFormValid}
+                className="flex-1 min-w-[140px] px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+              >
+                Save & Add Another
+              </button>
+            )}
+            {editingItem && (
+              <button
+                onClick={handleCancelEdit}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
         </div>
+      )}
 
-        {/* Quantity */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Quantity <span className="text-red-600">*</span>
-          </label>
-          <input
-            type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-            min="1"
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
+      {/* Maximum items reached message */}
+      {!canAddMore && !editingItem && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-sm text-yellow-800">
+            Maximum of {MAX_ITEMS} items reached. Remove an item to add more.
+          </p>
         </div>
-      </div>
+      )}
+
+      {/* Help text */}
+      {state.items.length > 0 && (
+        <div className="text-sm text-gray-500">
+          <p>Click &quot;Next&quot; when you&apos;ve added all items to continue to pricing.</p>
+        </div>
+      )}
     </div>
   );
 }
