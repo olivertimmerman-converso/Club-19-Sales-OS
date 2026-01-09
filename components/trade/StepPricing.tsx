@@ -309,7 +309,7 @@ export function StepPricing() {
                     <div className="text-sm font-medium text-gray-900">
                       {item.brand} {item.category}
                     </div>
-                    <div className="text-xs text-gray-500 truncate max-w-[150px]">
+                    <div className="text-xs text-gray-600 break-words whitespace-normal max-w-[180px]">
                       {item.description}
                     </div>
                   </td>
