@@ -5,6 +5,7 @@ import { useTrade } from "@/contexts/TradeContext";
 import { calculateImpliedCosts } from "@/lib/implied-costs";
 import { FileText, CheckCircle } from "lucide-react";
 import * as logger from '@/lib/logger';
+import { roundCurrency, subtractCurrency, multiplyCurrency } from '@/lib/utils/currency';
 
 export function StepReview() {
   const {
@@ -47,26 +48,26 @@ export function StepReview() {
     }
   }, [state.taxScenario, state.items, updateItem]);
 
-  // Calculate totals and margins
+  // Calculate totals and margins with currency rounding to prevent floating point errors
   const { totalBuyGBP, totalSellGBP, grossMarginGBP } = useMemo(() => {
     let buyTotal = 0;
     let sellTotal = 0;
 
     for (const item of state.items) {
       if (item.buyCurrency === "GBP") {
-        buyTotal += item.buyPrice * item.quantity;
+        buyTotal += multiplyCurrency(roundCurrency(item.buyPrice), item.quantity);
       }
       if (item.sellCurrency === "GBP") {
-        sellTotal += item.sellPrice * item.quantity;
+        sellTotal += multiplyCurrency(roundCurrency(item.sellPrice), item.quantity);
       }
     }
 
-    const grossMargin = sellTotal - buyTotal;
+    const grossMargin = subtractCurrency(sellTotal, buyTotal);
 
     return {
-      totalBuyGBP: parseFloat(buyTotal.toFixed(2)),
-      totalSellGBP: parseFloat(sellTotal.toFixed(2)),
-      grossMarginGBP: parseFloat(grossMargin.toFixed(2)),
+      totalBuyGBP: roundCurrency(buyTotal),
+      totalSellGBP: roundCurrency(sellTotal),
+      grossMarginGBP: roundCurrency(grossMargin),
     };
   }, [state.items]);
 
@@ -92,13 +93,12 @@ export function StepReview() {
   const deliveryCostTBC = state.hasDeliveryCost === true;
   const deliveryFree = state.hasDeliveryCost === false;
 
-  // Calculate commissionable margin
+  // Calculate commissionable margin with currency rounding
   const commissionableMarginGBP = useMemo(() => {
-    const importExportCost = state.estimatedImportExportGBP ?? 0;
-    const importVATCost = state.importVAT ?? 0;
-    return parseFloat(
-      (grossMarginGBP - impliedCosts.total - importExportCost - importVATCost).toFixed(2)
-    );
+    const importExportCost = roundCurrency(state.estimatedImportExportGBP ?? 0);
+    const importVATCost = roundCurrency(state.importVAT ?? 0);
+    const totalDeductions = roundCurrency(impliedCosts.total + importExportCost + importVATCost);
+    return subtractCurrency(grossMarginGBP, totalDeductions);
   }, [grossMarginGBP, impliedCosts, state.estimatedImportExportGBP, state.importVAT]);
 
   // Handle invoice creation via native Xero API
@@ -121,16 +121,17 @@ export function StepReview() {
       const firstItem = state.items[0];
 
       // Build line items array for multi-line invoice
+      // CRITICAL: Round all currency values to prevent floating point errors (e.g., 24999.96 instead of 25000)
       const lineItems = state.items.map((item, index) => ({
         lineNumber: index + 1,
         brand: item.brand,
         category: item.category,
         description: `${item.brand} ${item.category} - ${item.description}`,
         quantity: item.quantity,
-        buyPrice: item.buyPrice,
-        sellPrice: item.sellPrice,
-        lineTotal: item.sellPrice * item.quantity,
-        lineMargin: (item.sellPrice - item.buyPrice) * item.quantity,
+        buyPrice: roundCurrency(item.buyPrice),
+        sellPrice: roundCurrency(item.sellPrice),
+        lineTotal: multiplyCurrency(roundCurrency(item.sellPrice), item.quantity),
+        lineMargin: multiplyCurrency(subtractCurrency(roundCurrency(item.sellPrice), roundCurrency(item.buyPrice)), item.quantity),
         supplierName: item.supplier?.name || state.currentSupplier?.name,
       }));
 

@@ -1,6 +1,7 @@
 import * as logger from './logger';
 import { WEBHOOKS } from "./constants";
 import { InvoiceScenario } from "./constants";
+import { roundCurrency } from "./utils/currency";
 
 /**
  * Xero contact result from search
@@ -257,25 +258,27 @@ export async function createXeroInvoice(
 
   if (isMultiLine && payload.lineItems) {
     // Multi-line invoice: one line item per product
+    // CRITICAL: Round all currency values to prevent floating point errors (e.g., 24999.96 instead of 25000)
     xeroLineItems = payload.lineItems.map(item => ({
       Description: item.description,
       Quantity: item.quantity,
-      UnitAmount: item.sellPrice, // Unit price (per item)
+      UnitAmount: roundCurrency(item.sellPrice), // Unit price rounded to 2 decimal places
       AccountCode: payload.accountCode,
       TaxType: payload.taxType,
     }));
 
     logger.info('XERO', 'Multi-line invoice', {
       lineCount: xeroLineItems.length,
-      totalAmount: payload.lineItems.reduce((sum, item) => sum + item.lineTotal, 0),
+      totalAmount: roundCurrency(payload.lineItems.reduce((sum, item) => sum + roundCurrency(item.lineTotal), 0)),
     });
   } else {
     // Single-line (legacy) invoice
+    // CRITICAL: Round all currency values to prevent floating point errors
     xeroLineItems = [
       {
         Description: payload.description || '',
         Quantity: 1,
-        UnitAmount: payload.finalPrice || 0,
+        UnitAmount: roundCurrency(payload.finalPrice || 0),
         AccountCode: payload.accountCode,
         TaxType: payload.taxType,
       },

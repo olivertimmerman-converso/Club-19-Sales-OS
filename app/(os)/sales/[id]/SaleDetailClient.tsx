@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getBrandingThemeMapping } from '@/lib/branding-theme-mappings';
@@ -92,6 +92,7 @@ interface LineItem {
   lineTotal: number;
   lineMargin: number;
   supplierId?: string;
+  supplierName?: string;
 }
 
 interface SaleDetailClientProps {
@@ -263,6 +264,16 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
 
     fetchLineItems();
   }, [sale.id]);
+
+  // Get unique suppliers from line items for multi-item invoices
+  const uniqueSuppliers = useMemo(() => {
+    if (!lineItems || lineItems.length === 0) return [];
+    const suppliers = lineItems
+      .map(item => item.supplierName)
+      .filter(Boolean)
+      .filter((name, index, arr) => arr.indexOf(name) === index);
+    return suppliers as string[];
+  }, [lineItems]);
 
   const hasChanges = selectedShopperId !== (sale.shopper?.id || '');
 
@@ -956,7 +967,17 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
                 {sale.buyer?.name || '—'}
               </dd>
             </div>
-            {sale.supplier?.name && (
+            {/* Show suppliers - either from line items (multi-item) or sale record (single-item) */}
+            {uniqueSuppliers.length > 0 ? (
+              <div>
+                <dt className="text-sm font-medium text-gray-500">
+                  {uniqueSuppliers.length === 1 ? 'Supplier' : 'Suppliers'}
+                </dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {uniqueSuppliers.join(', ')}
+                </dd>
+              </div>
+            ) : sale.supplier?.name && (
               <div>
                 <dt className="text-sm font-medium text-gray-500">Supplier</dt>
                 <dd className="mt-1 text-sm text-gray-900">{sale.supplier.name}</dd>

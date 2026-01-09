@@ -75,7 +75,7 @@ export function WizardShell({ children }: WizardShellProps) {
                   Sales Atelier
                 </h1>
                 <p className="mt-0.5 text-[11px] font-light text-gray-500 sm:mt-1 sm:text-xs">
-                  Precision deal creation
+                  Precision invoice creation
                 </p>
               </div>
               <Link

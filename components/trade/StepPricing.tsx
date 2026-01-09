@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useTrade } from "@/contexts/TradeContext";
 import { TaxRegime } from "@/lib/types/invoice";
 import * as logger from '@/lib/logger';
+import { roundCurrency, subtractCurrency, multiplyCurrency, addCurrency } from '@/lib/utils/currency';
 
 // Xata Supplier type
 interface XataSupplier {
@@ -240,21 +241,21 @@ export function StepPricing() {
     }, 200);
   };
 
-  // Calculate totals
+  // Calculate totals with currency rounding to prevent floating point errors
   const totals = state.items.reduce((acc, item) => {
-    const buy = localPrices[item.id]?.buyPrice ? parseFloat(localPrices[item.id].buyPrice) || 0 : 0;
-    const sell = localPrices[item.id]?.sellPrice ? parseFloat(localPrices[item.id].sellPrice) || 0 : 0;
+    const buy = roundCurrency(localPrices[item.id]?.buyPrice ? parseFloat(localPrices[item.id].buyPrice) || 0 : 0);
+    const sell = roundCurrency(localPrices[item.id]?.sellPrice ? parseFloat(localPrices[item.id].sellPrice) || 0 : 0);
     const qty = item.quantity || 1;
 
     return {
-      totalBuy: acc.totalBuy + (buy * qty),
-      totalSell: acc.totalSell + (sell * qty),
-      totalMargin: acc.totalMargin + ((sell - buy) * qty),
+      totalBuy: addCurrency(acc.totalBuy, multiplyCurrency(buy, qty)),
+      totalSell: addCurrency(acc.totalSell, multiplyCurrency(sell, qty)),
+      totalMargin: addCurrency(acc.totalMargin, multiplyCurrency(subtractCurrency(sell, buy), qty)),
     };
   }, { totalBuy: 0, totalSell: 0, totalMargin: 0 });
 
   const marginPercentage = totals.totalSell > 0
-    ? ((totals.totalMargin / totals.totalSell) * 100).toFixed(1)
+    ? roundCurrency((totals.totalMargin / totals.totalSell) * 100).toFixed(1)
     : "0.0";
 
   return (
@@ -298,9 +299,9 @@ export function StepPricing() {
             {state.items.map((item, index) => {
               const prices = localPrices[item.id] || { buyPrice: "", sellPrice: "" };
               const supplier = localSuppliers[item.id] || { name: "", xataId: "" };
-              const buyNum = parseFloat(prices.buyPrice) || 0;
-              const sellNum = parseFloat(prices.sellPrice) || 0;
-              const lineMargin = (sellNum - buyNum) * item.quantity;
+              const buyNum = roundCurrency(parseFloat(prices.buyPrice) || 0);
+              const sellNum = roundCurrency(parseFloat(prices.sellPrice) || 0);
+              const lineMargin = multiplyCurrency(subtractCurrency(sellNum, buyNum), item.quantity);
               const isSearchActive = activeSupplierSearch === item.id;
 
               return (

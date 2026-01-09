@@ -16,6 +16,12 @@ import {
   BrandingThemeMapping,
 } from "@/lib/branding-theme-mappings";
 import { toNumber } from "@/lib/economics";
+import {
+  roundCurrency,
+  multiplyCurrency,
+  addCurrency,
+  subtractCurrency,
+} from "@/lib/utils/currency";
 
 export interface VATInputs {
   brandTheme: string;
@@ -53,15 +59,15 @@ export function calculateVAT(inputs: VATInputs): VATResult {
     );
   }
 
-  // Convert sale amount safely
-  const saleAmountExVat = toNumber(rawSaleAmount);
+  // Convert sale amount safely and round to 2 decimal places
+  const saleAmountExVat = roundCurrency(toNumber(rawSaleAmount));
 
   // VAT rate comes ONLY from the branding theme - NEVER hardcoded
   const vatRate = mapping.expectedVAT; // 0 or 20
   const vatRateDecimal = vatRate / 100; // 0 or 0.2
   const isZeroRated = vatRate === 0;
 
-  // Calculate VAT amount and total
+  // Calculate VAT amount and total (using currency utilities for precision)
   let vatAmount: number;
   let saleAmountIncVat: number;
 
@@ -70,14 +76,10 @@ export function calculateVAT(inputs: VATInputs): VATResult {
     vatAmount = 0;
     saleAmountIncVat = saleAmountExVat;
   } else {
-    // Standard rate: Add VAT
-    vatAmount = saleAmountExVat * vatRateDecimal;
-    saleAmountIncVat = saleAmountExVat + vatAmount;
+    // Standard rate: Add VAT (using currency utilities)
+    vatAmount = multiplyCurrency(saleAmountExVat, vatRateDecimal);
+    saleAmountIncVat = addCurrency(saleAmountExVat, vatAmount);
   }
-
-  // Round to 2 decimal places
-  vatAmount = Math.round(vatAmount * 100) / 100;
-  saleAmountIncVat = Math.round(saleAmountIncVat * 100) / 100;
 
   // CRITICAL VALIDATION: Zero-rated sales must have zero VAT
   if (isZeroRated && vatAmount > 0.01) {
@@ -88,7 +90,7 @@ export function calculateVAT(inputs: VATInputs): VATResult {
 
   // CRITICAL VALIDATION: Standard rate sales must have correct VAT
   if (!isZeroRated) {
-    const expectedVAT = Math.round(saleAmountExVat * vatRateDecimal * 100) / 100;
+    const expectedVAT = multiplyCurrency(saleAmountExVat, vatRateDecimal);
     if (Math.abs(vatAmount - expectedVAT) > 0.01) {
       throw new Error(
         `VAT calculation error: Expected £${expectedVAT.toFixed(2)} VAT for ${vatRate}% rate but calculated £${vatAmount.toFixed(2)}.`
@@ -150,23 +152,23 @@ export function validateSaleVAT(
     };
   }
 
-  const exVat = toNumber(saleAmountExVat);
-  const incVat = toNumber(saleAmountIncVat);
-  const actualVATAmount = incVat - exVat;
+  const exVat = roundCurrency(toNumber(saleAmountExVat));
+  const incVat = roundCurrency(toNumber(saleAmountIncVat));
+  const actualVATAmount = subtractCurrency(incVat, exVat);
 
   const expectedVATRate = mapping.expectedVAT;
   const expectedVATAmount =
-    expectedVATRate === 0 ? 0 : exVat * (expectedVATRate / 100);
+    expectedVATRate === 0 ? 0 : multiplyCurrency(exVat, expectedVATRate / 100);
 
-  const discrepancy = Math.abs(actualVATAmount - expectedVATAmount);
+  const discrepancy = roundCurrency(Math.abs(actualVATAmount - expectedVATAmount));
   const isValid = discrepancy < 0.01;
 
   return {
     isValid,
     expectedVATRate,
-    actualVATAmount: Math.round(actualVATAmount * 100) / 100,
-    expectedVATAmount: Math.round(expectedVATAmount * 100) / 100,
-    discrepancy: Math.round(discrepancy * 100) / 100,
+    actualVATAmount: roundCurrency(actualVATAmount),
+    expectedVATAmount: roundCurrency(expectedVATAmount),
+    discrepancy,
     message: isValid
       ? undefined
       : `VAT mismatch: Expected £${expectedVATAmount.toFixed(2)} (${expectedVATRate}%) but found £${actualVATAmount.toFixed(2)}`,

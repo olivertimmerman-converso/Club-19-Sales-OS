@@ -50,6 +50,7 @@ export async function GET(
       lineTotal: item.line_total,
       lineMargin: item.line_margin,
       supplierId: item.supplier?.id,
+      supplierName: item.supplier?.name,
     }));
 
     return NextResponse.json({

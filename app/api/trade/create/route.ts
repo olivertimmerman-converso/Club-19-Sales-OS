@@ -9,6 +9,7 @@ import { getValidTokens } from "@/lib/xero-auth";
 import { createXeroInvoice } from "@/lib/xero";
 import { calculateMargins } from "@/lib/economics";
 import { calculateVAT } from "@/lib/calculations/vat";
+import { roundCurrency, addCurrency } from "@/lib/utils/currency";
 
 // Initialize Xata client
 const xata = new XataClient();
@@ -237,9 +238,11 @@ export async function POST(request: NextRequest) {
       ? `${firstItem.brand} ${firstItem.category} - ${firstItem.description}${firstItem.quantity > 1 ? ` (x${firstItem.quantity})` : ''}`
       : `Multi-item trade: ${trade.items.map(item => `${item.brand} ${item.category}`).join(', ')}`;
 
-    // Calculate total sell price (sum of all items)
-    const totalSellPrice = trade.items.reduce((sum, item) =>
-      sum + (item.sellPriceGBP || item.sellPrice), 0
+    // Calculate total sell price (sum of all items) - rounded to prevent floating point errors
+    const totalSellPrice = roundCurrency(
+      trade.items.reduce((sum, item) =>
+        sum + roundCurrency(item.sellPriceGBP || item.sellPrice), 0
+      )
     );
 
     // Get branding theme and tax info from first item
@@ -375,9 +378,11 @@ export async function POST(request: NextRequest) {
         logger.info('TRADE_CREATE', 'Sale marked as having referral partner (details to be added in Sales OS)');
       }
 
-      // Calculate total buy price
-      const totalBuyPrice = trade.items.reduce((sum, item) =>
-        sum + (item.buyPriceGBP || item.buyPrice), 0
+      // Calculate total buy price - rounded to prevent floating point errors
+      const totalBuyPrice = roundCurrency(
+        trade.items.reduce((sum, item) =>
+          sum + roundCurrency(item.buyPriceGBP || item.buyPrice), 0
+        )
       );
 
       // ==========================================================================

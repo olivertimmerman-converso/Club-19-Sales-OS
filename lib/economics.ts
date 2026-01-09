@@ -15,6 +15,13 @@
  */
 
 import { getBrandingThemeMapping } from "@/lib/branding-theme-mappings";
+import {
+  roundCurrency,
+  subtractCurrency,
+  addCurrency,
+  divideCurrency,
+  multiplyCurrency,
+} from "@/lib/utils/currency";
 
 /**
  * Standard UK VAT rate (20%) - use getVATRateForBrandingTheme() instead of this constant
@@ -72,7 +79,7 @@ export function toNumber(value: unknown): number {
  */
 export function calculateExVat(amountIncVat: number): number {
   const amount = toNumber(amountIncVat);
-  return amount / VAT_MULTIPLIER;
+  return roundCurrency(amount / VAT_MULTIPLIER);
 }
 
 /**
@@ -85,12 +92,12 @@ export function calculateExVat(amountIncVat: number): number {
  * @returns Amount excluding VAT
  */
 export function calculateExVatWithRate(amountIncVat: number, vatRate: number): number {
-  const amount = toNumber(amountIncVat);
+  const amount = roundCurrency(toNumber(amountIncVat));
   if (vatRate === 0) {
     // Zero-rated: inc VAT = ex VAT
     return amount;
   }
-  return amount / (1 + vatRate);
+  return roundCurrency(amount / (1 + vatRate));
 }
 
 /**
@@ -103,7 +110,7 @@ export function calculateExVatWithRate(amountIncVat: number, vatRate: number): n
  */
 export function calculateVat(amountExVat: number): number {
   const amount = toNumber(amountExVat);
-  return amount * VAT_RATE;
+  return roundCurrency(amount * VAT_RATE);
 }
 
 /**
@@ -115,9 +122,9 @@ export function calculateVat(amountExVat: number): number {
  * @returns VAT amount
  */
 export function calculateVatFromIncVat(amountIncVat: number): number {
-  const amount = toNumber(amountIncVat);
+  const amount = roundCurrency(toNumber(amountIncVat));
   const exVat = calculateExVat(amount);
-  return amount - exVat;
+  return subtractCurrency(amount, exVat);
 }
 
 /**
@@ -134,9 +141,9 @@ export function calculateGrossMargin(
   saleExVat: number | string | null | undefined,
   buyPrice: number | string | null | undefined
 ): number {
-  const sale = toNumber(saleExVat);
-  const buy = toNumber(buyPrice);
-  return sale - buy;
+  const sale = roundCurrency(toNumber(saleExVat));
+  const buy = roundCurrency(toNumber(buyPrice));
+  return subtractCurrency(sale, buy);
 }
 
 /**
@@ -182,20 +189,20 @@ export interface MarginResult {
  * @returns Margin results with breakdown
  */
 export function calculateMargins(inputs: MarginInputs): MarginResult {
-  // Convert all inputs to numbers safely
-  const saleAmountExVat = toNumber(inputs.saleAmountExVat);
-  const buyPrice = toNumber(inputs.buyPrice);
-  const shippingCost = toNumber(inputs.shippingCost);
-  const cardFees = toNumber(inputs.cardFees);
-  const directCosts = toNumber(inputs.directCosts);
-  const introducerCommission = toNumber(inputs.introducerCommission);
+  // Convert all inputs to numbers safely and round to 2 decimal places
+  const saleAmountExVat = roundCurrency(toNumber(inputs.saleAmountExVat));
+  const buyPrice = roundCurrency(toNumber(inputs.buyPrice));
+  const shippingCost = roundCurrency(toNumber(inputs.shippingCost));
+  const cardFees = roundCurrency(toNumber(inputs.cardFees));
+  const directCosts = roundCurrency(toNumber(inputs.directCosts));
+  const introducerCommission = roundCurrency(toNumber(inputs.introducerCommission));
 
   // CRITICAL: Gross Margin = Sale - Buy ONLY
-  const grossMargin = saleAmountExVat - buyPrice;
+  const grossMargin = subtractCurrency(saleAmountExVat, buyPrice);
 
   // Commissionable Margin = Gross Margin - All Deductions
-  const totalDeductions = shippingCost + cardFees + directCosts + introducerCommission;
-  const commissionableMargin = grossMargin - totalDeductions;
+  const totalDeductions = addCurrency(shippingCost, cardFees, directCosts, introducerCommission);
+  const commissionableMargin = subtractCurrency(grossMargin, totalDeductions);
 
   return {
     grossMargin,
@@ -233,13 +240,14 @@ export function calculateCommissionableMargin(
   directCosts: number | string | null | undefined = 0,
   introducerCommission: number | string | null | undefined = 0
 ): number {
-  const margin = toNumber(grossMargin);
-  const shipping = toNumber(shippingCost);
-  const fees = toNumber(cardFees);
-  const direct = toNumber(directCosts);
-  const introducer = toNumber(introducerCommission);
+  const margin = roundCurrency(toNumber(grossMargin));
+  const shipping = roundCurrency(toNumber(shippingCost));
+  const fees = roundCurrency(toNumber(cardFees));
+  const direct = roundCurrency(toNumber(directCosts));
+  const introducer = roundCurrency(toNumber(introducerCommission));
 
-  return margin - shipping - fees - direct - introducer;
+  const totalDeductions = addCurrency(shipping, fees, direct, introducer);
+  return subtractCurrency(margin, totalDeductions);
 }
 
 /**
@@ -255,10 +263,10 @@ export function calculateMarginPercent(
   margin: number | string | null | undefined,
   saleExVat: number | string | null | undefined
 ): number {
-  const m = toNumber(margin);
-  const sale = toNumber(saleExVat);
+  const m = roundCurrency(toNumber(margin));
+  const sale = roundCurrency(toNumber(saleExVat));
   if (sale === 0) return 0;
-  return (m / sale) * 100;
+  return roundCurrency((m / sale) * 100);
 }
 
 /**
@@ -306,13 +314,13 @@ export interface SaleEconomics {
 }
 
 export function calculateSaleEconomics(params: SaleEconomicsParams): SaleEconomics {
-  // Convert all inputs safely
-  const sale_amount_inc_vat = toNumber(params.sale_amount_inc_vat);
-  const buy_price = toNumber(params.buy_price);
-  const card_fees = toNumber(params.card_fees);
-  const shipping_cost = toNumber(params.shipping_cost);
-  const direct_costs = toNumber(params.direct_costs);
-  const introducer_commission = toNumber(params.introducer_commission);
+  // Convert all inputs safely and round to 2 decimal places
+  const sale_amount_inc_vat = roundCurrency(toNumber(params.sale_amount_inc_vat));
+  const buy_price = roundCurrency(toNumber(params.buy_price));
+  const card_fees = roundCurrency(toNumber(params.card_fees));
+  const shipping_cost = roundCurrency(toNumber(params.shipping_cost));
+  const direct_costs = roundCurrency(toNumber(params.direct_costs));
+  const introducer_commission = roundCurrency(toNumber(params.introducer_commission));
 
   // CRITICAL: Get the correct VAT rate from branding theme
   const vatRate = getVATRateForBrandingTheme(params.branding_theme);
@@ -327,8 +335,8 @@ export function calculateSaleEconomics(params: SaleEconomicsParams): SaleEconomi
   // Step 1: Calculate sale amount ex VAT using the CORRECT VAT rate
   const sale_amount_ex_vat = calculateExVatWithRate(sale_amount_inc_vat, vatRate);
 
-  // Step 2: Calculate VAT amount
-  const vat_amount = sale_amount_inc_vat - sale_amount_ex_vat;
+  // Step 2: Calculate VAT amount (rounded)
+  const vat_amount = subtractCurrency(sale_amount_inc_vat, sale_amount_ex_vat);
 
   // Step 3: Calculate gross margin (CRITICAL: Sale - Buy ONLY)
   const gross_margin = calculateGrossMargin(sale_amount_ex_vat, buy_price);

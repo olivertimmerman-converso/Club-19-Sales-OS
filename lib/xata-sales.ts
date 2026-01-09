@@ -818,6 +818,7 @@ export async function getLineItemsForSale(
 ): Promise<LineItemsRecord[]> {
   const items = await xata()
     .db.LineItems.filter({ "sale.id": saleId })
+    .select(["*", "supplier.id", "supplier.name"])
     .sort("line_number", "asc")
     .getMany();
 
