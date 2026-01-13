@@ -17,12 +17,27 @@ export default async function SyncPage() {
 
   const xata = getXataClient();
 
-  // Fetch unallocated sales - using wildcard to avoid column selection issues
+  // Fetch unallocated sales (excluding dismissed)
   const unallocatedRaw = await xata.db.Sales
     .filter({
       $all: [
         { needs_allocation: true },
-        { deleted_at: { $is: null } }
+        { deleted_at: { $is: null } },
+        { $any: [{ dismissed: false }, { dismissed: { $is: null } }] }
+      ]
+    })
+    .select(["*", "buyer.name"])
+    .sort("sale_date", "desc")
+    .getAll();
+
+  // Fetch dismissed unallocated sales
+  // Note: dismissed, dismissed_at, dismissed_by fields must be added to Sales table in Xata
+  const dismissedRaw = await xata.db.Sales
+    .filter({
+      $all: [
+        { needs_allocation: true },
+        { deleted_at: { $is: null } },
+        { dismissed: true }
       ]
     })
     .select(["*", "buyer.name"])
@@ -52,9 +67,27 @@ export default async function SyncPage() {
     name: s.name || 'Unknown',
   }));
 
+  // Serialize dismissed sales
+  // Using type assertion for dismissed_at since field may not exist yet
+  const dismissedSales = dismissedRaw.map(sale => {
+    const saleAny = sale as any;
+    return {
+      id: sale.id,
+      xero_invoice_id: sale.xero_invoice_id || null,
+      xero_invoice_number: sale.xero_invoice_number || null,
+      sale_amount_inc_vat: sale.sale_amount_inc_vat || 0,
+      sale_date: sale.sale_date ? sale.sale_date.toISOString() : null,
+      buyer_name: sale.buyer?.name || null,
+      internal_notes: sale.internal_notes || null,
+      buyer: sale.buyer?.name ? { name: sale.buyer.name } : null,
+      dismissed_at: saleAny.dismissed_at ? new Date(saleAny.dismissed_at).toISOString() : null,
+    };
+  });
+
   // Log to verify serialization
   console.log('[SyncPage] Serialized data:', {
     unallocatedCount: unallocatedSales.length,
+    dismissedCount: dismissedSales.length,
     shoppersCount: shoppers.length,
   });
 
@@ -66,6 +99,7 @@ export default async function SyncPage() {
       </div>
       <SyncPageClient
         unallocatedSales={unallocatedSales}
+        dismissedSales={dismissedSales}
         shoppers={shoppers}
       />
     </div>

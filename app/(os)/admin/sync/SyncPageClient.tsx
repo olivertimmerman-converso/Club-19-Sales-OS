@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { RefreshCw, CheckCircle, AlertCircle, UserPlus, Loader2, AlertTriangle, ChevronDown, ChevronUp, Info, FileEdit } from 'lucide-react';
+import { RefreshCw, CheckCircle, AlertCircle, Loader2, AlertTriangle, ChevronDown, ChevronUp, Info, FileEdit, X, RotateCcw, Archive } from 'lucide-react';
 
 interface Sale {
   id: string;
@@ -16,6 +16,10 @@ interface Sale {
   buyer: { name: string } | null;
 }
 
+interface DismissedSale extends Sale {
+  dismissed_at: string | null;
+}
+
 interface Shopper {
   id: string;
   name: string;
@@ -23,18 +27,24 @@ interface Shopper {
 
 interface Props {
   unallocatedSales: Sale[];
+  dismissedSales: DismissedSale[];
   shoppers: Shopper[];
 }
 
-export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
+export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers }: Props) {
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [allocating, setAllocating] = useState<string | null>(null);
   const [allocated, setAllocated] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const [dismissing, setDismissing] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState<string | null>(null);
+  const [restored, setRestored] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showDismissed, setShowDismissed] = useState(false);
 
   // Combined sync function - does both invoices AND payment statuses
   const syncWithXero = async () => {
@@ -152,6 +162,60 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
     }
   };
 
+  const handleDismiss = async (saleId: string) => {
+    setDismissing(saleId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/sync/unallocated/${saleId}/dismiss`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || data.details || 'Dismiss failed');
+      }
+
+      // Mark as dismissed locally
+      setDismissed(new Set([...dismissed, saleId]));
+
+      // Refresh after brief delay
+      setTimeout(() => router.refresh(), 1000);
+    } catch (err) {
+      console.error('[SYNC] Dismiss error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to dismiss invoice');
+    } finally {
+      setDismissing(null);
+    }
+  };
+
+  const handleRestore = async (saleId: string) => {
+    setRestoring(saleId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/sync/unallocated/${saleId}/restore`, {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || data.details || 'Restore failed');
+      }
+
+      // Mark as restored locally
+      setRestored(new Set([...restored, saleId]));
+
+      // Refresh after brief delay
+      setTimeout(() => router.refresh(), 1000);
+    } catch (err) {
+      console.error('[SYNC] Restore error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to restore invoice');
+    } finally {
+      setRestoring(null);
+    }
+  };
+
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—';
     return new Date(dateStr).toLocaleDateString('en-GB', {
@@ -179,8 +243,11 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
     return 'Unknown Client';
   };
 
-  // Filter out already allocated sales
-  const visibleSales = unallocatedSales.filter(sale => !allocated.has(sale.id));
+  // Filter out already allocated or dismissed sales
+  const visibleSales = unallocatedSales.filter(sale => !allocated.has(sale.id) && !dismissed.has(sale.id));
+
+  // Filter out restored dismissed sales
+  const visibleDismissedSales = dismissedSales.filter(sale => !restored.has(sale.id));
 
   return (
     <div className="space-y-6">
@@ -373,17 +440,31 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
                         )}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
-                        {sale.xero_invoice_id ? (
-                          <Link
-                            href={`/admin/sync/adopt/${sale.xero_invoice_id}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-colors"
+                        <div className="flex items-center justify-center gap-2">
+                          {sale.xero_invoice_id ? (
+                            <Link
+                              href={`/admin/sync/adopt/${sale.xero_invoice_id}`}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-colors"
+                            >
+                              <FileEdit className="w-3.5 h-3.5" />
+                              Adopt
+                            </Link>
+                          ) : (
+                            <span className="text-gray-400 text-xs">No Xero ID</span>
+                          )}
+                          <button
+                            onClick={() => handleDismiss(sale.id)}
+                            disabled={dismissing === sale.id}
+                            className="inline-flex items-center justify-center w-8 h-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Dismiss invoice"
                           >
-                            <FileEdit className="w-3.5 h-3.5" />
-                            Adopt
-                          </Link>
-                        ) : (
-                          <span className="text-gray-400 text-xs">No Xero ID</span>
-                        )}
+                            {dismissing === sale.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <X className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -393,6 +474,105 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
           </div>
         )}
       </div>
+
+      {/* Dismissed Invoices Section */}
+      {(visibleDismissedSales.length > 0 || dismissedSales.length > 0) && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+          <button
+            onClick={() => setShowDismissed(!showDismissed)}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors rounded-xl"
+          >
+            <div className="flex items-center gap-3">
+              <Archive className="w-5 h-5 text-gray-400" />
+              <div>
+                <h3 className="text-sm font-medium text-gray-700">
+                  Dismissed Invoices ({visibleDismissedSales.length})
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Test invoices or duplicates that have been hidden
+                </p>
+              </div>
+            </div>
+            {showDismissed ? (
+              <ChevronUp className="w-5 h-5 text-gray-400" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-400" />
+            )}
+          </button>
+
+          {showDismissed && visibleDismissedSales.length > 0 && (
+            <div className="border-t border-gray-200 p-4">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Invoice #
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Client
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Dismissed
+                      </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-100">
+                    {visibleDismissedSales.map((sale) => (
+                      <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(sale.sale_date)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                          {sale.xero_invoice_number || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">
+                          {getClientName(sale)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-right">
+                          {formatCurrency(sale.sale_amount_inc_vat)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-400">
+                          {formatDate(sale.dismissed_at)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
+                          <button
+                            onClick={() => handleRestore(sale.id)}
+                            disabled={restoring === sale.id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {restoring === sale.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            )}
+                            Restore
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {showDismissed && visibleDismissedSales.length === 0 && (
+            <div className="border-t border-gray-200 p-6 text-center">
+              <p className="text-sm text-gray-500">No dismissed invoices</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
