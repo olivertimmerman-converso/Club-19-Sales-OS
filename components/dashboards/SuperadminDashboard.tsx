@@ -112,8 +112,8 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
     };
   }
 
-  // Get recent 5 sales
-  const recentSales = sales.slice(0, 5);
+  // Get month name for section header (e.g., "January" from "January 2026")
+  const monthNameOnly = currentDate.toLocaleDateString('en-GB', { month: 'long' });
 
   // Calculate metrics for new sections
   // Pending shipping count
@@ -371,10 +371,10 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
         </div>
       )}
 
-      {/* Recent Sales Section */}
+      {/* Sales This Month Section */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">Recent Sales</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{monthNameOnly} Sales</h2>
           <Link
             href="/sales"
             className="text-sm font-medium text-purple-600 hover:text-purple-900 transition-colors"
@@ -383,7 +383,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
           </Link>
         </div>
 
-        {recentSales.length === 0 ? (
+        {sales.length === 0 ? (
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-12 text-center">
             <svg
               className="mx-auto h-12 w-12 text-gray-400"
@@ -474,7 +474,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {recentSales.map((sale) => (
+                {sales.map((sale) => (
                   <tr
                     key={sale.id}
                     className="hover:bg-gray-50 transition-colors"
