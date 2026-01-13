@@ -83,9 +83,12 @@ export async function POST(request: NextRequest) {
       buyPrice,
     });
 
-    // Check if this invoice has already been adopted
+    // Check if this invoice has already been adopted (exclude deleted records)
     const existingSale = await xata.db.Sales
-      .filter({ xero_invoice_id: xeroInvoiceId })
+      .filter({
+        xero_invoice_id: xeroInvoiceId,
+        deleted_at: null,
+      })
       .getFirst();
 
     if (existingSale) {
