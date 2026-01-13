@@ -35,6 +35,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
       'currency',
       'sale_date',
       'brand',
+      'category',
       'item_title',
       'sale_reference',
       'invoice_status',
@@ -43,6 +44,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
       'shopper.name',
       'shopper.id',
       'buyer.name',
+      'supplier.id',
       'xero_invoice_number',
       'xero_payment_date',
       'invoice_paid_date',
@@ -53,6 +55,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
       'deleted_at',
       'shipping_method',
       'shipping_cost_confirmed',
+      'buy_price',
     ]);
 
   // Apply date range filter if specified
@@ -127,10 +130,19 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
   );
   const pendingShippingCount = pendingShippingSales.length;
 
-  // Sales needing attention: DRAFT status OR needs_allocation OR overdue (>30 days AUTHORISED) OR pending shipping
+  // Helper to check if a sale is incomplete (missing required data)
+  const isIncomplete = (sale: typeof sales[0]) => {
+    return !sale.brand || sale.brand === 'Unknown' ||
+           !sale.category || sale.category === 'Unknown' ||
+           !sale.buy_price || sale.buy_price === 0 ||
+           !sale.supplier?.id;
+  };
+
+  // Sales needing attention: DRAFT status OR needs_allocation OR overdue (>30 days AUTHORISED) OR pending shipping OR incomplete
   const salesNeedingAttention = sales.filter(sale => {
     if (sale.invoice_status === 'DRAFT' || sale.needs_allocation) return true;
     if (sale.shipping_method === 'to_be_shipped' && !sale.shipping_cost_confirmed) return true;
+    if (isIncomplete(sale)) return true;
     if (sale.invoice_status === 'AUTHORISED') {
       const saleDate = sale.sale_date ? new Date(sale.sale_date) : null;
       if (saleDate) {
@@ -510,7 +522,14 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
                       {formatCurrency(sale.gross_margin || 0)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      {getStatusBadge(sale)}
+                      <div className="flex items-center justify-center gap-1.5">
+                        {getStatusBadge(sale)}
+                        {isIncomplete(sale) && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800" title="Missing: brand, category, buy price, or supplier">
+                            ⚠️
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -557,6 +576,9 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
                       )}
                       {sale.needs_allocation && (
                         <span className="text-xs text-orange-600">Needs allocation</span>
+                      )}
+                      {isIncomplete(sale) && !sale.needs_allocation && sale.invoice_status !== 'DRAFT' && (
+                        <span className="text-xs text-amber-600">Incomplete</span>
                       )}
                     </div>
                   </div>

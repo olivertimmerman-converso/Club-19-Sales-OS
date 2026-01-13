@@ -10,7 +10,9 @@ interface Sale {
   sale_reference: string | null;
   sale_date: string | null;
   brand: string | null;
+  category: string | null;
   item_title: string | null;
+  buy_price: number | null;
   sale_amount_inc_vat: number | null;
   gross_margin: number | null;
   xero_invoice_number: string | null;
@@ -18,6 +20,7 @@ interface Sale {
   currency: string | null;
   buyer: { name: string } | null;
   shopper: { id: string; name: string } | null;
+  supplier: { id: string } | null;
   is_payment_plan: boolean;
   payment_plan_instalments: number | null;
   shipping_cost_confirmed: boolean | null;
@@ -145,6 +148,14 @@ export function SalesTableClient({ sales, shoppers, userRole, isDeletedSection =
         {label}
       </span>
     );
+  };
+
+  // Check if sale is missing required data
+  const isIncomplete = (sale: Sale) => {
+    return !sale.brand || sale.brand === 'Unknown' ||
+           !sale.category || sale.category === 'Unknown' ||
+           !sale.buy_price || sale.buy_price === 0 ||
+           !sale.supplier?.id;
   };
 
   return (
@@ -306,6 +317,14 @@ export function SalesTableClient({ sales, shoppers, userRole, isDeletedSection =
                       {sale.is_payment_plan && (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           Payment Plan {sale.payment_plan_instalments ? `(${sale.payment_plan_instalments})` : ''}
+                        </span>
+                      )}
+                      {isIncomplete(sale) && (
+                        <span
+                          className="text-amber-500"
+                          title="Missing required data (brand, category, buy price, or supplier)"
+                        >
+                          ⚠️
                         </span>
                       )}
                     </div>
