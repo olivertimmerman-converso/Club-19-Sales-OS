@@ -46,7 +46,9 @@
       "Bash(vercel ls:*)",
       "Bash(git log:*)",
       "Bash(XATA_BRANCH=main XATA_API_KEY=\"xau_bsxtJS0755dKdgH2vAwhhRsuiDCytkJB1\" XATA_DATABASE_URL=\"https://Oliver-Timmerman-s-workspace-d3730u.eu-central-1.xata.sh/db/Club19SalesOS\" npx xata codegen:*)",
-      "Bash(pgrep:*)"
+      "Bash(pgrep:*)",
+      "Bash(npx tsx:*)",
+      "Bash(source:*)"
     ],
     "deny": [],
     "ask": []

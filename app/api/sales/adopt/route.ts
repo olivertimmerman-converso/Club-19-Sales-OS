@@ -84,12 +84,14 @@ export async function POST(request: NextRequest) {
     });
 
     // Check if this invoice has already been adopted (exclude deleted records)
-    const existingSale = await xata.db.Sales
-      .filter({
-        xero_invoice_id: xeroInvoiceId,
-        deleted_at: null,
-      })
+    // Note: Xata's filter on null datetime fields is unreliable, so we filter in JS
+    const existingSaleRaw = await xata.db.Sales
+      .filter({ xero_invoice_id: xeroInvoiceId })
+      .select(['id', 'deleted_at'])
       .getFirst();
+
+    // Only block if we find a NON-deleted record
+    const existingSale = existingSaleRaw && !existingSaleRaw.deleted_at ? existingSaleRaw : null;
 
     if (existingSale) {
       logger.warn("ADOPT", "Invoice already adopted", {
