@@ -47,6 +47,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
       'xero_payment_date',
       'invoice_paid_date',
       'needs_allocation',
+      'dismissed',
       'id',
       'source',
       'deleted_at',
@@ -67,9 +68,13 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
   // Fetch sales and filter in JavaScript (Xata's $is: null doesn't work reliably for datetime fields)
   const allSalesRaw = await salesQuery.sort('sale_date', 'desc').getMany({ pagination: { size: 200 } });
 
-  // Filter out xero_import and deleted sales in JavaScript
+  // Filter out xero_import, deleted, needs_allocation, and dismissed sales in JavaScript
+  // This ensures summary cards, sales table, and leaderboard all use the EXACT same dataset
   const sales = allSalesRaw.filter(sale =>
-    sale.source !== 'xero_import' && !sale.deleted_at
+    sale.source !== 'xero_import' &&
+    !sale.deleted_at &&
+    !sale.needs_allocation &&
+    !sale.dismissed
   );
 
   // Calculate metrics
@@ -141,6 +146,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
   const unpaidTotal = unpaidInvoices.reduce((sum, sale) => sum + (sale.sale_amount_inc_vat || 0), 0);
 
   // Shopper leaderboard (this month only)
+  // Uses gross_margin to match the margin shown in the sales table
   const shopperStats = sales.reduce((acc: any, sale) => {
     const shopperId = sale.shopper?.id;
     const shopperName = sale.shopper?.name || 'Unknown';
@@ -156,7 +162,8 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
     }
 
     acc[shopperId].salesCount++;
-    acc[shopperId].totalMargin += (sale.commissionable_margin || sale.gross_margin || 0);
+    // Use gross_margin to match the table column (not commissionable_margin)
+    acc[shopperId].totalMargin += (sale.gross_margin || 0);
 
     return acc;
   }, {});
