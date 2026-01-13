@@ -150,22 +150,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden - requires superadmin, operations, or founder role' }, { status: 403 });
     }
 
-    // 2. Get system user's Xero tokens
-    const systemUserId = process.env.XERO_SYSTEM_USER_ID;
-    if (!systemUserId || systemUserId === 'FILL_ME') {
-      logger.error('XERO_SYNC', 'XERO_SYSTEM_USER_ID not configured');
+    // 2. Get integration user's Xero tokens
+    const integrationUserId = process.env.XERO_INTEGRATION_CLERK_USER_ID;
+    if (!integrationUserId) {
+      logger.error('XERO_SYNC', 'XERO_INTEGRATION_CLERK_USER_ID not configured');
       return NextResponse.json({
-        error: 'XERO_SYSTEM_USER_ID not configured. Please set environment variable.'
+        error: 'XERO_INTEGRATION_CLERK_USER_ID not configured. Please set environment variable.'
       }, { status: 500 });
     }
 
-    logger.info('XERO_SYNC', 'Using system user', { systemUserId });
+    logger.info('XERO_SYNC', 'Using integration user', { integrationUserId });
 
     // 2a. Get Xero tokens (with detailed error handling)
     logger.info('XERO_SYNC', 'Attempting to get Xero tokens...');
     let tokens;
     try {
-      tokens = await getValidTokens(systemUserId);
+      tokens = await getValidTokens(integrationUserId);
       logger.info('XERO_SYNC', 'Successfully got valid Xero tokens');
     } catch (tokenError) {
       logger.error('XERO_SYNC', 'Failed to get Xero tokens', {

@@ -49,18 +49,18 @@ export async function POST() {
       return NextResponse.json({ error: 'Forbidden - requires superadmin, operations, or founder role' }, { status: 403 });
     }
 
-    // 2. Get system user's Xero tokens
-    const systemUserId = process.env.XERO_SYSTEM_USER_ID;
-    if (!systemUserId || systemUserId === 'FILL_ME') {
-      logger.error('PAYMENT_SYNC', 'XERO_SYSTEM_USER_ID not configured');
+    // 2. Get integration user's Xero tokens
+    const integrationUserId = process.env.XERO_INTEGRATION_CLERK_USER_ID;
+    if (!integrationUserId) {
+      logger.error('PAYMENT_SYNC', 'XERO_INTEGRATION_CLERK_USER_ID not configured');
       return NextResponse.json({
-        error: 'XERO_SYSTEM_USER_ID not configured. Please set environment variable.'
+        error: 'XERO_INTEGRATION_CLERK_USER_ID not configured. Please set environment variable.'
       }, { status: 500 });
     }
 
-    logger.info('PAYMENT_SYNC', 'Using system user', { systemUserId });
+    logger.info('PAYMENT_SYNC', 'Using integration user', { integrationUserId });
 
-    const tokens = await getValidTokens(systemUserId);
+    const tokens = await getValidTokens(integrationUserId);
     logger.info('PAYMENT_SYNC', 'Got valid Xero tokens');
 
     // 3. Fetch unpaid Sales from database

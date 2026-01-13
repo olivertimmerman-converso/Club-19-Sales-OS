@@ -19,13 +19,13 @@ export async function GET() {
   const startTime = Date.now();
 
   try {
-    const systemUserId = process.env.XERO_SYSTEM_USER_ID;
+    const integrationUserId = process.env.XERO_INTEGRATION_CLERK_USER_ID;
 
-    if (!systemUserId || systemUserId === 'FILL_ME') {
-      logger.warn('XERO_HEALTH', 'XERO_SYSTEM_USER_ID not configured');
+    if (!integrationUserId) {
+      logger.warn('XERO_HEALTH', 'XERO_INTEGRATION_CLERK_USER_ID not configured');
       return NextResponse.json({
         status: 'misconfigured',
-        message: 'XERO_SYSTEM_USER_ID not configured',
+        message: 'XERO_INTEGRATION_CLERK_USER_ID not configured',
         healthy: false,
       }, { status: 503 });
     }
@@ -33,7 +33,7 @@ export async function GET() {
     // Try to get valid tokens (this will attempt refresh if needed)
     let tokens;
     try {
-      tokens = await getValidTokens(systemUserId);
+      tokens = await getValidTokens(integrationUserId);
     } catch (tokenError: any) {
       logger.error('XERO_HEALTH', 'Failed to get valid tokens', {
         message: tokenError.message,

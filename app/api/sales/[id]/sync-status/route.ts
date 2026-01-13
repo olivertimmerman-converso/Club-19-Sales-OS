@@ -87,16 +87,16 @@ export async function POST(
     });
 
     // 3. Get Xero tokens
-    const systemUserId = process.env.XERO_SYSTEM_USER_ID;
-    if (!systemUserId || systemUserId === 'FILL_ME') {
+    const integrationUserId = process.env.XERO_INTEGRATION_CLERK_USER_ID;
+    if (!integrationUserId) {
       return NextResponse.json({
-        error: 'XERO_SYSTEM_USER_ID not configured'
+        error: 'XERO_INTEGRATION_CLERK_USER_ID not configured'
       }, { status: 500 });
     }
 
     let tokens;
     try {
-      tokens = await getValidTokens(systemUserId);
+      tokens = await getValidTokens(integrationUserId);
     } catch (tokenError: any) {
       logger.error('SYNC_STATUS', 'Failed to get Xero tokens', {
         message: tokenError.message,

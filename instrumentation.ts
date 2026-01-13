@@ -18,27 +18,22 @@ import { validateEnvironmentVariables } from "./lib/env";
 /**
  * Refresh Xero tokens on startup to ensure connection is always fresh
  * This runs on every deployment, providing an extra layer of token refresh
+ *
+ * NOTE: In Stage 1 architecture, refreshTokens() only works with forceCron: true
+ * On startup, we just log that cron will handle it - no point trying to refresh here
  */
 async function refreshXeroOnStartup() {
-  const systemUserId = process.env.XERO_SYSTEM_USER_ID;
+  const integrationUserId = process.env.XERO_INTEGRATION_CLERK_USER_ID;
 
-  if (!systemUserId || systemUserId === 'FILL_ME') {
-    console.log("[INSTRUMENTATION] ⚠️ XERO_SYSTEM_USER_ID not configured, skipping Xero refresh");
+  if (!integrationUserId) {
+    console.log("[INSTRUMENTATION] ⚠️ XERO_INTEGRATION_CLERK_USER_ID not configured, skipping Xero check");
     return;
   }
 
-  try {
-    // Dynamic import to avoid issues with module loading order
-    const { refreshTokens } = await import("./lib/xero-auth");
-
-    console.log("[INSTRUMENTATION] 🔄 Refreshing Xero tokens on startup...");
-    await refreshTokens(systemUserId);
-    console.log("[INSTRUMENTATION] ✅ Xero tokens refreshed successfully");
-  } catch (error: any) {
-    // Log but don't fail startup - the cron will retry later
-    console.error("[INSTRUMENTATION] ⚠️ Xero token refresh failed:", error.message);
-    console.log("[INSTRUMENTATION] ℹ️ Xero will be refreshed on next cron run (every 4 hours)");
-  }
+  // Stage 1: Only cron can refresh tokens to prevent race conditions
+  // Just log that we have an integration user configured
+  console.log("[INSTRUMENTATION] ✅ Xero integration user configured");
+  console.log("[INSTRUMENTATION] ℹ️ Token refresh handled by cron job (every 10 minutes)");
 }
 
 /**

@@ -80,15 +80,14 @@ export default async function AdminPage() {
   const hasXeroEnvVars = !!(
     process.env.NEXT_PUBLIC_XERO_CLIENT_ID &&
     process.env.XERO_CLIENT_SECRET &&
-    process.env.XERO_SYSTEM_USER_ID &&
-    process.env.XERO_SYSTEM_USER_ID !== 'FILL_ME'
+    process.env.XERO_INTEGRATION_CLERK_USER_ID
   );
 
   if (hasXeroEnvVars) {
     // Second check: OAuth tokens in Clerk metadata
     try {
-      const systemUserId = process.env.XERO_SYSTEM_USER_ID!;
-      const tokens = await getTokens(systemUserId);
+      const integrationUserId = process.env.XERO_INTEGRATION_CLERK_USER_ID!;
+      const tokens = await getTokens(integrationUserId);
 
       if (tokens && tokens.accessToken) {
         // Check if token is expired

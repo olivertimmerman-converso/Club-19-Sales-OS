@@ -47,17 +47,17 @@ async function autoSyncXeroInvoice(saleId: string, saleReference: string): Promi
   try {
     logger.info('AUTO_SYNC', 'Starting auto-sync for sale', { saleId, saleReference });
 
-    // Get system user's Xero tokens
-    const systemUserId = process.env.XERO_SYSTEM_USER_ID;
-    if (!systemUserId || systemUserId === 'FILL_ME') {
-      logger.warn('AUTO_SYNC', 'XERO_SYSTEM_USER_ID not configured - skipping auto-sync');
+    // Get integration user's Xero tokens
+    const integrationUserId = process.env.XERO_INTEGRATION_CLERK_USER_ID;
+    if (!integrationUserId) {
+      logger.warn('AUTO_SYNC', 'XERO_INTEGRATION_CLERK_USER_ID not configured - skipping auto-sync');
       return;
     }
 
     // Wait 3 seconds for Xero to process the invoice
     await new Promise(resolve => setTimeout(resolve, 3000));
 
-    const tokens = await getValidTokens(systemUserId);
+    const tokens = await getValidTokens(integrationUserId);
     logger.info('AUTO_SYNC', 'Got valid Xero tokens');
 
     // Search for invoice with reference matching sale_reference

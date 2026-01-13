@@ -95,17 +95,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Get system user's Xero tokens
-    const systemUserId = process.env.XERO_SYSTEM_USER_ID;
-    if (!systemUserId || systemUserId === 'FILL_ME') {
-      logger.error('FORCE_FIX_DATES', 'XERO_SYSTEM_USER_ID not configured');
+    // 2. Get integration user's Xero tokens
+    const integrationUserId = process.env.XERO_INTEGRATION_CLERK_USER_ID;
+    if (!integrationUserId) {
+      logger.error('FORCE_FIX_DATES', 'XERO_INTEGRATION_CLERK_USER_ID not configured');
       return NextResponse.json(
-        { error: 'XERO_SYSTEM_USER_ID not configured' },
+        { error: 'XERO_INTEGRATION_CLERK_USER_ID not configured' },
         { status: 500 }
       );
     }
 
-    const tokens = await getValidTokens(systemUserId);
+    const tokens = await getValidTokens(integrationUserId);
     logger.info('FORCE_FIX_DATES', 'Got valid Xero tokens');
 
     // 3. Fetch ALL invoices from Xero (no date filter)

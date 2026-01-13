@@ -240,15 +240,15 @@ export async function POST(req: NextRequest) {
         }
 
         // Fetch full invoice details from Xero API
-        // Use system admin user for webhook token access
-        const systemUserId = process.env.XERO_SYSTEM_USER_ID;
-        if (!systemUserId || systemUserId === "FILL_ME") {
-          logger.error("XERO_WEBHOOKS", "XERO_SYSTEM_USER_ID not configured or is placeholder");
+        // Use integration user for webhook token access
+        const integrationUserId = process.env.XERO_INTEGRATION_CLERK_USER_ID;
+        if (!integrationUserId) {
+          logger.error("XERO_WEBHOOKS", "XERO_INTEGRATION_CLERK_USER_ID not configured");
           errorCount++;
           continue;
         }
 
-        const tokens = await getValidTokens(systemUserId);
+        const tokens = await getValidTokens(integrationUserId);
         if (!tokens) {
           logger.error("XERO_WEBHOOKS", "No valid Xero tokens available");
           errorCount++;

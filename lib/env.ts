@@ -23,7 +23,7 @@ interface EnvironmentVariables {
   XERO_CLIENT_ID: string;
   XERO_CLIENT_SECRET: string;
   XERO_WEBHOOK_SECRET: string;
-  XERO_SYSTEM_USER_ID: string;
+  XERO_INTEGRATION_CLERK_USER_ID: string;
 }
 
 /**
@@ -41,7 +41,7 @@ export function validateEnvironmentVariables(): void {
     "XERO_CLIENT_ID",
     "XERO_CLIENT_SECRET",
     "XERO_WEBHOOK_SECRET",
-    "XERO_SYSTEM_USER_ID",
+    "XERO_INTEGRATION_CLERK_USER_ID",
   ];
 
   for (const key of required) {

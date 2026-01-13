@@ -71,17 +71,17 @@ export async function GET(req: NextRequest) {
     }
 
     // STEP 2: Get Xero tokens
-    // Use system admin user for cron token access
-    const systemUserId = process.env.XERO_SYSTEM_USER_ID;
-    if (!systemUserId || systemUserId === "FILL_ME") {
-      logger.error("XERO_SYNC", "XERO_SYSTEM_USER_ID not configured or is placeholder");
+    // Use integration user for token access
+    const integrationUserId = process.env.XERO_INTEGRATION_CLERK_USER_ID;
+    if (!integrationUserId) {
+      logger.error("XERO_SYNC", "XERO_INTEGRATION_CLERK_USER_ID not configured");
       return NextResponse.json(
-        { error: "System user not configured" },
+        { error: "Integration user not configured" },
         { status: 500 }
       );
     }
 
-    const tokens = await getValidTokens(systemUserId);
+    const tokens = await getValidTokens(integrationUserId);
     if (!tokens) {
       logger.error("XERO_SYNC", "No valid Xero tokens available");
       return NextResponse.json(
