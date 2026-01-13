@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { RefreshCw, CheckCircle, AlertCircle, UserPlus, Loader2, AlertTriangle, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import Link from 'next/link';
+import { RefreshCw, CheckCircle, AlertCircle, UserPlus, Loader2, AlertTriangle, ChevronDown, ChevronUp, Info, FileEdit } from 'lucide-react';
 
 interface Sale {
   id: string;
+  xero_invoice_id: string | null;
   xero_invoice_number: string | null;
   sale_amount_inc_vat: number;
   sale_date: string | null;
@@ -324,6 +326,9 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
                     <th className="px-4 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
                       Assign to Shopper
                     </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-amber-900 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-amber-100">
@@ -365,6 +370,19 @@ export function SyncPageClient({ unallocatedSales, shoppers }: Props) {
                               <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
                             )}
                           </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                        {sale.xero_invoice_id ? (
+                          <Link
+                            href={`/admin/sync/adopt/${sale.xero_invoice_id}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-colors"
+                          >
+                            <FileEdit className="w-3.5 h-3.5" />
+                            Adopt
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400 text-xs">No Xero ID</span>
                         )}
                       </td>
                     </tr>

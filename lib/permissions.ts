@@ -155,6 +155,14 @@ export const ROUTE_PERMISSIONS: Record<string, {
     allowedRoles: ["superadmin"],
     description: "Deleted Sales (soft-deleted records with restore functionality)",
   },
+  "/admin/sync": {
+    allowedRoles: ["superadmin", "operations", "founder"],
+    description: "Xero sync management and invoice allocation",
+  },
+  "/admin/sync/adopt": {
+    allowedRoles: ["superadmin", "operations", "founder", "admin"],
+    description: "Adopt unallocated Xero invoices into full Sale records",
+  },
 };
 
 // ============================================================================

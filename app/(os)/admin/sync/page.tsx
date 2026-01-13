@@ -38,6 +38,7 @@ export default async function SyncPage() {
   // SERIALIZE EVERYTHING - convert to plain JSON
   const unallocatedSales = unallocatedRaw.map(sale => ({
     id: sale.id,
+    xero_invoice_id: sale.xero_invoice_id || null,
     xero_invoice_number: sale.xero_invoice_number || null,
     sale_amount_inc_vat: sale.sale_amount_inc_vat || 0,
     sale_date: sale.sale_date ? sale.sale_date.toISOString() : null,
