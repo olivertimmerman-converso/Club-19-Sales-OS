@@ -83,15 +83,18 @@ export async function POST(request: NextRequest) {
       buyPrice,
     });
 
-    // Check if this invoice has already been adopted (exclude deleted records)
+    // Check if this invoice has already been adopted (exclude deleted records and unallocated imports)
     // Note: Xata's filter on null datetime fields is unreliable, so we filter in JS
     const existingSaleRaw = await xata.db.Sales
       .filter({ xero_invoice_id: xeroInvoiceId })
-      .select(['id', 'deleted_at'])
+      .select(['id', 'deleted_at', 'needs_allocation', 'source'])
       .getFirst();
 
-    // Only block if we find a NON-deleted record
-    const existingSale = existingSaleRaw && !existingSaleRaw.deleted_at ? existingSaleRaw : null;
+    // Only block if we find a NON-deleted record that has ALREADY been adopted
+    // Allow if: deleted, OR needs_allocation is true (it's an unallocated import waiting to be adopted)
+    const isDeleted = existingSaleRaw?.deleted_at;
+    const isUnallocatedImport = existingSaleRaw?.needs_allocation === true;
+    const existingSale = existingSaleRaw && !isDeleted && !isUnallocatedImport ? existingSaleRaw : null;
 
     if (existingSale) {
       logger.warn("ADOPT", "Invoice already adopted", {
@@ -102,6 +105,15 @@ export async function POST(request: NextRequest) {
         { error: "This invoice has already been adopted", saleId: existingSale.id },
         { status: 409 }
       );
+    }
+
+    // Track if we need to delete an existing unallocated record after creating the new one
+    const existingUnallocatedId = existingSaleRaw && !isDeleted && isUnallocatedImport ? existingSaleRaw.id : null;
+    if (existingUnallocatedId) {
+      logger.info("ADOPT", "Found existing unallocated record to replace", {
+        existingId: existingUnallocatedId,
+        xeroInvoiceId,
+      });
     }
 
     // Get Xero tokens to fetch full invoice details
@@ -271,23 +283,13 @@ export async function POST(request: NextRequest) {
     });
 
     // If there was a previous unallocated Sales record for this invoice, delete it
-    // (This handles the case where the invoice was synced as unallocated first)
-    const unallocatedRecord = await xata.db.Sales
-      .filter({
-        $all: [
-          { xero_invoice_number: invoice.InvoiceNumber },
-          { needs_allocation: true },
-          { id: { $isNot: saleRecord.id } },
-        ],
-      })
-      .getFirst();
-
-    if (unallocatedRecord) {
+    // We tracked this at the start of the request
+    if (existingUnallocatedId) {
       logger.info("ADOPT", "Cleaning up old unallocated record", {
-        oldId: unallocatedRecord.id,
+        oldId: existingUnallocatedId,
         newId: saleRecord.id,
       });
-      await xata.db.Sales.delete(unallocatedRecord.id);
+      await xata.db.Sales.delete(existingUnallocatedId);
     }
 
     return NextResponse.json({
