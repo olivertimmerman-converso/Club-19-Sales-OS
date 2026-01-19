@@ -5,7 +5,7 @@
  * Uses HMAC-SHA256 signature verification to ensure authenticity
  *
  * Handles:
- * - Signature verification with XERO_WEBHOOK_KEY
+ * - Signature verification with XERO_WEBHOOK_SECRET
  * - Intent to Receive validation handshake from Xero
  * - Invoice CREATE and UPDATE events
  * - Automatic payment status updates when invoices are paid
@@ -59,10 +59,10 @@ function xata() {
  * @returns true if signature is valid, false otherwise
  */
 function verifyXeroSignature(rawBody: string, signature: string): boolean {
-  const webhookKey = process.env.XERO_WEBHOOK_KEY;
+  const webhookKey = process.env.XERO_WEBHOOK_SECRET;
 
   if (!webhookKey || webhookKey === "FILL_ME") {
-    logger.error("XERO_WEBHOOKS", "XERO_WEBHOOK_KEY not configured or is placeholder");
+    logger.error("XERO_WEBHOOKS", "XERO_WEBHOOK_SECRET not configured or is placeholder");
     return false;
   }
 
