@@ -1,0 +1,17 @@
+{
+  "id": "mig_d5n5egnp0go7q7tljhbg",
+  "parentID": "mig_d5j683fp0go7q7tljb60",
+  "checksum": "1:d9e658b0fdbcd51a2ffd7a1534419c8340862942d472b0d3e4424db409399c1f",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "pending_approval",
+          "type": "bool",
+          "defaultValue": "false"
+        },
+        "table": "Suppliers"
+      }
+    }
+  ]
+}

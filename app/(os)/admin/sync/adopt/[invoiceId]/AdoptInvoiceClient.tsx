@@ -20,8 +20,10 @@ import {
   Banknote,
   Tag,
   Package,
+  Plus,
 } from "lucide-react";
 import { BRANDS, CATEGORIES } from "@/lib/constants";
+import { NewSupplierModal } from "@/components/modals/NewSupplierModal";
 
 interface XeroInvoice {
   invoiceId: string;
@@ -53,6 +55,7 @@ interface Shopper {
 interface Supplier {
   id: string;
   name: string;
+  pending_approval?: boolean;
 }
 
 interface Props {
@@ -61,13 +64,19 @@ interface Props {
   suppliers: Supplier[];
 }
 
-export function AdoptInvoiceClient({ invoiceId, shoppers, suppliers }: Props) {
+export function AdoptInvoiceClient({ invoiceId, shoppers, suppliers: initialSuppliers }: Props) {
   const router = useRouter();
 
   // Invoice data from Xero
   const [invoice, setInvoice] = useState<XeroInvoice | null>(null);
   const [loadingInvoice, setLoadingInvoice] = useState(true);
   const [invoiceError, setInvoiceError] = useState<string | null>(null);
+
+  // Suppliers list (can be updated when new supplier is added)
+  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
+
+  // New supplier modal
+  const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
 
   // Form state
   const [shopperId, setShopperId] = useState("");
@@ -181,6 +190,13 @@ export function AdoptInvoiceClient({ invoiceId, shoppers, suppliers }: Props) {
       month: "short",
       year: "numeric",
     });
+  };
+
+  // Handle new supplier creation
+  const handleNewSupplierCreated = (newSupplier: { id: string; name: string; pending_approval: boolean }) => {
+    // Add to suppliers list and select it
+    setSuppliers((prev) => [...prev, newSupplier].sort((a, b) => a.name.localeCompare(b.name)));
+    setSupplierId(newSupplier.id);
   };
 
   // Loading state
@@ -339,18 +355,34 @@ export function AdoptInvoiceClient({ invoiceId, shoppers, suppliers }: Props) {
             <Building className="w-4 h-4" />
             Supplier *
           </label>
-          <select
-            value={supplierId}
-            onChange={(e) => setSupplierId(e.target.value)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          >
-            <option value="">Select supplier...</option>
-            {suppliers.map((supplier) => (
-              <option key={supplier.id} value={supplier.id}>
-                {supplier.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            <select
+              value={supplierId}
+              onChange={(e) => setSupplierId(e.target.value)}
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="">Select supplier...</option>
+              {suppliers.map((supplier) => (
+                <option key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                  {supplier.pending_approval ? ' (Pending Approval)' : ''}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setShowNewSupplierModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors whitespace-nowrap"
+            >
+              <Plus className="w-4 h-4" />
+              New
+            </button>
+          </div>
+          {supplierId && suppliers.find(s => s.id === supplierId)?.pending_approval && (
+            <p className="mt-1.5 text-xs text-amber-600">
+              This supplier is pending approval from admin.
+            </p>
+          )}
         </div>
 
         {/* Buy Price */}
@@ -492,6 +524,13 @@ export function AdoptInvoiceClient({ invoiceId, shoppers, suppliers }: Props) {
           )}
         </button>
       </div>
+
+      {/* New Supplier Modal */}
+      <NewSupplierModal
+        open={showNewSupplierModal}
+        onClose={() => setShowNewSupplierModal(false)}
+        onCreated={handleNewSupplierCreated}
+      />
     </div>
   );
 }

@@ -32,6 +32,10 @@ const tables = [
       { name: "name", type: "text" },
       { name: "email", type: "text" },
       { name: "xero_contact_id", type: "text" },
+      { name: "pending_approval", type: "bool", defaultValue: "false" },
+      { name: "created_by", type: "text" },
+      { name: "approved_by", type: "text" },
+      { name: "approved_at", type: "datetime" },
     ],
     revLinks: [
       { column: "supplier", table: "Sales" },

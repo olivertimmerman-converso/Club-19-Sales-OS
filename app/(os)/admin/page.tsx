@@ -4,6 +4,7 @@ import { getUserRole } from "@/lib/getUserRole";
 import { clerkClient } from "@clerk/nextjs/server";
 import { getTokens } from "@/lib/xero-auth";
 import { QuickActions } from './QuickActions';
+import { PendingSuppliersSection } from './PendingSuppliersSection';
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,20 @@ export default async function AdminPage() {
   const commissionBands = await xata.db.CommissionBands
     .select(['*'])
     .getAll();
+
+  // Fetch pending suppliers
+  const pendingSuppliersRaw = await xata.db.Suppliers
+    .filter({ pending_approval: true } as any)
+    .select(['id', 'name', 'email', 'created_by', 'xata.createdAt'] as any)
+    .getAll();
+
+  const pendingSuppliers = pendingSuppliersRaw.map(s => ({
+    id: s.id,
+    name: s.name || 'Unknown',
+    email: s.email || null,
+    created_by: (s as any).created_by || null,
+    created_at: s.xata?.createdAt?.toISOString() || null,
+  }));
 
   // System environment info
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL || 'localhost:3000';
@@ -216,6 +231,9 @@ export default async function AdminPage() {
           </div>
         </div>
       </div>
+
+      {/* Pending Suppliers Section */}
+      <PendingSuppliersSection suppliers={pendingSuppliers} />
 
       {/* Commission Configuration Section */}
       <div className="mb-8">

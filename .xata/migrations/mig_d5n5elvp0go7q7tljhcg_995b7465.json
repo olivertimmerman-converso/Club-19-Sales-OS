@@ -1,0 +1,16 @@
+{
+  "id": "mig_d5n5elvp0go7q7tljhcg",
+  "parentID": "mig_d5n5ejk38mj1psbpd920",
+  "checksum": "1:995b7465d02158706b7d92aa76f90f4ae03d34a787bcfae9c544f767021893c4",
+  "operations": [
+    {
+      "addColumn": {
+        "column": {
+          "name": "approved_by",
+          "type": "text"
+        },
+        "table": "Suppliers"
+      }
+    }
+  ]
+}
