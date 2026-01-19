@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getUserRole } from '@/lib/getUserRole';
 import { getXataClient } from '@/src/xata';
+import { calculateMargins } from '@/lib/economics';
+import { roundCurrency } from '@/lib/utils/currency';
 import * as logger from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -81,9 +83,12 @@ export async function PATCH(
     // Build update object from allowed fields
     const updateData: Record<string, any> = {};
 
-    // Allow updating shopper
+    // Allow updating shopper and supplier (link fields)
     if (body.shopper !== undefined) {
-      updateData.shopper = body.shopper;
+      updateData.shopper = body.shopper || null;
+    }
+    if (body.supplier !== undefined) {
+      updateData.supplier = body.supplier || null;
     }
 
     // Allow updating other fields if needed
@@ -110,6 +115,41 @@ export async function PATCH(
         { error: 'No valid fields to update' },
         { status: 400 }
       );
+    }
+
+    // If buy_price is being updated, recalculate margins
+    if (body.buy_price !== undefined) {
+      // Fetch current sale to get sale_amount_ex_vat and other costs
+      const currentSale = await xata.db.Sales.read(id);
+      if (currentSale) {
+        const saleAmountExVat = currentSale.sale_amount_ex_vat || 0;
+        const newBuyPrice = roundCurrency(body.buy_price);
+        const shippingCost = currentSale.shipping_cost || 0;
+        const cardFees = currentSale.card_fees || 0;
+        const directCosts = currentSale.direct_costs || 0;
+        const introducerCommission = (currentSale as any).introducer_commission || 0;
+
+        const marginResult = calculateMargins({
+          saleAmountExVat,
+          buyPrice: newBuyPrice,
+          shippingCost,
+          cardFees,
+          directCosts,
+          introducerCommission,
+        });
+
+        updateData.buy_price = newBuyPrice;
+        updateData.gross_margin = marginResult.grossMargin;
+        updateData.commissionable_margin = marginResult.commissionableMargin;
+
+        logger.info('SALES_API', 'Recalculated margins', {
+          saleId: id,
+          saleAmountExVat,
+          newBuyPrice,
+          grossMargin: marginResult.grossMargin,
+          commissionableMargin: marginResult.commissionableMargin,
+        });
+      }
     }
 
     logger.info('SALES_API', 'Updating sale', { saleId: id, updateFields: Object.keys(updateData) });

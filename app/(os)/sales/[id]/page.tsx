@@ -54,6 +54,12 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
     .sort('name', 'asc')
     .getAll();
 
+  // Fetch all suppliers for the dropdown (for edit mode)
+  const suppliersRaw = await xata.db.Suppliers
+    .select(['id', 'name'])
+    .sort('name', 'asc')
+    .getAll();
+
   // Fetch unallocated Xero imports for superadmin linking (for all Atelier sales, even if already linked)
   const unallocatedXeroImports = (role === 'superadmin' && sale.source === 'atelier')
     ? await xata.db.Sales
@@ -147,6 +153,11 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
     name: s.name || 'Unknown',
   }));
 
+  const serializedSuppliers = suppliersRaw.map(s => ({
+    id: s.id,
+    name: s.name || 'Unknown',
+  }));
+
   const serializedXeroImports = unallocatedXeroImports.map(imp => ({
     id: imp.id,
     xero_invoice_number: imp.xero_invoice_number || 'Unknown',
@@ -161,6 +172,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
       <SaleDetailClient
         sale={serializedSale}
         shoppers={serializedShoppers}
+        suppliers={serializedSuppliers}
         userRole={role}
         unallocatedXeroImports={serializedXeroImports}
       />

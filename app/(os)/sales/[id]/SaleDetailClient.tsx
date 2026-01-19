@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getBrandingThemeMapping } from '@/lib/branding-theme-mappings';
+import { BRANDS, CATEGORIES } from '@/lib/constants';
 
 interface Sale {
   id: string;
@@ -66,6 +67,11 @@ interface Shopper {
   name: string;
 }
 
+interface Supplier {
+  id: string;
+  name: string;
+}
+
 interface Introducer {
   id: string;
   name: string;
@@ -98,6 +104,7 @@ interface LineItem {
 interface SaleDetailClientProps {
   sale: Sale;
   shoppers: Shopper[];
+  suppliers: Supplier[];
   userRole: string | null;
   unallocatedXeroImports: XeroImport[];
 }
@@ -136,7 +143,7 @@ function getVATLogicExplanation(brandingTheme: string | null, effectiveVATPercen
   };
 }
 
-export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImports }: SaleDetailClientProps) {
+export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unallocatedXeroImports }: SaleDetailClientProps) {
   const router = useRouter();
   const [selectedShopperId, setSelectedShopperId] = useState(sale.shopper?.id || '');
   const [isSaving, setIsSaving] = useState(false);
@@ -195,6 +202,18 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
   const [clawbackReason, setClawbackReason] = useState('');
   const [isProcessingClawback, setIsProcessingClawback] = useState(false);
   const [clawbackError, setClawbackError] = useState<string | null>(null);
+
+  // Edit mode state (for superadmin/operations/admin)
+  const canEdit = ['superadmin', 'admin', 'operations'].includes(userRole || '');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editBrand, setEditBrand] = useState(sale.brand || '');
+  const [editCategory, setEditCategory] = useState(sale.category || '');
+  const [editDescription, setEditDescription] = useState(sale.item_title || '');
+  const [editBuyPrice, setEditBuyPrice] = useState(sale.buy_price?.toString() || '0');
+  const [editSupplierId, setEditSupplierId] = useState(sale.supplier?.id || '');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSuccess, setEditSuccess] = useState(false);
 
   // Delete sale state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -324,6 +343,66 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
     setSaveError(null);
     setSaveSuccess(false);
   };
+
+  // Handle saving edit mode changes
+  const handleSaveEdit = async () => {
+    setIsSavingEdit(true);
+    setEditError(null);
+    setEditSuccess(false);
+
+    try {
+      const response = await fetch(`/api/sales/${sale.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          brand: editBrand || null,
+          category: editCategory || null,
+          item_title: editDescription || null,
+          buy_price: parseFloat(editBuyPrice) || 0,
+          supplier: editSupplierId || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update sale');
+      }
+
+      setEditSuccess(true);
+      setIsEditMode(false);
+
+      // Refresh the page data after a short delay to show success message
+      setTimeout(() => {
+        router.refresh();
+      }, 1000);
+    } catch (error) {
+      console.error('Error updating sale:', error);
+      setEditError(error instanceof Error ? error.message : 'Failed to update sale');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  // Handle cancelling edit mode
+  const handleCancelEdit = () => {
+    setEditBrand(sale.brand || '');
+    setEditCategory(sale.category || '');
+    setEditDescription(sale.item_title || '');
+    setEditBuyPrice(sale.buy_price?.toString() || '0');
+    setEditSupplierId(sale.supplier?.id || '');
+    setEditError(null);
+    setIsEditMode(false);
+  };
+
+  // Check if edit form has changes
+  const hasEditChanges =
+    editBrand !== (sale.brand || '') ||
+    editCategory !== (sale.category || '') ||
+    editDescription !== (sale.item_title || '') ||
+    editBuyPrice !== (sale.buy_price?.toString() || '0') ||
+    editSupplierId !== (sale.supplier?.id || '');
 
   const handleLinkXero = async () => {
     if (!selectedXeroImportId) return;
@@ -917,35 +996,163 @@ export function SaleDetailClient({ sale, shoppers, userRole, unallocatedXeroImpo
           <p className="text-sm font-medium text-red-800">{saveError}</p>
         </div>
       )}
+      {editSuccess && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
+          <p className="text-sm font-medium text-green-800">Sale details updated successfully!</p>
+        </div>
+      )}
+      {editError && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-sm font-medium text-red-800">{editError}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Item Details Card */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Item Details</h2>
-          <dl className="space-y-3">
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Invoice #</dt>
-              <dd className="mt-1 text-sm text-gray-900">
-                {sale.xero_invoice_number || sale.sale_reference || '—'}
-              </dd>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Item Details</h2>
+            {canEdit && !isEditMode && (
+              <button
+                onClick={() => setIsEditMode(true)}
+                className="text-sm font-medium text-purple-600 hover:text-purple-700"
+              >
+                Edit
+              </button>
+            )}
+          </div>
+
+          {isEditMode ? (
+            /* Edit Mode */
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Invoice #</label>
+                <p className="text-sm text-gray-900">{sale.xero_invoice_number || sale.sale_reference || '—'}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Brand</label>
+                <select
+                  value={editBrand}
+                  onChange={(e) => setEditBrand(e.target.value)}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                  disabled={isSavingEdit}
+                >
+                  <option value="">Select brand...</option>
+                  {BRANDS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Category</label>
+                <select
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                  disabled={isSavingEdit}
+                >
+                  <option value="">Select category...</option>
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Description</label>
+                <input
+                  type="text"
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                  placeholder="Item description"
+                  disabled={isSavingEdit}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Buy Price</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">£</span>
+                  <input
+                    type="number"
+                    value={editBuyPrice}
+                    onChange={(e) => setEditBuyPrice(e.target.value)}
+                    className="block w-full pl-7 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                    disabled={isSavingEdit}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Margin will be recalculated automatically</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Supplier</label>
+                <select
+                  value={editSupplierId}
+                  onChange={(e) => setEditSupplierId(e.target.value)}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                  disabled={isSavingEdit}
+                >
+                  <option value="">Select supplier...</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Quantity</label>
+                <p className="text-sm text-gray-900">{sale.quantity || 1}</p>
+              </div>
+
+              {/* Edit Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={isSavingEdit || !hasEditChanges}
+                  className="flex-1 inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isSavingEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={isSavingEdit}
+                  className="px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Brand</dt>
-              <dd className="mt-1 text-sm text-gray-900">{sale.brand || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Category</dt>
-              <dd className="mt-1 text-sm text-gray-900">{sale.category || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Description</dt>
-              <dd className="mt-1 text-sm text-gray-900">{sale.item_title || '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Quantity</dt>
-              <dd className="mt-1 text-sm text-gray-900">{sale.quantity || 1}</dd>
-            </div>
-          </dl>
+          ) : (
+            /* View Mode */
+            <dl className="space-y-3">
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Invoice #</dt>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {sale.xero_invoice_number || sale.sale_reference || '—'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Brand</dt>
+                <dd className="mt-1 text-sm text-gray-900">{sale.brand || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Category</dt>
+                <dd className="mt-1 text-sm text-gray-900">{sale.category || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Description</dt>
+                <dd className="mt-1 text-sm text-gray-900">{sale.item_title || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Buy Price</dt>
+                <dd className="mt-1 text-sm text-gray-900">£{(sale.buy_price || 0).toFixed(2)}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-gray-500">Quantity</dt>
+                <dd className="mt-1 text-sm text-gray-900">{sale.quantity || 1}</dd>
+              </div>
+            </dl>
+          )}
 
           {/* Line Items Section (for multi-item invoices) */}
           {lineItems.length > 0 && (
