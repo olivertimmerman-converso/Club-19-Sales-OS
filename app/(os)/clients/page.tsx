@@ -47,67 +47,81 @@ export default async function ClientsPage({
   searchParams: Promise<{ owner?: string }>;
 }) {
   try {
+    console.log('[ClientsPage] Starting...');
+
     // Get role for filtering
     const role = await getUserRole();
+    console.log('[ClientsPage] Got role:', role);
+
     const { owner: ownerFilter } = await searchParams;
+    console.log('[ClientsPage] Owner filter:', ownerFilter || 'none');
 
-  // Fetch all shoppers for the owner filter dropdown
-  const allShoppers = await xata.db.Shoppers
-    .select(['id', 'name'])
-    .filter({ active: true })
-    .sort('name', 'asc')
-    .getAll();
+    // Fetch all shoppers for the owner filter dropdown
+    console.log('[ClientsPage] Fetching shoppers...');
+    const allShoppers = await xata.db.Shoppers
+      .select(['id', 'name'])
+      .filter({ active: true })
+      .sort('name', 'asc')
+      .getAll();
+    console.log('[ClientsPage] Found', allShoppers.length, 'shoppers');
 
-  const shoppers: Shopper[] = allShoppers.map(s => ({
-    id: s.id,
-    name: s.name || 'Unknown',
-  }));
+    const shoppers: Shopper[] = allShoppers.map(s => ({
+      id: s.id,
+      name: s.name || 'Unknown',
+    }));
 
-  // Fetch all sales to calculate stats (include source for 2026 filtering)
-  let salesQuery = xata.db.Sales
-    .select([
-      'buyer.id',
-      'sale_amount_inc_vat',
-      'gross_margin',
-      'sale_date',
-      'shopper.name',
-      'source',
-      'invoice_status',
-    ])
-    .filter({
-      deleted_at: { $is: null }
-    });
+    // Fetch all sales to calculate stats (include source for 2026 filtering)
+    console.log('[ClientsPage] Building sales query...');
+    let salesQuery = xata.db.Sales
+      .select([
+        'buyer.id',
+        'sale_amount_inc_vat',
+        'gross_margin',
+        'sale_date',
+        'shopper.name',
+        'source',
+        'invoice_status',
+      ])
+      .filter({
+        deleted_at: { $is: null }
+      });
 
-  // Filter sales for shoppers - only their own sales
-  if (role === 'shopper') {
-    const currentUser = await getCurrentUser();
-    if (currentUser?.fullName) {
-      // Look up the Shopper record by name to get the ID
-      const shopper = await xata.db.Shoppers.filter({ name: currentUser.fullName }).getFirst();
-      if (shopper) {
-        // Filter Sales by the shopper link ID
-        salesQuery = salesQuery.filter({ shopper: shopper.id });
+    // Filter sales for shoppers - only their own sales
+    if (role === 'shopper') {
+      console.log('[ClientsPage] Applying shopper filter...');
+      const currentUser = await getCurrentUser();
+      if (currentUser?.fullName) {
+        // Look up the Shopper record by name to get the ID
+        const shopper = await xata.db.Shoppers.filter({ name: currentUser.fullName }).getFirst();
+        if (shopper) {
+          // Filter Sales by the shopper link ID
+          salesQuery = salesQuery.filter({ shopper: shopper.id });
+        }
       }
     }
-  }
 
-  // Limit sales query to last 1000 for performance (still covers all recent clients)
-  const sales = await salesQuery.getMany({ pagination: { size: 1000 } });
+    // Limit sales query to last 1000 for performance (still covers all recent clients)
+    console.log('[ClientsPage] Executing sales query...');
+    const sales = await salesQuery.getMany({ pagination: { size: 1000 } });
+    console.log('[ClientsPage] Found', sales.length, 'sales');
 
-  // Get unique buyer IDs from sales
-  const uniqueBuyerIds = [...new Set(sales.map(sale => sale.buyer?.id).filter((id): id is string => !!id))];
+    // Get unique buyer IDs from sales
+    const uniqueBuyerIds = [...new Set(sales.map(sale => sale.buyer?.id).filter((id): id is string => !!id))];
+    console.log('[ClientsPage] Unique buyer IDs:', uniqueBuyerIds.length);
 
-  // Fetch only buyers that have sales (filtered by shopper if applicable)
-  // Include owner relationship for filtering and display
-  // Limit to 100 top clients for performance
-  const buyers = uniqueBuyerIds.length > 0
-    ? await xata.db.Buyers
-        .select(['*', 'owner.id', 'owner.name'])
-        .filter({ id: { $any: uniqueBuyerIds } })
-        .getMany({ pagination: { size: 100 } })
-    : [];
+    // Fetch only buyers that have sales (filtered by shopper if applicable)
+    // Include owner relationship for filtering and display
+    // Limit to 100 top clients for performance
+    console.log('[ClientsPage] Fetching buyers...');
+    const buyers = uniqueBuyerIds.length > 0
+      ? await xata.db.Buyers
+          .select(['*', 'owner.id', 'owner.name'])
+          .filter({ id: { $any: uniqueBuyerIds } })
+          .getMany({ pagination: { size: 100 } })
+      : [];
+    console.log('[ClientsPage] Found', buyers.length, 'buyers');
 
-  // Calculate stats for each buyer (hybrid: lifetime + 2026)
+    // Calculate stats for each buyer (hybrid: lifetime + 2026)
   const clientsWithStats: ClientWithStats[] = buyers.map(buyer => {
     // Find all sales for this buyer
     const buyerSales = sales.filter(sale => sale.buyer?.id === buyer.id);
