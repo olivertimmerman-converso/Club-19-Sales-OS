@@ -43,19 +43,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check for duplicate email
-    const existing = await xata.db.Shoppers.filter({ email }).getFirst();
+    // Normalize the name (trim whitespace)
+    const normalizedName = name.trim();
 
-    if (existing) {
+    // Check for duplicate email
+    const existingByEmail = await xata.db.Shoppers.filter({ email }).getFirst();
+
+    if (existingByEmail) {
       return NextResponse.json(
         { error: "A shopper with this email already exists" },
         { status: 409 }
       );
     }
 
-    // Create the shopper
+    // Check for existing shopper with same/similar name (case-insensitive)
+    const allShoppers = await xata.db.Shoppers.select(["id", "name"]).getAll();
+
+    // Exact match check (case-insensitive)
+    const exactMatch = allShoppers.find(
+      (s) => s.name?.toLowerCase().trim() === normalizedName.toLowerCase()
+    );
+
+    if (exactMatch) {
+      return NextResponse.json(
+        {
+          error: `A shopper named "${exactMatch.name}" already exists. Did you mean to use the existing record?`,
+          existingShopper: { id: exactMatch.id, name: exactMatch.name },
+        },
+        { status: 409 }
+      );
+    }
+
+    // Similar name check (one name contains the other, or partial match)
+    const similarMatch = allShoppers.find((s) => {
+      if (!s.name) return false;
+      const existingLower = s.name.toLowerCase().trim();
+      const newLower = normalizedName.toLowerCase();
+      // Check if one contains the other (e.g., "Mary Clair" vs "Mary Clair Bromfield")
+      return (
+        existingLower.includes(newLower) ||
+        newLower.includes(existingLower)
+      );
+    });
+
+    if (similarMatch) {
+      return NextResponse.json(
+        {
+          error: `A shopper with a similar name "${similarMatch.name}" already exists. Are you sure you want to create a separate record?`,
+          existingShopper: { id: similarMatch.id, name: similarMatch.name },
+          warning: true,
+        },
+        { status: 409 }
+      );
+    }
+
+    // Create the shopper with normalized name
     const shopper = await xata.db.Shoppers.create({
-      name,
+      name: normalizedName,
       email,
       commission_scheme,
       active: true,
