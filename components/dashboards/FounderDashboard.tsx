@@ -195,6 +195,50 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
     });
   };
 
+  // Get status badge styling (matches SuperadminDashboard logic)
+  const getStatusBadge = (sale: typeof sales[0]) => {
+    // Priority 1: Commission paid
+    if (sale.commission_paid) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          Paid
+        </span>
+      );
+    }
+
+    // Priority 2: Commission locked
+    if (sale.commission_locked) {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          Locked
+        </span>
+      );
+    }
+
+    // Priority 3: Invoice status from Xero
+    const normalizedStatus = (sale.invoice_status || 'draft').toUpperCase();
+
+    if (normalizedStatus === 'PAID') {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          Paid
+        </span>
+      );
+    } else if (normalizedStatus === 'AUTHORISED') {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+          Awaiting Payment
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+          Draft
+        </span>
+      );
+    }
+  };
+
   return (
     <div className="p-6">
       {/* Header */}
@@ -410,15 +454,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
                         {formatCurrency(sale.gross_margin || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          sale.commission_paid
-                            ? 'bg-green-100 text-green-800'
-                            : sale.commission_locked
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {sale.commission_paid ? 'Paid' : sale.commission_locked ? 'Locked' : 'Pending'}
-                        </span>
+                        {getStatusBadge(sale)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
                         <Link
