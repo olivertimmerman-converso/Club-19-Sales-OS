@@ -25,14 +25,34 @@ interface Shopper {
   name: string;
 }
 
+type PeriodFilter = '2026' | 'this-month' | 'last-3-months' | 'all';
+
 interface Props {
   unallocatedSales: Sale[];
   dismissedSales: DismissedSale[];
   shoppers: Shopper[];
+  currentPeriod: PeriodFilter;
 }
 
-export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers }: Props) {
+const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
+  { value: '2026', label: '2026 only' },
+  { value: 'this-month', label: 'This month' },
+  { value: 'last-3-months', label: 'Last 3 months' },
+  { value: 'all', label: 'All time' },
+];
+
+export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, currentPeriod }: Props) {
   const router = useRouter();
+
+  const handlePeriodChange = (newPeriod: PeriodFilter) => {
+    const url = new URL(window.location.href);
+    if (newPeriod === '2026') {
+      url.searchParams.delete('period'); // Default, no need to show in URL
+    } else {
+      url.searchParams.set('period', newPeriod);
+    }
+    router.push(url.pathname + url.search);
+  };
   const [syncing, setSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState<string | null>(null);
   const [syncResult, setSyncResult] = useState<any>(null);
@@ -352,25 +372,65 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers }: P
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
         {visibleSales.length === 0 ? (
           <div className="p-6 bg-green-50 border-green-200">
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-6 h-6 text-green-600" />
-              <div>
-                <h3 className="text-lg font-semibold text-green-900">All Invoices Allocated</h3>
-                <p className="text-sm text-green-700">All imported invoices have been assigned to shoppers.</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+                <div>
+                  <h3 className="text-lg font-semibold text-green-900">All Invoices Allocated</h3>
+                  <p className="text-sm text-green-700">
+                    All imported invoices for this period have been assigned to shoppers.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="period-filter-empty" className="text-sm font-medium text-green-700">
+                  Show:
+                </label>
+                <select
+                  id="period-filter-empty"
+                  value={currentPeriod}
+                  onChange={(e) => handlePeriodChange(e.target.value as PeriodFilter)}
+                  className="appearance-none h-9 pl-3 pr-8 py-1.5 bg-white border border-green-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-green-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-colors cursor-pointer"
+                >
+                  {PERIOD_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
         ) : (
           <div className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <AlertTriangle className="w-6 h-6 text-amber-600" />
-              <div>
-                <h2 className="text-lg font-semibold text-amber-900">
-                  Unallocated Invoices ({visibleSales.length})
-                </h2>
-                <p className="text-sm text-amber-700">
-                  These invoices were imported from Xero and need to be assigned to a shopper.
-                </p>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
+                <div>
+                  <h2 className="text-lg font-semibold text-amber-900">
+                    Unallocated Invoices ({visibleSales.length})
+                  </h2>
+                  <p className="text-sm text-amber-700">
+                    These invoices were imported from Xero and need to be assigned to a shopper.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label htmlFor="period-filter" className="text-sm font-medium text-gray-600">
+                  Show:
+                </label>
+                <select
+                  id="period-filter"
+                  value={currentPeriod}
+                  onChange={(e) => handlePeriodChange(e.target.value as PeriodFilter)}
+                  className="appearance-none h-9 pl-3 pr-8 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors cursor-pointer"
+                >
+                  {PERIOD_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

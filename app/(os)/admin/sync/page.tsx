@@ -6,7 +6,39 @@ import { SyncPageClient } from './SyncPageClient';
 
 export const dynamic = "force-dynamic";
 
-export default async function SyncPage() {
+type PeriodFilter = '2026' | 'this-month' | 'last-3-months' | 'all';
+
+interface Props {
+  searchParams: Promise<{ period?: string }>;
+}
+
+function getDateRangeForPeriod(period: PeriodFilter): { start: Date; end: Date } | null {
+  const now = new Date();
+
+  switch (period) {
+    case '2026':
+      return {
+        start: new Date(2026, 0, 1), // Jan 1, 2026
+        end: new Date(2026, 11, 31, 23, 59, 59), // Dec 31, 2026
+      };
+    case 'this-month':
+      return {
+        start: new Date(now.getFullYear(), now.getMonth(), 1),
+        end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59),
+      };
+    case 'last-3-months':
+      return {
+        start: new Date(now.getFullYear(), now.getMonth() - 2, 1),
+        end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59),
+      };
+    case 'all':
+      return null; // No date filtering
+    default:
+      return null;
+  }
+}
+
+export default async function SyncPage({ searchParams }: Props) {
   const { userId } = await auth();
   if (!userId) redirect('/sign-in');
 
@@ -15,31 +47,60 @@ export default async function SyncPage() {
     redirect('/dashboard');
   }
 
+  const params = await searchParams;
+  const period = (params.period as PeriodFilter) || '2026'; // Default to 2026 only
+  const dateRange = getDateRangeForPeriod(period);
+
   const xata = getXataClient();
 
-  // Fetch unallocated sales (excluding dismissed)
+  // Build base filter for unallocated sales
+  const baseFilter: any = {
+    $all: [
+      { needs_allocation: true },
+      { deleted_at: { $is: null } },
+      { $any: [{ dismissed: false }, { dismissed: { $is: null } }] }
+    ]
+  };
+
+  // Add date filter if specified
+  if (dateRange) {
+    baseFilter.$all.push({
+      sale_date: {
+        $ge: dateRange.start,
+        $le: dateRange.end,
+      }
+    });
+  }
+
+  // Fetch unallocated sales (excluding dismissed) with date filter
   const unallocatedRaw = await xata.db.Sales
-    .filter({
-      $all: [
-        { needs_allocation: true },
-        { deleted_at: { $is: null } },
-        { $any: [{ dismissed: false }, { dismissed: { $is: null } }] }
-      ]
-    })
+    .filter(baseFilter)
     .select(["*", "buyer.name"])
     .sort("sale_date", "desc")
     .getAll();
 
-  // Fetch dismissed unallocated sales
-  // Note: dismissed, dismissed_at, dismissed_by fields must be added to Sales table in Xata
+  // Build base filter for dismissed sales
+  const dismissedFilter: any = {
+    $all: [
+      { needs_allocation: true },
+      { deleted_at: { $is: null } },
+      { dismissed: true }
+    ]
+  };
+
+  // Add date filter if specified
+  if (dateRange) {
+    dismissedFilter.$all.push({
+      sale_date: {
+        $ge: dateRange.start,
+        $le: dateRange.end,
+      }
+    });
+  }
+
+  // Fetch dismissed unallocated sales with date filter
   const dismissedRaw = await xata.db.Sales
-    .filter({
-      $all: [
-        { needs_allocation: true },
-        { deleted_at: { $is: null } },
-        { dismissed: true }
-      ]
-    })
+    .filter(dismissedFilter)
     .select(["*", "buyer.name"])
     .sort("sale_date", "desc")
     .getAll();
@@ -82,6 +143,7 @@ export default async function SyncPage() {
 
   // Log to verify serialization
   console.log('[SyncPage] Serialized data:', {
+    period,
     unallocatedCount: unallocatedSales.length,
     dismissedCount: dismissedSales.length,
     shoppersCount: shoppers.length,
@@ -97,6 +159,7 @@ export default async function SyncPage() {
         unallocatedSales={unallocatedSales}
         dismissedSales={dismissedSales}
         shoppers={shoppers}
+        currentPeriod={period}
       />
     </div>
   );
