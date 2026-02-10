@@ -311,7 +311,7 @@ export function CompleteDataClient({
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-gray-500">
-                  Can't find your supplier? Contact Alys to add a new supplier.
+                  Can&apos;t find your supplier? Contact Alys to add a new supplier.
                 </p>
               </div>
             )}
