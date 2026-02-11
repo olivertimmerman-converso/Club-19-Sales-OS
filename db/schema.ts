@@ -31,12 +31,16 @@ export const shoppers = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name"),
     email: text("email"),
+    clerkUserId: text("clerk_user_id"),
     commissionScheme: text("commission_scheme"),
     active: boolean("active").default(true),
     createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
   },
-  (table) => [index("shoppers_name_idx").on(table.name)]
+  (table) => [
+    index("shoppers_name_idx").on(table.name),
+    index("shoppers_clerk_user_id_idx").on(table.clerkUserId),
+  ]
 );
 
 export const shoppersRelations = relations(shoppers, ({ many }) => ({

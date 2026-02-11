@@ -27,6 +27,7 @@ export async function ShopperDashboard({
   // Get current user to filter their sales
   // If shopperNameOverride is provided (superadmin viewing as shopper), use that instead
   let shopperName: string;
+  let clerkUserId: string | null = null;
 
   if (shopperNameOverride) {
     shopperName = shopperNameOverride;
@@ -45,18 +46,28 @@ export async function ShopperDashboard({
       );
     }
     shopperName = currentUser.fullName;
+    clerkUserId = currentUser.userId;
   }
 
   // Get date range for filtering
   const dateRange = getMonthDateRange(monthParam);
 
-  // ORIGINAL XATA:
-  // const shopper = await xata.db.Shoppers.filter({ name: shopperName }).getFirst();
+  // Look up Shopper - prefer clerk_user_id (more reliable), fall back to name
+  let shopperResult = null;
 
-  // Fetch shopper's sales only - Look up the Shopper by name first using Drizzle
-  const shopperResult = await db.query.shoppers.findFirst({
-    where: eq(shoppers.name, shopperName),
-  });
+  // Try clerk_user_id first (if available)
+  if (clerkUserId) {
+    shopperResult = await db.query.shoppers.findFirst({
+      where: eq(shoppers.clerkUserId, clerkUserId),
+    });
+  }
+
+  // Fall back to name matching
+  if (!shopperResult) {
+    shopperResult = await db.query.shoppers.findFirst({
+      where: eq(shoppers.name, shopperName),
+    });
+  }
 
   if (!shopperResult) {
     return (

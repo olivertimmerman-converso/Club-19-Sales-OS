@@ -47,7 +47,11 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       email: user.emailAddresses[0]?.emailAddress || null,
     };
   } catch (error) {
-    logger.error('AUTH', 'Error fetching user', { error: error as any } as any);
+    logger.error('AUTH', 'Error fetching user', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack?.substring(0, 500) : undefined,
+    });
     return null;
   }
 }
