@@ -18,12 +18,12 @@ export default clerkMiddleware(async (auth, request) => {
   // Log middleware execution for debugging
   console.log('[MIDDLEWARE] Running for:', request.nextUrl.pathname);
 
-  // Protect all routes except public ones
+  // Ensure session is loaded for protected routes
   if (!isPublicRoute(request)) {
-    console.log('[MIDDLEWARE] Protecting route:', request.nextUrl.pathname);
-    await auth.protect();
+    console.log('[MIDDLEWARE] Loading auth for protected route:', request.nextUrl.pathname);
+    await auth();  // Load the session
   } else {
-    console.log('[MIDDLEWARE] Public route, skipping protection:', request.nextUrl.pathname);
+    console.log('[MIDDLEWARE] Public route, skipping auth:', request.nextUrl.pathname);
   }
 });
 
