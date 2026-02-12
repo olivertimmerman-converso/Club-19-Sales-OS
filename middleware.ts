@@ -4,9 +4,28 @@
  * Protects routes using Clerk authentication
  */
 
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-export default clerkMiddleware();
+// Define public routes that don't require authentication
+const isPublicRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/xero/webhooks(.*)',  // Xero webhooks need to be public
+  '/api/cron/(.*)',          // Cron jobs use different auth
+]);
+
+export default clerkMiddleware(async (auth, request) => {
+  // Log middleware execution for debugging
+  console.log('[MIDDLEWARE] Running for:', request.nextUrl.pathname);
+
+  // Protect all routes except public ones
+  if (!isPublicRoute(request)) {
+    console.log('[MIDDLEWARE] Protecting route:', request.nextUrl.pathname);
+    await auth.protect();
+  } else {
+    console.log('[MIDDLEWARE] Public route, skipping protection:', request.nextUrl.pathname);
+  }
+});
 
 export const config = {
   matcher: [

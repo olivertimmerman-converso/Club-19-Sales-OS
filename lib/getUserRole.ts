@@ -25,12 +25,20 @@ export async function getUserRole(): Promise<StaffRole> {
   try {
     // Get userId from Clerk auth() - SSR optimized
     logger.debug("AUTH", "Calling Clerk auth()");
-    const { userId } = await auth();
-    logger.debug("AUTH", "UserId retrieved", { userId: userId || "(none)" });
+    const authResult = await auth();
+    logger.info("AUTH", "auth() returned", {
+      userId: authResult.userId || "(none)",
+      sessionId: authResult.sessionId || "(none)",
+      hasSessionClaims: !!authResult.sessionClaims,
+    });
+
+    const { userId } = authResult;
 
     // No userId = unauthenticated = shopper
     if (!userId) {
-      logger.info("AUTH", "No userId - returning 'shopper' (unauthenticated)");
+      logger.info("AUTH", "No userId - returning 'shopper' (unauthenticated)", {
+        fullAuthResult: JSON.stringify(authResult),
+      });
       return getDefaultRole();
     }
 
