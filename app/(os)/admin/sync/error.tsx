@@ -21,10 +21,10 @@ export default function Error({
           <AlertTriangle className="w-8 h-8 text-red-600 flex-shrink-0 mt-1" />
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-red-900 mb-2">
-              Xero Sync Page Error
+              Pending Sales Page Error
             </h2>
             <p className="text-red-700 mb-4">
-              An error occurred while loading the Xero sync page.
+              An error occurred while loading the pending sales page.
             </p>
 
             <div className="bg-white border border-red-300 rounded p-4 mb-4">

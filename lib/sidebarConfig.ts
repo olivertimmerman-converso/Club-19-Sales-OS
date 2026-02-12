@@ -29,6 +29,11 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "Briefcase",
   },
   {
+    label: "Pending Sales",
+    href: "/admin/sync",
+    icon: "Clock",
+  },
+  {
     label: "Clients",
     href: "/clients",
     icon: "Users",
@@ -68,11 +73,6 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     label: "Admin",
     href: "/admin",
     icon: "Shield",
-  },
-  {
-    label: "Xero Sync",
-    href: "/admin/sync",
-    icon: "RefreshCw",
   },
   {
     label: "Xero Health",

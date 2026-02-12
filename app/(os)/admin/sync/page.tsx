@@ -207,8 +207,8 @@ export default async function SyncPage({ searchParams }: Props) {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Xero Sync Management</h1>
-        <p className="text-gray-600 mt-1">Sync invoices from Xero and allocate them to shoppers</p>
+        <h1 className="text-3xl font-bold text-gray-900">Pending Sales</h1>
+        <p className="text-gray-600 mt-1">Sales imported from Xero that need to be assigned to a shopper</p>
       </div>
       <SyncPageClient
         unallocatedSales={unallocatedSales}
