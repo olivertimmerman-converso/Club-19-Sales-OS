@@ -23,6 +23,8 @@ import {
   PlusCircle,
   RefreshCw,
   HeartPulse,
+  Hourglass,
+  Trash2,
 } from "lucide-react";
 
 const iconMap = {
@@ -37,6 +39,8 @@ const iconMap = {
   PlusCircle,
   RefreshCw,
   HeartPulse,
+  Hourglass,
+  Trash2,
 };
 
 interface SidebarProps {

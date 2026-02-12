@@ -31,7 +31,7 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
   {
     label: "Pending Sales",
     href: "/admin/sync",
-    icon: "Clock",
+    icon: "Hourglass",
   },
   {
     label: "Clients",
