@@ -24,6 +24,11 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "LayoutDashboard",
   },
   {
+    label: "+ New Sale",
+    href: "/trade/new",
+    icon: "PlusCircle",
+  },
+  {
     label: "Sales",
     href: "/sales",
     icon: "Briefcase",

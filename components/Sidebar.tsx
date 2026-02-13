@@ -9,7 +9,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { type StaffRole, canAccessRoute } from "@/lib/permissions";
+import { type StaffRole } from "@/lib/permissions";
 import { getSidebarItemsForRole } from "@/lib/sidebarConfig";
 import {
   LayoutDashboard,
@@ -50,7 +50,6 @@ interface SidebarProps {
 export function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname();
   const items = getSidebarItemsForRole(role);
-  const showSalesAtelier = canAccessRoute(role, "/trade");
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
@@ -84,10 +83,17 @@ export function Sidebar({ role }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto p-4">
         <ul className="space-y-1">
           {items.map((item) => {
-            // For /admin route, only match exact path to avoid highlighting when on /admin/sync
-            const isActive = item.href === "/admin"
-              ? pathname === "/admin"
-              : pathname === item.href || pathname.startsWith(item.href + "/");
+            // Special handling for specific routes:
+            // - /admin: only exact match (don't highlight when on /admin/sync)
+            // - /trade/new: highlight for all /trade/* routes
+            let isActive = false;
+            if (item.href === "/admin") {
+              isActive = pathname === "/admin";
+            } else if (item.href === "/trade/new") {
+              isActive = pathname.startsWith("/trade");
+            } else {
+              isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+            }
             const Icon = item.icon
               ? iconMap[item.icon as keyof typeof iconMap]
               : null;
@@ -113,26 +119,6 @@ export function Sidebar({ role }: SidebarProps) {
           })}
         </ul>
       </nav>
-
-      {/* Sales Atelier - Bottom positioned above role badge */}
-      {showSalesAtelier && (
-        <div className="p-4 border-t border-gray-200">
-          <Link
-            href="/trade/new"
-            className={`
-              flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors
-              ${
-                pathname === "/trade/new" || pathname.startsWith("/trade/")
-                  ? "bg-gray-900 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }
-            `}
-          >
-            <PlusCircle size={18} />
-            <span>Sales Atelier</span>
-          </Link>
-        </div>
-      )}
 
       {/* Footer / Role Badge */}
       <div className="p-4 border-t border-gray-200">

@@ -88,7 +88,7 @@ export const ROUTE_PERMISSIONS: Record<string, {
   },
   "/trade": {
     allowedRoles: ["superadmin", "founder", "operations", "shopper"],
-    description: "Sales Atelier / Deal Studio",
+    description: "New Sale creation wizard",
   },
   "/xero-health": {
     allowedRoles: ["superadmin", "founder", "operations", "admin"],
