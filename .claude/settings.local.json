@@ -57,7 +57,11 @@
       "Bash(xargs ls:*)",
       "Bash(npm run type-check:*)",
       "Bash(echo:*)",
-      "Bash(vercel --prod:*)"
+      "Bash(vercel --prod:*)",
+      "Bash(npx drizzle-kit push:*)",
+      "Bash(XATA_POSTGRES_URL=\"postgresql://xata:wadlpOMcHe6KfPs1rI4GHN4Dp0V0tKXP7AGOjRr1JrgghNqiWepvbzP2VLfIjER9@qjbo0o2a9t0etduj902cj4jv0k.eu-central-1.xata.tech:5432/?sslmode=require\" npx drizzle-kit push:*)",
+      "Bash(PGPASSWORD=wadlpOMcHe6KfPs1rI4GHN4Dp0V0tKXP7AGOjRr1JrgghNqiWepvbzP2VLfIjER9 psql:*)",
+      "Bash(XATA_POSTGRES_URL=\"postgresql://xata:wadlpOMcHe6KfPs1rI4GHN4Dp0V0tKXP7AGOjRr1JrgghNqiWepvbzP2VLfIjER9@qjbo0o2a9t0etduj902cj4jv0k.eu-central-1.xata.tech:5432/?sslmode=require\" npx tsx:*)"
     ],
     "deny": [],
     "ask": []
