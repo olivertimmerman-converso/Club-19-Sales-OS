@@ -196,12 +196,46 @@ export default async function SyncPage({ searchParams }: Props) {
     dismissed_at: sale.dismissedAt ? sale.dismissedAt.toISOString() : null,
   }));
 
+  // Calculate aggregate stats
+  const totalUnallocatedValue = unallocatedSales.reduce(
+    (sum, sale) => sum + (sale.sale_amount_inc_vat || 0),
+    0
+  );
+
+  // Count by period (this week, this month)
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const thisWeekCount = unallocatedSales.filter(sale => {
+    if (!sale.sale_date) return false;
+    const saleDate = new Date(sale.sale_date);
+    return saleDate >= startOfWeek;
+  }).length;
+
+  const thisMonthCount = unallocatedSales.filter(sale => {
+    if (!sale.sale_date) return false;
+    const saleDate = new Date(sale.sale_date);
+    return saleDate >= startOfMonth;
+  }).length;
+
+  const aggregateStats = {
+    totalCount: unallocatedSales.length,
+    totalValue: totalUnallocatedValue,
+    thisWeekCount,
+    thisMonthCount,
+  };
+
   // Log to verify serialization
   console.log('[SyncPage] Serialized data:', {
     period,
     unallocatedCount: unallocatedSales.length,
     dismissedCount: dismissedSales.length,
     shoppersCount: shoppersData.length,
+    aggregateStats,
   });
 
   return (
@@ -215,6 +249,7 @@ export default async function SyncPage({ searchParams }: Props) {
         dismissedSales={dismissedSales}
         shoppers={shoppersData}
         currentPeriod={period}
+        aggregateStats={aggregateStats}
       />
     </div>
   );

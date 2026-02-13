@@ -2,9 +2,11 @@ import Link from "next/link";
 // ORIGINAL XATA: import { XataClient } from "@/src/xata";
 import { db } from "@/db";
 import { sales, shoppers, buyers } from "@/db/schema";
-import { eq, and, isNull, inArray } from "drizzle-orm";
+import { eq, and, isNull, inArray, gte, lte } from "drizzle-orm";
 import { getUserRole } from "@/lib/getUserRole";
 import { getCurrentUser } from "@/lib/getCurrentUser";
+import { MonthPicker } from "@/components/ui/MonthPicker";
+import { getMonthDateRange } from "@/lib/dateUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -12,10 +14,35 @@ export const dynamic = "force-dynamic";
  * Club 19 Sales OS - Clients Page
  *
  * Displays all buyers/clients with their transaction statistics
- * Shoppers see only clients they've sold to
+ * Shoppers see only clients they OWN (assigned to them)
+ * Admins/superadmins see all clients
  */
 
 // ORIGINAL XATA: const xata = new XataClient();
+
+interface ClientsPageProps {
+  searchParams: Promise<{ month?: string; viewAs?: string }>;
+}
+
+/**
+ * Map viewAs URL param to shopper name
+ * Returns null if not viewing as a shopper
+ */
+function getViewAsShopperName(viewAs: string | undefined): string | null {
+  if (!viewAs) return null;
+
+  switch (viewAs) {
+    case "shopper-hope-peverell":
+    case "shopper-hope":
+    case "shopper-hope-sherwin":
+      return "Hope Peverell";
+    case "shopper-mary-clair-bromfield":
+    case "shopper-mc":
+      return "Mary Clair Bromfield";
+    default:
+      return null;
+  }
+}
 
 // Client with calculated stats (hybrid: lifetime + 2026 + pipeline)
 interface ClientWithStats {
@@ -35,72 +62,101 @@ interface ClientWithStats {
   ownerName: string | null;
 }
 
-export default async function ClientsPage() {
+export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   try {
     // Get role for filtering
     const role = await getUserRole();
 
-    // ORIGINAL XATA:
-    // let salesQuery = xata.db.Sales
-    //   .select([
-    //     'buyer.id',
-    //     'sale_amount_inc_vat',
-    //     'gross_margin',
-    //     'sale_date',
-    //     'shopper.name',
-    //     'source',
-    //     'invoice_status',
-    //   ])
-    //   .filter({
-    //     deleted_at: { $is: null }
-    //   });
+    // Get month and viewAs filters
+    const params = await searchParams;
+    const monthParam = params.month || "current";
+    const viewAs = params.viewAs;
 
-    // Build conditions for sales query
-    const conditions: any[] = [isNull(sales.deletedAt)];
+    const dateRange = getMonthDateRange(monthParam);
 
-    // Filter sales for shoppers - only their own sales
-    if (role === 'shopper') {
-      const currentUser = await getCurrentUser();
-      if (currentUser?.fullName) {
-        // ORIGINAL XATA: const shopper = await xata.db.Shoppers.filter({ name: currentUser.fullName }).getFirst();
-        const shopper = await db.query.shoppers.findFirst({
-          where: eq(shoppers.name, currentUser.fullName),
-        });
+    // Determine if we're in "shopper view" mode
+    const viewAsShopperName = role === 'superadmin' ? getViewAsShopperName(viewAs) : null;
+    const isShopperView = role === 'shopper' || !!viewAsShopperName;
+
+    // Get shopper ID if in shopper view (for owner filtering)
+    let shopperIdForOwnerFilter: string | null = null;
+
+    if (isShopperView) {
+      let shopperName: string | null = null;
+
+      if (viewAsShopperName) {
+        // Superadmin viewing as shopper
+        shopperName = viewAsShopperName;
+      } else {
+        // Actual shopper
+        const currentUser = await getCurrentUser();
+        shopperName = currentUser?.fullName || null;
+      }
+
+      if (shopperName) {
+        // Try clerk_user_id first, then name
+        let shopper = null;
+
+        if (!viewAsShopperName) {
+          // For actual shoppers, try clerk_user_id first
+          const currentUser = await getCurrentUser();
+          if (currentUser?.userId) {
+            shopper = await db.query.shoppers.findFirst({
+              where: eq(shoppers.clerkUserId, currentUser.userId),
+            });
+          }
+        }
+
+        if (!shopper) {
+          shopper = await db.query.shoppers.findFirst({
+            where: eq(shoppers.name, shopperName),
+          });
+        }
+
         if (shopper) {
-          conditions.push(eq(sales.shopperId, shopper.id));
+          shopperIdForOwnerFilter = shopper.id;
         }
       }
     }
 
-    // ORIGINAL XATA: const sales = await salesQuery.getMany({ pagination: { size: 1000 } });
-    const salesData = await db.query.sales.findMany({
-      where: and(...conditions),
+    // Fetch buyers - filtered by owner for shoppers
+    // Shoppers only see clients they OWN (not unassigned clients)
+    const buyersData = await db.query.buyers.findMany({
+      where: shopperIdForOwnerFilter
+        ? eq(buyers.ownerId, shopperIdForOwnerFilter)
+        : undefined,
       with: {
-        buyer: true,
-        shopper: true,
+        owner: true,
       },
-      limit: 1000,
+      limit: 500,
     });
 
-    // Get unique buyer IDs from sales
-    const uniqueBuyerIds = [...new Set(salesData.map(sale => sale.buyerId).filter((id): id is string => !!id))];
+    // Get all buyer IDs to fetch their sales
+    const buyerIds = buyersData.map(b => b.id);
 
-    // ORIGINAL XATA:
-    // const buyers = uniqueBuyerIds.length > 0
-    //   ? await xata.db.Buyers
-    //       .select(['id', 'name', 'email', 'owner.id', 'owner.name'])
-    //       .filter({ id: { $any: uniqueBuyerIds } })
-    //       .getMany({ pagination: { size: 100 } })
-    //   : [];
+    // Build conditions for sales query
+    const salesConditions: any[] = [isNull(sales.deletedAt)];
 
-    // Fetch buyers with owner data
-    const buyersData = uniqueBuyerIds.length > 0
-      ? await db.query.buyers.findMany({
-          where: inArray(buyers.id, uniqueBuyerIds),
+    // Apply date range filter if specified
+    if (dateRange) {
+      salesConditions.push(gte(sales.saleDate, dateRange.start));
+      salesConditions.push(lte(sales.saleDate, dateRange.end));
+    }
+
+    // Only fetch sales for the buyers we're showing
+    if (buyerIds.length > 0) {
+      salesConditions.push(inArray(sales.buyerId, buyerIds));
+    }
+
+    // Fetch sales for the filtered buyers
+    const salesData = buyerIds.length > 0
+      ? await db.query.sales.findMany({
+          where: and(...salesConditions),
           with: {
-            owner: true,
+            buyer: true,
+            shopper: true,
           },
-          limit: 100,
+          limit: 1000,
         })
       : [];
 
@@ -189,6 +245,14 @@ export default async function ClientsPage() {
       });
     };
 
+    // Subtitle based on view mode
+    const getSubtitle = () => {
+      if (isShopperView) {
+        return `Showing your assigned clients only`;
+      }
+      return `Client directory and transaction history`;
+    };
+
     return (
       <div className="p-6">
         {/* Header */}
@@ -196,18 +260,21 @@ export default async function ClientsPage() {
           <div>
             <h1 className="text-3xl font-semibold text-gray-900 mb-2">Clients</h1>
             <p className="text-gray-600">
-              Client directory and transaction history
+              {getSubtitle()}
             </p>
           </div>
-          <Link
-            href="#"
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Client
-          </Link>
+          <div className="flex items-center gap-4">
+            <MonthPicker />
+            <Link
+              href="#"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Client
+            </Link>
+          </div>
         </div>
 
         {/* Summary Stats */}

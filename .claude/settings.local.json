@@ -56,7 +56,8 @@
       "Bash(grep:*)",
       "Bash(xargs ls:*)",
       "Bash(npm run type-check:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(vercel --prod:*)"
     ],
     "deny": [],
     "ask": []

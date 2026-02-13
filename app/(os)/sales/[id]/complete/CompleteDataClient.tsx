@@ -203,40 +203,40 @@ export function CompleteDataClient({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-4 sm:py-8 px-3 sm:px-6 lg:px-8">
       <div className="max-w-2xl mx-auto">
-        {/* Back Link */}
+        {/* Back Link - larger touch target on mobile */}
         <Link
           href={userRole === "shopper" ? "/staff/shopper/sales" : `/sales/${sale.id}`}
-          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6"
+          className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-4 sm:mb-6 py-2 -ml-2 pl-2 pr-4"
         >
-          <ArrowLeft className="w-4 h-4 mr-1" />
-          Back to {userRole === "shopper" ? "My Sales" : "Sale Details"}
+          <ArrowLeft className="w-5 h-5 sm:w-4 sm:h-4 mr-2 sm:mr-1" />
+          <span className="text-base sm:text-sm">Back</span>
         </Link>
 
-        {/* Header */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
-          <h1 className="text-xl font-semibold text-gray-900 mb-4">Complete Sale Data</h1>
+        {/* Header - mobile optimized */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
+          <h1 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Complete Sale Data</h1>
 
-          {/* Sale Context */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          {/* Sale Context - stack on mobile */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
             <div>
-              <span className="text-gray-500">Reference</span>
-              <p className="font-medium text-gray-900">
+              <span className="text-gray-500 text-xs sm:text-sm">Reference</span>
+              <p className="font-medium text-gray-900 text-sm sm:text-base truncate">
                 {sale.saleReference || sale.xeroInvoiceNumber || "No Reference"}
               </p>
             </div>
             <div>
-              <span className="text-gray-500">Buyer</span>
-              <p className="font-medium text-gray-900">{sale.buyerName}</p>
+              <span className="text-gray-500 text-xs sm:text-sm">Buyer</span>
+              <p className="font-medium text-gray-900 text-sm sm:text-base truncate">{sale.buyerName}</p>
             </div>
             <div>
-              <span className="text-gray-500">Date</span>
-              <p className="font-medium text-gray-900">{formatDate(sale.saleDate)}</p>
+              <span className="text-gray-500 text-xs sm:text-sm">Date</span>
+              <p className="font-medium text-gray-900 text-sm sm:text-base">{formatDate(sale.saleDate)}</p>
             </div>
             <div>
-              <span className="text-gray-500">Amount</span>
-              <p className="font-medium text-gray-900">{formatCurrency(sale.saleAmountIncVat)}</p>
+              <span className="text-gray-500 text-xs sm:text-sm">Amount</span>
+              <p className="font-medium text-gray-900 text-sm sm:text-base">{formatCurrency(sale.saleAmountIncVat)}</p>
             </div>
           </div>
 
@@ -282,13 +282,13 @@ export function CompleteDataClient({
           </div>
         )}
 
-        {/* Form */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <div className="space-y-6">
+        {/* Form - mobile optimized */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6">
+          <div className="space-y-5 sm:space-y-6">
             {/* Supplier - Required */}
             {(missingFields.has("supplierId") || !sale.supplierId) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                   Supplier <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -296,12 +296,12 @@ export function CompleteDataClient({
                   placeholder="Search suppliers..."
                   value={supplierSearch}
                   onChange={(e) => setSupplierSearch(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 mb-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <select
                   value={supplierId}
                   onChange={(e) => setSupplierId(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
                 >
                   <option value="">Select supplier...</option>
                   {filteredSuppliers.map((s) => (
@@ -310,7 +310,7 @@ export function CompleteDataClient({
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-gray-500">
                   Can&apos;t find your supplier? Contact Alys to add a new supplier.
                 </p>
               </div>
@@ -319,7 +319,7 @@ export function CompleteDataClient({
             {/* Brand - Required */}
             {(missingFields.has("brand") || !sale.brand || sale.brand === "Unknown") && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                   Brand <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -328,7 +328,7 @@ export function CompleteDataClient({
                     setBrand(e.target.value);
                     if (e.target.value !== "Other") setBrandOther("");
                   }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
                 >
                   <option value="">Select brand...</option>
                   {BRANDS.map((b) => (
@@ -343,7 +343,7 @@ export function CompleteDataClient({
                     placeholder="Enter brand name..."
                     value={brandOther}
                     onChange={(e) => setBrandOther(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 mt-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 )}
               </div>
@@ -352,7 +352,7 @@ export function CompleteDataClient({
             {/* Category - Required */}
             {(missingFields.has("category") || !sale.category || sale.category === "Unknown") && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                   Category <span className="text-red-500">*</span>
                 </label>
                 <select
@@ -361,7 +361,7 @@ export function CompleteDataClient({
                     setCategory(e.target.value);
                     if (e.target.value !== "Other") setCategoryOther("");
                   }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
                 >
                   <option value="">Select category...</option>
                   {CATEGORIES.map((c) => (
@@ -376,7 +376,7 @@ export function CompleteDataClient({
                     placeholder="Enter category name..."
                     value={categoryOther}
                     onChange={(e) => setCategoryOther(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 mt-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 mt-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 )}
               </div>
@@ -385,19 +385,20 @@ export function CompleteDataClient({
             {/* Buy Price - Required */}
             {(missingFields.has("buyPrice") || !sale.buyPrice || sale.buyPrice === 0) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                   Buy Price ({sale.currency}) <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   min="0.01"
                   placeholder="0.00"
                   value={buyPrice}
                   onChange={(e) => setBuyPrice(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-gray-500">
                   What did you pay for this item?
                 </p>
               </div>
@@ -406,13 +407,13 @@ export function CompleteDataClient({
             {/* VAT Treatment - Required */}
             {(missingFields.has("brandingTheme") || !sale.brandingTheme) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                   VAT Treatment <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={brandingTheme}
                   onChange={(e) => setBrandingTheme(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
                 >
                   <option value="">Select VAT treatment...</option>
                   {BRANDING_THEME_OPTIONS.map((t) => (
@@ -421,7 +422,7 @@ export function CompleteDataClient({
                     </option>
                   ))}
                 </select>
-                <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                <div className="mt-3 p-3 sm:p-3 bg-blue-50 rounded-lg">
                   <div className="flex gap-2">
                     <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
                     <div className="text-xs text-blue-700">
@@ -440,32 +441,32 @@ export function CompleteDataClient({
             {/* Buyer Type - Recommended */}
             {(missingFields.has("buyerType") || !sale.buyerType) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                   Buyer Type
                   <span className="ml-1 text-xs text-gray-400">(recommended)</span>
                 </label>
                 <div className="flex gap-4">
-                  <label className="flex items-center">
+                  <label className="flex items-center py-2 px-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                     <input
                       type="radio"
                       name="buyerType"
                       value="end_client"
                       checked={buyerType === "end_client"}
                       onChange={(e) => setBuyerType(e.target.value)}
-                      className="mr-2"
+                      className="mr-2 w-4 h-4"
                     />
-                    End Client
+                    <span className="text-sm sm:text-base">End Client</span>
                   </label>
-                  <label className="flex items-center">
+                  <label className="flex items-center py-2 px-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
                     <input
                       type="radio"
                       name="buyerType"
                       value="b2b"
                       checked={buyerType === "b2b"}
                       onChange={(e) => setBuyerType(e.target.value)}
-                      className="mr-2"
+                      className="mr-2 w-4 h-4"
                     />
-                    B2B
+                    <span className="text-sm sm:text-base">B2B</span>
                   </label>
                 </div>
               </div>
@@ -474,7 +475,7 @@ export function CompleteDataClient({
             {/* Item Description - Recommended */}
             {(missingFields.has("itemTitle") || !sale.itemTitle) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                   Item Description
                   <span className="ml-1 text-xs text-gray-400">(recommended)</span>
                 </label>
@@ -483,7 +484,7 @@ export function CompleteDataClient({
                   placeholder="e.g., B25 Black Togo GHW"
                   value={itemTitle}
                   onChange={(e) => setItemTitle(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             )}
@@ -491,20 +492,21 @@ export function CompleteDataClient({
             {/* Shipping Cost - Recommended */}
             {(missingFields.has("shippingCost") || sale.shippingCost === null) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                   Shipping Cost ({sale.currency})
                   <span className="ml-1 text-xs text-gray-400">(recommended)</span>
                 </label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   min="0"
                   placeholder="0.00"
                   value={shippingCost}
                   onChange={(e) => setShippingCost(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-gray-500">
                   Enter 0 if there were no shipping costs.
                 </p>
               </div>
@@ -513,41 +515,44 @@ export function CompleteDataClient({
             {/* Card Fees - Recommended */}
             {(missingFields.has("cardFees") || sale.cardFees === null) && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                   Card Fees ({sale.currency})
                   <span className="ml-1 text-xs text-gray-400">(recommended)</span>
                 </label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   min="0"
                   placeholder="0.00"
                   value={cardFees}
                   onChange={(e) => setCardFees(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-gray-500">
                   Enter 0 if there were no card processing fees.
                 </p>
               </div>
             )}
           </div>
 
-          {/* Actions */}
-          <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end gap-3">
-            <Link
-              href={userRole === "shopper" ? "/staff/shopper/sales" : `/sales/${sale.id}`}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-            >
-              Cancel
-            </Link>
-            <button
-              onClick={handleSave}
-              disabled={!isValid || isSaving}
-              className="px-4 py-2 text-sm font-medium text-white bg-[#0A0A0A] rounded-lg hover:bg-[#0A0A0A]/90 focus:ring-2 focus:ring-offset-2 focus:ring-[#0A0A0A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSaving ? "Saving..." : "Save & Complete"}
-            </button>
+          {/* Actions - mobile optimized with sticky footer */}
+          <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+              <Link
+                href={userRole === "shopper" ? "/staff/shopper/sales" : `/sales/${sale.id}`}
+                className="w-full sm:w-auto px-4 py-3 sm:py-2 text-base sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 text-center"
+              >
+                Cancel
+              </Link>
+              <button
+                onClick={handleSave}
+                disabled={!isValid || isSaving}
+                className="w-full sm:w-auto px-4 py-3 sm:py-2 text-base sm:text-sm font-medium text-white bg-[#0A0A0A] rounded-lg hover:bg-[#0A0A0A]/90 focus:ring-2 focus:ring-offset-2 focus:ring-[#0A0A0A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isSaving ? "Saving..." : "Save & Complete"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -33,23 +33,25 @@ export async function POST(
     const { id: saleId } = await params;
     logger.info("CLAIM", "Claim request received", { saleId, userId });
 
-    // Get user's full name from Clerk to find their shopper record
+    // Get user's full name from Clerk
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
     const userFullName = user?.fullName;
 
-    if (!userFullName) {
-      logger.warn("CLAIM", "User has no fullName set", { userId });
-      return NextResponse.json(
-        { error: "Unable to identify your shopper profile. Please ensure your name is set in your profile." },
-        { status: 400 }
-      );
-    }
+    // Find the shopper record - prefer clerk_user_id (more reliable), fall back to name
+    let shopperRecord = null;
 
-    // Find the shopper record matching this user's name
-    const shopperRecord = await db.query.shoppers.findFirst({
-      where: eq(shoppers.name, userFullName),
+    // Try clerk_user_id first
+    shopperRecord = await db.query.shoppers.findFirst({
+      where: eq(shoppers.clerkUserId, userId),
     });
+
+    // Fall back to name matching if no clerk_user_id match
+    if (!shopperRecord && userFullName) {
+      shopperRecord = await db.query.shoppers.findFirst({
+        where: eq(shoppers.name, userFullName),
+      });
+    }
 
     if (!shopperRecord) {
       logger.warn("CLAIM", "No shopper record found for user", { userId, userFullName });

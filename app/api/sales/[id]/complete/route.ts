@@ -56,13 +56,20 @@ export async function POST(
       const user = await client.users.getUser(userId);
       const userFullName = user?.fullName;
 
-      if (!userFullName) {
-        return NextResponse.json({ error: "Unable to identify user" }, { status: 400 });
-      }
+      // Find the shopper record - prefer clerk_user_id (more reliable), fall back to name
+      let shopperRecord = null;
 
-      const shopperRecord = await db.query.shoppers.findFirst({
-        where: eq(shoppers.name, userFullName),
+      // Try clerk_user_id first
+      shopperRecord = await db.query.shoppers.findFirst({
+        where: eq(shoppers.clerkUserId, userId),
       });
+
+      // Fall back to name matching if no clerk_user_id match
+      if (!shopperRecord && userFullName) {
+        shopperRecord = await db.query.shoppers.findFirst({
+          where: eq(shoppers.name, userFullName),
+        });
+      }
 
       // Check if this sale belongs to the current shopper
       if (!shopperRecord || currentSale.shopperId !== shopperRecord.id) {
@@ -158,6 +165,10 @@ export async function POST(
       commissionableMargin: economics.commissionable_margin,
     });
 
+    // Mark as completed with timestamp and user
+    updateData.completedAt = new Date();
+    updateData.completedBy = userId;
+
     // Perform the update
     const [updatedSale] = await db
       .update(sales)
@@ -172,6 +183,7 @@ export async function POST(
     logger.info("COMPLETE", "Sale data completed successfully", {
       saleId,
       updatedFields: Object.keys(updateData),
+      completedBy: userId,
     });
 
     return NextResponse.json({

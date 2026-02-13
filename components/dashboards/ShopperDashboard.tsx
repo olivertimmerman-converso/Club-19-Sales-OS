@@ -8,7 +8,7 @@ import Link from "next/link";
 // ORIGINAL XATA: import { XataClient } from "@/src/xata";
 import { db } from "@/db";
 import { sales, shoppers, buyers } from "@/db/schema";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, gte, lte, desc, ilike, isNull, or } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { getMonthDateRange } from "@/lib/dateUtils";
@@ -62,10 +62,17 @@ export async function ShopperDashboard({
     });
   }
 
-  // Fall back to name matching
+  // Fall back to exact name matching
   if (!shopperResult) {
     shopperResult = await db.query.shoppers.findFirst({
       where: eq(shoppers.name, shopperName),
+    });
+  }
+
+  // Last resort: partial name match (for view-as feature with short names)
+  if (!shopperResult && shopperNameOverride) {
+    shopperResult = await db.query.shoppers.findFirst({
+      where: ilike(shoppers.name, `%${shopperName}%`),
     });
   }
 
@@ -134,6 +141,28 @@ export async function ShopperDashboard({
     sale.source !== 'xero_import' && !sale.deletedAt
   );
 
+  // Query for incomplete sales that need attention
+  // These are sales allocated to the shopper that haven't been completed yet
+  const incompleteSales = await db.query.sales.findMany({
+    where: and(
+      eq(sales.shopperId, shopperResult.id),
+      eq(sales.source, 'allocated'),
+      isNull(sales.completedAt),
+      isNull(sales.deletedAt),
+      // Either buy price is 0/null or supplier is not set
+      or(
+        eq(sales.buyPrice, 0),
+        isNull(sales.buyPrice),
+        isNull(sales.supplierId)
+      )
+    ),
+    with: {
+      buyer: true,
+    },
+    orderBy: [desc(sales.allocatedAt)],
+    limit: 20,
+  });
+
   // Calculate totals
   const totalSales = salesData.length;
   const totalRevenue = salesData.reduce((sum, sale) => sum + (sale.saleAmountIncVat || 0), 0);
@@ -183,6 +212,90 @@ export async function ShopperDashboard({
         </div>
         <MonthPicker />
       </div>
+
+      {/* Needs Your Attention - Task Queue */}
+      {incompleteSales.length > 0 && (
+        <div className="mb-8">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+            <div className="flex items-start gap-3 mb-4">
+              <svg
+                className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <div>
+                <h2 className="text-lg font-semibold text-amber-900">
+                  Needs Your Attention ({incompleteSales.length})
+                </h2>
+                <p className="text-sm text-amber-700 mt-1">
+                  These sales have been assigned to you but need cost details to calculate your commission.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {incompleteSales.map((sale) => (
+                <Link
+                  key={sale.id}
+                  href={`/sales/${sale.id}/complete`}
+                  className="flex items-center justify-between bg-white p-4 rounded-lg border border-amber-200 hover:border-amber-400 hover:bg-amber-50 transition-colors group"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 truncate">
+                        {sale.xeroInvoiceNumber || 'No Invoice #'}
+                      </span>
+                      <span className="text-gray-400">•</span>
+                      <span className="text-sm text-gray-600 truncate">
+                        {sale.buyer?.name || 'Unknown Client'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm font-medium text-purple-600">
+                        {formatCurrency(sale.saleAmountIncVat || 0)}
+                      </span>
+                      {sale.allocatedAt && (
+                        <>
+                          <span className="text-gray-400">•</span>
+                          <span className="text-xs text-gray-500">
+                            Assigned {formatDate(sale.allocatedAt)}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <span className="text-xs font-medium text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                      Add Details
+                    </span>
+                    <svg
+                      className="w-5 h-5 text-gray-400 group-hover:text-purple-600 transition-colors"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Performance Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

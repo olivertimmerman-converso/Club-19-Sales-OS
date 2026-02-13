@@ -27,11 +27,19 @@ interface Shopper {
 
 type PeriodFilter = '2026' | 'this-month' | 'last-3-months' | 'all';
 
+interface AggregateStats {
+  totalCount: number;
+  totalValue: number;
+  thisWeekCount: number;
+  thisMonthCount: number;
+}
+
 interface Props {
   unallocatedSales: Sale[];
   dismissedSales: DismissedSale[];
   shoppers: Shopper[];
   currentPeriod: PeriodFilter;
+  aggregateStats: AggregateStats;
 }
 
 const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
@@ -41,7 +49,7 @@ const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
   { value: 'all', label: 'All time' },
 ];
 
-export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, currentPeriod }: Props) {
+export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, currentPeriod, aggregateStats }: Props) {
   const router = useRouter();
 
   const handlePeriodChange = (newPeriod: PeriodFilter) => {
@@ -271,6 +279,28 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
 
   return (
     <div className="space-y-6">
+      {/* Aggregate Stats */}
+      {aggregateStats.totalCount > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <p className="text-sm text-gray-500">Total Unallocated</p>
+            <p className="text-2xl font-bold text-amber-600">{aggregateStats.totalCount}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <p className="text-sm text-gray-500">Total Value</p>
+            <p className="text-2xl font-bold text-gray-900">{formatCurrency(aggregateStats.totalValue)}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <p className="text-sm text-gray-500">This Week</p>
+            <p className="text-2xl font-bold text-blue-600">{aggregateStats.thisWeekCount}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+            <p className="text-sm text-gray-500">This Month</p>
+            <p className="text-2xl font-bold text-purple-600">{aggregateStats.thisMonthCount}</p>
+          </div>
+        </div>
+      )}
+
       {/* Sync Controls */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <h2 className="text-lg font-semibold mb-2 text-gray-900">Sync Controls</h2>

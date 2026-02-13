@@ -234,6 +234,14 @@ export const sales = pgTable(
     needsAllocation: boolean("needs_allocation").default(false),
     internalNotes: text("internal_notes"),
 
+    // Allocation Tracking (management assigns sale to shopper)
+    allocatedBy: text("allocated_by"), // Clerk user ID who allocated
+    allocatedAt: timestamp("allocated_at", { withTimezone: true }),
+
+    // Completion Tracking (shopper completes sale details)
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedBy: text("completed_by"), // Clerk user ID who completed
+
     // Error Tracking
     errorFlag: boolean("error_flag"),
     errorMessage: jsonb("error_message").$type<string[]>(),
@@ -259,6 +267,7 @@ export const sales = pgTable(
     index("sales_deleted_at_idx").on(table.deletedAt),
     index("sales_needs_allocation_idx").on(table.needsAllocation),
     index("sales_source_idx").on(table.source),
+    index("sales_completed_at_idx").on(table.completedAt),
   ]
 );
 

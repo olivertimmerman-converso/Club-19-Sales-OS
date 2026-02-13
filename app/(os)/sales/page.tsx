@@ -20,7 +20,27 @@ export const dynamic = "force-dynamic";
  */
 
 interface SalesPageProps {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; viewAs?: string }>;
+}
+
+/**
+ * Map viewAs URL param to shopper name
+ * Returns null if not viewing as a shopper
+ */
+function getViewAsShopperName(viewAs: string | undefined): string | null {
+  if (!viewAs) return null;
+
+  switch (viewAs) {
+    case "shopper-hope-peverell":
+    case "shopper-hope":
+    case "shopper-hope-sherwin":
+      return "Hope Peverell";
+    case "shopper-mary-clair-bromfield":
+    case "shopper-mc":
+      return "Mary Clair Bromfield";
+    default:
+      return null;
+  }
 }
 
 export default async function SalesPage({ searchParams }: SalesPageProps) {
@@ -31,13 +51,20 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
     const role = await getUserRole();
     console.log('[SalesPage] Role:', role);
 
-    // Get month filter
+    // Get month and viewAs filters
     const params = await searchParams;
     const monthParam = params.month || "current";
-    console.log('[SalesPage] Month param:', monthParam);
+    const viewAs = params.viewAs;
+    console.log('[SalesPage] Month param:', monthParam, 'viewAs:', viewAs);
 
     const dateRange = getMonthDateRange(monthParam);
     console.log('[SalesPage] Date range:', dateRange);
+
+    // Determine if we're in "shopper view" mode
+    // Either: actual shopper role OR superadmin viewing as shopper
+    const viewAsShopperName = role === 'superadmin' ? getViewAsShopperName(viewAs) : null;
+    const isShopperView = role === 'shopper' || !!viewAsShopperName;
+    const isCurrentMonth = monthParam === 'current';
 
     // ORIGINAL XATA:
     // let allSalesQuery = xata.db.Sales
@@ -72,21 +99,52 @@ export default async function SalesPage({ searchParams }: SalesPageProps) {
     // Build conditions for sales query
     const conditions: any[] = [];
 
-    // Filter for shoppers - only show their own sales
-    if (role === 'shopper') {
-      console.log('[SalesPage] Fetching current user for shopper...');
-      const currentUser = await getCurrentUser();
-      console.log('[SalesPage] Current user:', currentUser?.fullName);
-      if (currentUser?.fullName) {
-        // ORIGINAL XATA: const shopper = await xata.db.Shoppers.filter({ name: currentUser.fullName }).getFirst();
-        const shopper = await db.query.shoppers.findFirst({
-          where: eq(shoppers.name, currentUser.fullName),
-        });
+    // Filter for shoppers:
+    // - Current month: show ALL sales (full team view for leaderboard context)
+    // - Previous months: show ONLY their own sales
+    if (isShopperView && !isCurrentMonth) {
+      console.log('[SalesPage] Shopper viewing previous month - filtering to own sales');
+
+      let shopperName: string | null = null;
+
+      if (viewAsShopperName) {
+        // Superadmin viewing as shopper
+        shopperName = viewAsShopperName;
+      } else {
+        // Actual shopper
+        const currentUser = await getCurrentUser();
+        shopperName = currentUser?.fullName || null;
+      }
+
+      console.log('[SalesPage] Shopper name:', shopperName);
+
+      if (shopperName) {
+        // Try clerk_user_id first, then name
+        let shopper = null;
+
+        if (!viewAsShopperName) {
+          // For actual shoppers, try clerk_user_id first
+          const currentUser = await getCurrentUser();
+          if (currentUser?.userId) {
+            shopper = await db.query.shoppers.findFirst({
+              where: eq(shoppers.clerkUserId, currentUser.userId),
+            });
+          }
+        }
+
+        if (!shopper) {
+          shopper = await db.query.shoppers.findFirst({
+            where: eq(shoppers.name, shopperName),
+          });
+        }
+
         console.log('[SalesPage] Found shopper:', shopper?.id);
         if (shopper) {
           conditions.push(eq(sales.shopperId, shopper.id));
         }
       }
+    } else if (isShopperView) {
+      console.log('[SalesPage] Shopper viewing current month - showing all sales');
     }
 
     // Apply date range filter if specified

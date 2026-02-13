@@ -33,10 +33,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           return <FounderDashboard monthParam={monthParam} />;
         case "operations":
           return <OperationsDashboard monthParam={monthParam} />;
+        case "shopper-hope-peverell":
+          return <ShopperDashboard monthParam={monthParam} shopperNameOverride="Hope Peverell" />;
+        case "shopper-mary-clair-bromfield":
+          return <ShopperDashboard monthParam={monthParam} shopperNameOverride="Mary Clair Bromfield" />;
+        // Legacy values for backwards compatibility
         case "shopper-hope":
-          return <ShopperDashboard monthParam={monthParam} shopperNameOverride="Hope" />;
+        case "shopper-hope-sherwin":
+          return <ShopperDashboard monthParam={monthParam} shopperNameOverride="Hope Peverell" />;
         case "shopper-mc":
-          return <ShopperDashboard monthParam={monthParam} shopperNameOverride="MC" />;
+          return <ShopperDashboard monthParam={monthParam} shopperNameOverride="Mary Clair Bromfield" />;
         case "superadmin":
           // Fall through to default superadmin view
           break;

@@ -29,20 +29,25 @@ export async function GET(request: NextRequest) {
 
     logger.info("CLAIMABLE", "Fetching claimable sales", { userId });
 
-    // Get user's full name from Clerk to find their shopper record
+    // Get user's full name from Clerk
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
     const userFullName = user?.fullName;
 
-    if (!userFullName) {
-      logger.warn("CLAIMABLE", "User has no fullName set", { userId });
-      return NextResponse.json({ sales: [], shopperId: null });
-    }
+    // Find the shopper record - prefer clerk_user_id (more reliable), fall back to name
+    let shopperRecord = null;
 
-    // Find the shopper record matching this user's name
-    const shopperRecord = await db.query.shoppers.findFirst({
-      where: eq(shoppers.name, userFullName),
+    // Try clerk_user_id first
+    shopperRecord = await db.query.shoppers.findFirst({
+      where: eq(shoppers.clerkUserId, userId),
     });
+
+    // Fall back to name matching if no clerk_user_id match
+    if (!shopperRecord && userFullName) {
+      shopperRecord = await db.query.shoppers.findFirst({
+        where: eq(shoppers.name, userFullName),
+      });
+    }
 
     if (!shopperRecord) {
       logger.warn("CLAIMABLE", "No shopper record found for user", { userId, userFullName });

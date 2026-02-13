@@ -173,6 +173,9 @@ export async function POST(request: NextRequest) {
         needsAllocation: false,
         commissionAmount,
         source: 'allocated',
+        // Track who allocated and when
+        allocatedBy: userId,
+        allocatedAt: new Date(),
       })
       .where(eq(sales.id, saleId))
       .returning();
