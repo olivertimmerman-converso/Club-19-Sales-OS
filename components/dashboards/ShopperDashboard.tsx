@@ -199,14 +199,14 @@ export async function ShopperDashboard({
   };
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
+    <div className="p-4 sm:p-6">
+      {/* Header - stacks on mobile */}
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold text-gray-900 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-1 sm:mb-2">
             Welcome, {shopperName}
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             Your sales overview and commission tracking
           </p>
         </div>
@@ -381,69 +381,69 @@ export async function ShopperDashboard({
                   <tr>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Date
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
                       Item
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell"
                     >
                       Client
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
-                      Sale Amount
+                      Amount
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell"
                     >
                       Margin
                     </th>
                     <th
                       scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
-                      Commission
+                      Status
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {recentSales.map((sale) => (
                     <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                         {formatDate(sale.saleDate)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 max-w-[120px] sm:max-w-xs truncate">
                         <Link
                           href={`/sales/${sale.id}`}
-                          className="text-purple-600 hover:text-purple-900"
+                          className="text-purple-600 hover:text-purple-900 py-1"
                         >
                           {sale.brand && sale.itemTitle
                             ? `${sale.brand} - ${sale.itemTitle}`
                             : sale.brand || sale.itemTitle || '—'}
                         </Link>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-500 hidden sm:table-cell">
                         {sale.buyer?.name || '—'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900 text-right font-medium">
                         {formatCurrency(sale.saleAmountIncVat || 0)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium">
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-green-600 text-right font-medium hidden md:table-cell">
                         {formatCurrency(sale.grossMargin || 0)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                           sale.commissionPaid
                             ? 'bg-green-100 text-green-800'
                             : sale.commissionLocked

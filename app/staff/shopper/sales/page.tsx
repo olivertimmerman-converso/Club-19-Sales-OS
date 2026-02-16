@@ -21,7 +21,7 @@ import { TopLoadingBar } from "@/components/ui/TopLoadingBar";
 import { SaleDetailModal } from "@/components/modals/SaleDetailModal";
 import { getShopperSalesList } from "@/lib/api/shoppers";
 import type { SaleSummary } from "@/lib/api/sales";
-import { Search, AlertCircle, CheckCircle, Inbox, ClipboardList } from "lucide-react";
+import { Search, AlertCircle, CheckCircle, Inbox, ClipboardList, PartyPopper } from "lucide-react";
 import Link from "next/link";
 import { getCompletionColor } from "@/lib/completeness";
 
@@ -501,6 +501,23 @@ export default function ShopperSalesPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* All Caught Up Empty State */}
+      {!claimableLoading && !incompleteLoading && claimableSales.length === 0 && incompleteSales.length === 0 && (
+        <div className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-8 shadow-sm">
+          <div className="flex flex-col items-center text-center">
+            <div className="p-4 bg-green-100 rounded-full mb-4">
+              <PartyPopper className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-green-900 mb-2">
+              You&apos;re all caught up!
+            </h2>
+            <p className="text-green-700 max-w-md">
+              No pending sales to claim and all your data is complete. Enjoy your day!
+            </p>
           </div>
         </div>
       )}

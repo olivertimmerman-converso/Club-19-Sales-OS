@@ -115,6 +115,13 @@ export async function POST(
     if (body.card_fees !== undefined) {
       updateData.cardFees = body.card_fees;
     }
+    // Payment structure fields (optional)
+    if (body.deposit_amount !== undefined) {
+      updateData.depositAmount = body.deposit_amount;
+    }
+    if (body.payment_plan_notes !== undefined) {
+      updateData.paymentPlanNotes = body.payment_plan_notes;
+    }
 
     // Get values for margin recalculation (merge current with updates)
     const saleAmountIncVat = currentSale.saleAmountIncVat || 0;

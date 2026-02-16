@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BRANDS, CATEGORIES } from "@/lib/constants";
 import { XERO_BRANDING_THEMES } from "@/lib/branding-theme-mappings";
-import { getCompletionColor } from "@/lib/completeness";
-import type { CompletenessResult } from "@/lib/completeness";
-import { ArrowLeft, CheckCircle, AlertCircle, Info } from "lucide-react";
+import { getCompletionColor, assessCompleteness } from "@/lib/completeness";
+import { calculateSaleEconomics } from "@/lib/economics";
+import type { CompletenessResult, SaleForCompleteness } from "@/lib/completeness";
+import { ArrowLeft, CheckCircle, AlertCircle, Info, ChevronDown, ChevronUp } from "lucide-react";
 
 interface SaleData {
   id: string;
@@ -79,6 +80,11 @@ export function CompleteDataClient({
     sale.cardFees !== null ? sale.cardFees.toString() : ""
   );
 
+  // Payment structure state
+  const [showPaymentStructure, setShowPaymentStructure] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [paymentPlanNotes, setPaymentPlanNotes] = useState("");
+
   // UI state
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -117,6 +123,55 @@ export function CompleteDataClient({
       setCategoryOther(sale.category);
     }
   });
+
+  // Live margin calculation - updates as user types
+  const liveMargin = useMemo(() => {
+    const buyPriceNum = parseFloat(buyPrice);
+    if (isNaN(buyPriceNum) || buyPriceNum <= 0) {
+      return null;
+    }
+
+    // Use the selected branding theme or fall back to sale's existing one
+    const theme = brandingTheme || sale.brandingTheme;
+
+    const economics = calculateSaleEconomics({
+      sale_amount_inc_vat: sale.saleAmountIncVat,
+      buy_price: buyPriceNum,
+      card_fees: cardFees ? parseFloat(cardFees) : 0,
+      shipping_cost: shippingCost ? parseFloat(shippingCost) : 0,
+      branding_theme: theme,
+    });
+
+    return {
+      grossMargin: economics.gross_margin,
+      marginPercent: economics.gross_margin_percent,
+      saleExVat: economics.sale_amount_ex_vat,
+    };
+  }, [buyPrice, cardFees, shippingCost, brandingTheme, sale.saleAmountIncVat, sale.brandingTheme]);
+
+  // Live completeness calculation - updates as user fills in fields
+  const liveCompleteness = useMemo(() => {
+    // Build a sale object with current form values merged with original sale data
+    const formSale: SaleForCompleteness = {
+      // Use form values if filled, otherwise use original sale values
+      supplierId: supplierId || sale.supplierId,
+      brand: (showBrandOther ? brandOther : brand) || sale.brand,
+      category: (showCategoryOther ? categoryOther : category) || sale.category,
+      buyPrice: buyPrice ? parseFloat(buyPrice) : sale.buyPrice,
+      brandingTheme: brandingTheme || sale.brandingTheme,
+      buyerType: buyerType || sale.buyerType,
+      itemTitle: itemTitle || sale.itemTitle,
+      shippingCost: shippingCost !== "" ? parseFloat(shippingCost) : sale.shippingCost,
+      cardFees: cardFees !== "" ? parseFloat(cardFees) : sale.cardFees,
+    };
+
+    return assessCompleteness(formSale);
+  }, [
+    supplierId, brand, brandOther, showBrandOther, category, categoryOther, showCategoryOther,
+    buyPrice, brandingTheme, buyerType, itemTitle, shippingCost, cardFees,
+    sale.supplierId, sale.brand, sale.category, sale.buyPrice, sale.brandingTheme,
+    sale.buyerType, sale.itemTitle, sale.shippingCost, sale.cardFees,
+  ]);
 
   // Validation
   const isValid = useMemo(() => {
@@ -170,6 +225,8 @@ export function CompleteDataClient({
       if (buyerType) payload.buyer_type = buyerType;
       if (shippingCost !== "") payload.shipping_cost = parseFloat(shippingCost);
       if (cardFees !== "") payload.card_fees = parseFloat(cardFees);
+      if (depositAmount !== "") payload.deposit_amount = parseFloat(depositAmount);
+      if (paymentPlanNotes.trim()) payload.payment_plan_notes = paymentPlanNotes.trim();
 
       const response = await fetch(`/api/sales/${sale.id}/complete`, {
         method: "POST",
@@ -244,21 +301,29 @@ export function CompleteDataClient({
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between text-sm mb-2">
               <span className="text-gray-600">Data Completion</span>
-              <span className="font-medium text-gray-900">{completeness.completionPercentage}%</span>
+              <span className={`font-medium ${liveCompleteness.completionPercentage === 100 ? 'text-green-600' : 'text-gray-900'}`}>
+                {liveCompleteness.completionPercentage}%
+              </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
               <div
-                className={`h-2 rounded-full transition-all ${getCompletionColor(completeness.completionPercentage)}`}
-                style={{ width: `${completeness.completionPercentage}%` }}
+                className={`h-2 rounded-full transition-all duration-300 ease-out ${getCompletionColor(liveCompleteness.completionPercentage)}`}
+                style={{ width: `${liveCompleteness.completionPercentage}%` }}
               />
             </div>
-            {completeness.missingFields.length > 0 && (
+            {liveCompleteness.missingFields.filter((f) => f.priority === "required").length > 0 && (
               <p className="mt-2 text-sm text-gray-500">
                 Missing:{" "}
-                {completeness.missingFields
+                {liveCompleteness.missingFields
                   .filter((f) => f.priority === "required")
                   .map((f) => f.label)
                   .join(", ")}
+              </p>
+            )}
+            {liveCompleteness.completionPercentage === 100 && (
+              <p className="mt-2 text-sm text-green-600 font-medium flex items-center gap-1">
+                <CheckCircle className="w-4 h-4" />
+                All fields complete!
               </p>
             )}
           </div>
@@ -398,9 +463,37 @@ export function CompleteDataClient({
                   onChange={(e) => setBuyPrice(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <p className="mt-2 text-xs text-gray-500">
-                  What did you pay for this item?
-                </p>
+                {/* Live Margin Display */}
+                {liveMargin && (
+                  <div className={`mt-3 p-3 rounded-lg ${liveMargin.grossMargin >= 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className={`text-sm font-medium ${liveMargin.grossMargin >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          Gross Margin
+                        </span>
+                        <p className={`text-lg font-semibold ${liveMargin.grossMargin >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                          {formatCurrency(liveMargin.grossMargin)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-sm font-medium ${liveMargin.grossMargin >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          Margin %
+                        </span>
+                        <p className={`text-lg font-semibold ${liveMargin.grossMargin >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                          {liveMargin.marginPercent.toFixed(1)}%
+                        </p>
+                      </div>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Sale ex VAT: {formatCurrency(liveMargin.saleExVat)}
+                    </p>
+                  </div>
+                )}
+                {!liveMargin && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    What did you pay for this item?
+                  </p>
+                )}
               </div>
             )}
 
@@ -532,6 +625,66 @@ export function CompleteDataClient({
                 <p className="mt-2 text-xs text-gray-500">
                   Enter 0 if there were no card processing fees.
                 </p>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Structure - Collapsible Optional Section */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={() => setShowPaymentStructure(!showPaymentStructure)}
+              className="w-full flex items-center justify-between py-2 text-left text-gray-700 hover:text-gray-900 transition-colors"
+            >
+              <span className="text-sm sm:text-base font-medium">
+                Payment Structure
+                <span className="ml-2 text-xs text-gray-400">(optional)</span>
+              </span>
+              {showPaymentStructure ? (
+                <ChevronUp className="w-5 h-5 text-gray-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-gray-400" />
+              )}
+            </button>
+
+            {showPaymentStructure && (
+              <div className="mt-4 space-y-4 p-4 bg-gray-50 rounded-lg">
+                {/* Deposit Amount */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Deposit Amount ({sale.currency})
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    If a deposit was paid upfront, enter the amount here.
+                  </p>
+                </div>
+
+                {/* Payment Plan Notes */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Plan Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="E.g., 3 monthly instalments of £5,000..."
+                    value={paymentPlanNotes}
+                    onChange={(e) => setPaymentPlanNotes(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Describe any payment arrangements or instalment plans.
+                  </p>
+                </div>
               </div>
             )}
           </div>

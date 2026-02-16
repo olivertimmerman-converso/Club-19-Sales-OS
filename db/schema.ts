@@ -222,6 +222,8 @@ export const sales = pgTable(
     // Payment Plan
     isPaymentPlan: boolean("is_payment_plan").default(false),
     paymentPlanInstalments: integer("payment_plan_instalments"),
+    depositAmount: doublePrecision("deposit_amount"),
+    paymentPlanNotes: text("payment_plan_notes"),
 
     // Shipping
     shippingMethod: text("shipping_method"),

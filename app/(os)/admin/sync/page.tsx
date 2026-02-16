@@ -46,7 +46,8 @@ export default async function SyncPage({ searchParams }: Props) {
   if (!userId) redirect('/sign-in');
 
   const role = await getUserRole();
-  if (!['superadmin', 'operations', 'founder'].includes(role || '')) {
+  // Shoppers can view and claim, management can assign
+  if (!['superadmin', 'operations', 'founder', 'shopper'].includes(role || '')) {
     redirect('/dashboard');
   }
 
@@ -250,6 +251,7 @@ export default async function SyncPage({ searchParams }: Props) {
         shoppers={shoppersData}
         currentPeriod={period}
         aggregateStats={aggregateStats}
+        userRole={role}
       />
     </div>
   );

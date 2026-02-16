@@ -8,7 +8,7 @@
 // ORIGINAL XATA: import { XataClient } from "@/src/xata";
 import { db } from "@/db";
 import { sales, shoppers, buyers } from "@/db/schema";
-import { eq, and, gte, lte, desc, asc, isNotNull } from "drizzle-orm";
+import { eq, and, gte, lte, desc, asc, isNotNull, isNull, or, sql } from "drizzle-orm";
 import Link from "next/link";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 // import { DashboardClientWrapper } from "./DashboardClientWrapper"; // Temporarily disabled
@@ -201,6 +201,51 @@ export async function OperationsDashboard({
   const allBuyers = await db.query.buyers.findMany({
     limit: 200,
   });
+
+  // PIPELINE STATS - for management summary
+  // 1. Unallocated sales count
+  const unallocatedSalesCount = await db.query.sales.findMany({
+    where: and(
+      eq(sales.needsAllocation, true),
+      isNull(sales.deletedAt),
+      or(eq(sales.dismissed, false), isNull(sales.dismissed))
+    ),
+  });
+
+  // 2. Incomplete sales count (sales with buy_price = 0 or missing brand/supplier)
+  const incompleteSalesCount = await db.query.sales.findMany({
+    where: and(
+      isNull(sales.deletedAt),
+      isNotNull(sales.shopperId),
+      or(
+        eq(sales.buyPrice, 0),
+        isNull(sales.buyPrice),
+        isNull(sales.supplierId),
+        isNull(sales.brand),
+        eq(sales.brand, "Unknown")
+      )
+    ),
+  });
+
+  // 3. Completed today (sales with completedAt timestamp today)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const completedTodayCount = await db.query.sales.findMany({
+    where: and(
+      isNull(sales.deletedAt),
+      gte(sales.completedAt, todayStart),
+      lte(sales.completedAt, todayEnd)
+    ),
+  });
+
+  const pipelineStats = {
+    unallocated: unallocatedSalesCount.length,
+    incomplete: incompleteSalesCount.length,
+    completedToday: completedTodayCount.length,
+  };
 
   const buyerFirstPurchase = new Map<string, Date>();
 
@@ -535,11 +580,47 @@ export async function OperationsDashboard({
         <MonthPicker />
       </div>
 
-      {/* TEMPORARILY DISABLED: Xero Sync Controls and Unallocated Invoices */}
-      {/* <DashboardClientWrapper
-        unallocatedSales={unallocatedSales}
-        shoppers={shoppers}
-      /> */}
+      {/* PIPELINE SUMMARY */}
+      <div className="grid grid-cols-3 gap-4">
+        <Link
+          href="/admin/sync"
+          className="bg-amber-50 border border-amber-200 rounded-lg p-4 hover:border-amber-300 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-medium text-amber-700 mb-1">Unallocated</h3>
+              <p className="text-2xl font-bold text-amber-900">{pipelineStats.unallocated}</p>
+            </div>
+            <span className="text-amber-400 text-sm">→</span>
+          </div>
+          <p className="text-xs text-amber-600 mt-1">Pending assignment</p>
+        </Link>
+
+        <Link
+          href="/sales?filter=incomplete"
+          className="bg-slate-50 border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-medium text-slate-700 mb-1">Incomplete</h3>
+              <p className="text-2xl font-bold text-slate-900">{pipelineStats.incomplete}</p>
+            </div>
+            <span className="text-slate-400 text-sm">→</span>
+          </div>
+          <p className="text-xs text-slate-600 mt-1">Missing data</p>
+        </Link>
+
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-medium text-green-700 mb-1">Completed Today</h3>
+              <p className="text-2xl font-bold text-green-900">{pipelineStats.completedToday}</p>
+            </div>
+            <span className="text-green-400">✓</span>
+          </div>
+          <p className="text-xs text-green-600 mt-1">Data finalized</p>
+        </div>
+      </div>
 
       {/* SECTION 1: Key Metrics Bar */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

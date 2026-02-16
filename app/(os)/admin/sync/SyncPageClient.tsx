@@ -40,6 +40,7 @@ interface Props {
   shoppers: Shopper[];
   currentPeriod: PeriodFilter;
   aggregateStats: AggregateStats;
+  userRole: string | null;
 }
 
 const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
@@ -49,8 +50,9 @@ const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
   { value: 'all', label: 'All time' },
 ];
 
-export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, currentPeriod, aggregateStats }: Props) {
+export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, currentPeriod, aggregateStats, userRole }: Props) {
   const router = useRouter();
+  const isShopper = userRole === 'shopper';
 
   const handlePeriodChange = (newPeriod: PeriodFilter) => {
     const url = new URL(window.location.href);
@@ -70,6 +72,7 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
   const [dismissing, setDismissing] = useState<string | null>(null);
   const [restoring, setRestoring] = useState<string | null>(null);
   const [restored, setRestored] = useState<Set<string>>(new Set());
+  const [claiming, setClaiming] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDismissed, setShowDismissed] = useState(false);
@@ -190,6 +193,34 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
     }
   };
 
+  const handleClaim = async (saleId: string) => {
+    setClaiming(saleId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/sales/${saleId}/claim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || data.details || 'Claim failed');
+      }
+
+      // Mark as allocated (claimed)
+      setAllocated(new Set([...allocated, saleId]));
+
+      // Refresh after brief delay
+      setTimeout(() => router.refresh(), 1000);
+    } catch (err) {
+      console.error('[SYNC] Claim error:', err);
+      setError(err instanceof Error ? err.message : 'Claim failed');
+    } finally {
+      setClaiming(null);
+    }
+  };
+
   const handleDismiss = async (saleId: string) => {
     setDismissing(saleId);
     setError(null);
@@ -301,7 +332,8 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
         </div>
       )}
 
-      {/* Sync Controls */}
+      {/* Sync Controls - Management only */}
+      {!isShopper && (
       <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
         <h2 className="text-lg font-semibold mb-2 text-gray-900">Sync Controls</h2>
 
@@ -397,6 +429,7 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
           )}
         </div>
       </div>
+      )}
 
       {/* Needs Allocation */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
@@ -432,28 +465,28 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
             </div>
           </div>
         ) : (
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-6 h-6 text-amber-600" />
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h2 className="text-lg font-semibold text-amber-900">
-                    Unallocated Invoices ({visibleSales.length})
+                  <h2 className="text-base sm:text-lg font-semibold text-amber-900">
+                    Unallocated ({visibleSales.length})
                   </h2>
-                  <p className="text-sm text-amber-700">
-                    These invoices were imported from Xero and need to be assigned to a shopper.
+                  <p className="text-xs sm:text-sm text-amber-700">
+                    {isShopper ? 'Claim invoices to add to your sales.' : 'Assign invoices to shoppers.'}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <label htmlFor="period-filter" className="text-sm font-medium text-gray-600">
+              <div className="flex items-center gap-2 ml-8 sm:ml-0">
+                <label htmlFor="period-filter" className="text-sm font-medium text-gray-600 hidden sm:inline">
                   Show:
                 </label>
                 <select
                   id="period-filter"
                   value={currentPeriod}
                   onChange={(e) => handlePeriodChange(e.target.value as PeriodFilter)}
-                  className="appearance-none h-9 pl-3 pr-8 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors cursor-pointer"
+                  className="appearance-none h-10 sm:h-9 pl-3 pr-8 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors cursor-pointer"
                 >
                   {PERIOD_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -464,57 +497,77 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
               <table className="min-w-full divide-y divide-amber-200">
                 <thead>
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider hidden sm:table-cell">
                       Date
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
-                      Invoice #
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
+                      Invoice
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider hidden md:table-cell">
                       Client
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-amber-900 uppercase tracking-wider">
+                    <th className="px-3 sm:px-4 py-3 text-right text-xs font-medium text-amber-900 uppercase tracking-wider">
                       Amount
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
-                      Assign to Shopper
+                    <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-amber-900 uppercase tracking-wider">
+                      {isShopper ? 'Action' : 'Assign'}
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-amber-900 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    {!isShopper && (
+                      <th className="px-3 sm:px-4 py-3 text-center text-xs font-medium text-amber-900 uppercase tracking-wider hidden sm:table-cell">
+                        More
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-amber-100">
                   {visibleSales.map((sale) => (
                     <tr key={sale.id} className="hover:bg-amber-50 transition-colors">
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                      <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-700 hidden sm:table-cell">
                         {formatDate(sale.sale_date)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {sale.xero_invoice_number || '—'}
+                      <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                        <div>{sale.xero_invoice_number || '—'}</div>
+                        <div className="text-xs text-gray-500 sm:hidden">{formatDate(sale.sale_date)}</div>
                       </td>
-                      <td className="px-4 py-4 text-sm text-gray-700 max-w-xs truncate">
+                      <td className="px-3 sm:px-4 py-3 sm:py-4 text-sm text-gray-700 max-w-xs truncate hidden md:table-cell">
                         {getClientName(sale)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                      <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900 text-right">
                         {formatCurrency(sale.sale_amount_inc_vat)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                      <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-sm">
                         {allocated.has(sale.id) ? (
                           <div className="flex items-center gap-2 text-green-600">
                             <CheckCircle className="w-4 h-4" />
-                            <span className="font-medium">Allocated</span>
+                            <span className="font-medium">{isShopper ? 'Claimed' : 'Allocated'}</span>
                           </div>
+                        ) : isShopper ? (
+                          /* Shopper sees a Claim button */
+                          <button
+                            onClick={() => handleClaim(sale.id)}
+                            disabled={claiming === sale.id}
+                            className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {claiming === sale.id ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Claiming...
+                              </>
+                            ) : (
+                              'Claim'
+                            )}
+                          </button>
                         ) : (
+                          /* Management sees a dropdown */
                           <div className="flex items-center gap-2">
                             <select
                               onChange={(e) => allocate(sale.id, e.target.value)}
                               disabled={allocating === sale.id}
-                              className="appearance-none h-9 pl-3 pr-8 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="appearance-none min-h-[44px] h-10 sm:h-9 pl-3 pr-8 py-1.5 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <option value="">Select shopper...</option>
                               {shoppers.map((shopper) => (
@@ -529,33 +582,35 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {sale.xero_invoice_id ? (
-                            <Link
-                              href={`/admin/sync/adopt/${sale.xero_invoice_id}`}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-colors"
-                            >
-                              <FileEdit className="w-3.5 h-3.5" />
-                              Adopt
-                            </Link>
-                          ) : (
-                            <span className="text-gray-400 text-xs">No Xero ID</span>
-                          )}
-                          <button
-                            onClick={() => handleDismiss(sale.id)}
-                            disabled={dismissing === sale.id}
-                            className="inline-flex items-center justify-center w-8 h-8 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Dismiss invoice"
-                          >
-                            {dismissing === sale.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                      {!isShopper && (
+                        <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-sm text-center hidden sm:table-cell">
+                          <div className="flex items-center justify-center gap-2">
+                            {sale.xero_invoice_id ? (
+                              <Link
+                                href={`/admin/sync/adopt/${sale.xero_invoice_id}`}
+                                className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 hover:border-purple-300 transition-colors"
+                              >
+                                <FileEdit className="w-3.5 h-3.5" />
+                                Adopt
+                              </Link>
                             ) : (
-                              <X className="w-4 h-4" />
+                              <span className="text-gray-400 text-xs">No Xero ID</span>
                             )}
-                          </button>
-                        </div>
-                      </td>
+                            <button
+                              onClick={() => handleDismiss(sale.id)}
+                              disabled={dismissing === sale.id}
+                              className="inline-flex items-center justify-center w-11 h-11 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Dismiss invoice"
+                            >
+                              {dismissing === sale.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <X className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -565,8 +620,8 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
         )}
       </div>
 
-      {/* Dismissed Invoices Section */}
-      {(visibleDismissedSales.length > 0 || dismissedSales.length > 0) && (
+      {/* Dismissed Invoices Section - Management only */}
+      {!isShopper && (visibleDismissedSales.length > 0 || dismissedSales.length > 0) && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
           <button
             onClick={() => setShowDismissed(!showDismissed)}
