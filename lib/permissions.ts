@@ -187,20 +187,31 @@ export function canAccessRoute(role: StaffRole, pathname: string): boolean {
     return true;
   }
 
-  // Find matching permission entry
-  for (const [route, config] of Object.entries(ROUTE_PERMISSIONS)) {
-    // Exact match
-    if (pathname === route) {
-      return config.allowedRoles.includes(role) ||
-             (config.readOnlyRoles?.includes(role) ?? false);
-    }
+  // 1. Exact match (most specific — checked first)
+  const exactMatch = ROUTE_PERMISSIONS[pathname];
+  if (exactMatch) {
+    return exactMatch.allowedRoles.includes(role) ||
+           (exactMatch.readOnlyRoles?.includes(role) ?? false);
+  }
 
-    // Sub-route match (e.g., /sales/123 matches /sales permission)
-    // EXCEPTION: /staff doesn't grant access to /staff/* routes
+  // 2. Find the most specific sub-route match (longest prefix wins)
+  //    e.g., /admin/sync/adopt/123 matches /admin/sync/adopt over /admin
+  //    EXCEPTION: /staff doesn't grant access to /staff/* routes
+  let bestRoute = "";
+  let bestConfig: typeof ROUTE_PERMISSIONS[string] | null = null;
+
+  for (const [route, config] of Object.entries(ROUTE_PERMISSIONS)) {
     if (route !== "/staff" && pathname.startsWith(route + "/")) {
-      return config.allowedRoles.includes(role) ||
-             (config.readOnlyRoles?.includes(role) ?? false);
+      if (route.length > bestRoute.length) {
+        bestRoute = route;
+        bestConfig = config;
+      }
     }
+  }
+
+  if (bestConfig) {
+    return bestConfig.allowedRoles.includes(role) ||
+           (bestConfig.readOnlyRoles?.includes(role) ?? false);
   }
 
   return false;
@@ -214,11 +225,29 @@ export function canAccessRoute(role: StaffRole, pathname: string): boolean {
  * @returns true if role has read-only access, false otherwise
  */
 export function isRouteReadOnly(role: StaffRole, pathname: string): boolean {
+  // Exact match first
+  const exactMatch = ROUTE_PERMISSIONS[pathname];
+  if (exactMatch) {
+    return exactMatch.readOnlyRoles?.includes(role) ?? false;
+  }
+
+  // Most specific sub-route match (longest prefix wins)
+  let bestRoute = "";
+  let bestConfig: typeof ROUTE_PERMISSIONS[string] | null = null;
+
   for (const [route, config] of Object.entries(ROUTE_PERMISSIONS)) {
-    if (pathname === route || (route !== "/staff" && pathname.startsWith(route + "/"))) {
-      return config.readOnlyRoles?.includes(role) ?? false;
+    if (route !== "/staff" && pathname.startsWith(route + "/")) {
+      if (route.length > bestRoute.length) {
+        bestRoute = route;
+        bestConfig = config;
+      }
     }
   }
+
+  if (bestConfig) {
+    return bestConfig.readOnlyRoles?.includes(role) ?? false;
+  }
+
   return false;
 }
 
