@@ -4,16 +4,17 @@
  * CRITICAL: Use these functions for ALL money calculations to prevent
  * JavaScript floating point precision errors.
  *
- * Without rounding, calculations like 25000 * 0.99999... produce
- * values like 24999.96 instead of 25000.00.
- *
- * These utilities ensure all currency values are properly rounded
- * to 2 decimal places.
+ * Uses exponential notation (e.g., parseFloat(value + 'e2')) to shift
+ * decimal places as STRINGS before rounding, avoiding the classic
+ * Math.round(1.005 * 100) = 100 (wrong) floating point bug.
  */
 
 /**
- * Round a number to 2 decimal places for currency.
- * Use this for ALL money calculations to prevent floating point errors.
+ * Round a number to 2 decimal places for currency using string-based
+ * decimal shifting to avoid floating point multiplication errors.
+ *
+ * Math.round(4999.995 * 100) = 499999 (WRONG - loses a penny)
+ * Math.round(parseFloat('4999.995e2')) = 500000 (CORRECT)
  *
  * @param value - The number to round
  * @returns Number rounded to 2 decimal places
@@ -22,7 +23,7 @@ export function roundCurrency(value: number | null | undefined): number {
   if (value === null || value === undefined || isNaN(value)) {
     return 0;
   }
-  return Math.round(value * 100) / 100;
+  return Number(Math.round(parseFloat(value + 'e2')) + 'e-2');
 }
 
 /**
@@ -33,7 +34,7 @@ export function roundCurrency(value: number | null | undefined): number {
  * @returns Product rounded to 2 decimal places
  */
 export function multiplyCurrency(a: number, b: number): number {
-  return Math.round(a * b * 100) / 100;
+  return roundCurrency(a * b);
 }
 
 /**
@@ -45,7 +46,7 @@ export function multiplyCurrency(a: number, b: number): number {
  */
 export function divideCurrency(a: number, b: number): number {
   if (b === 0) return 0;
-  return Math.round((a / b) * 100) / 100;
+  return roundCurrency(a / b);
 }
 
 /**
@@ -56,7 +57,7 @@ export function divideCurrency(a: number, b: number): number {
  */
 export function addCurrency(...values: (number | null | undefined)[]): number {
   const sum = values.reduce<number>((acc, val) => acc + (val || 0), 0);
-  return Math.round(sum * 100) / 100;
+  return roundCurrency(sum);
 }
 
 /**
@@ -67,7 +68,7 @@ export function addCurrency(...values: (number | null | undefined)[]): number {
  * @returns Difference rounded to 2 decimal places
  */
 export function subtractCurrency(a: number, b: number): number {
-  return Math.round((a - b) * 100) / 100;
+  return roundCurrency(a - b);
 }
 
 /**
@@ -78,5 +79,5 @@ export function subtractCurrency(a: number, b: number): number {
  * @returns The percentage amount rounded to 2 decimal places
  */
 export function percentOfCurrency(amount: number, percentage: number): number {
-  return Math.round(amount * (percentage / 100) * 100) / 100;
+  return roundCurrency(amount * (percentage / 100));
 }
