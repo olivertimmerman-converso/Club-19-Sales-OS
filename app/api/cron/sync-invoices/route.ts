@@ -363,19 +363,52 @@ export async function GET(request: NextRequest) {
             continue;
           }
 
-          // Find or create buyer
-          let [buyer] = await db
-            .select()
-            .from(buyers)
-            .where(ilike(buyers.name, `%${contactName}%`))
-            .limit(1);
+          // Find or create buyer — prefer xeroContactId match to avoid duplicates
+          const xeroContactId = invoice.Contact?.ContactID || null;
+          let buyer = null as typeof buyers.$inferSelect | null;
+
+          if (xeroContactId) {
+            const [found] = await db
+              .select()
+              .from(buyers)
+              .where(eq(buyers.xeroContactId, xeroContactId))
+              .limit(1);
+            buyer = found || null;
+
+            // Update name if it changed in Xero
+            if (buyer && buyer.name !== contactName) {
+              await db
+                .update(buyers)
+                .set({ name: contactName })
+                .where(eq(buyers.id, buyer.id));
+              buyer = { ...buyer, name: contactName };
+            }
+          }
+
+          // Fall back to name match if no xeroContactId match
+          if (!buyer) {
+            const [found] = await db
+              .select()
+              .from(buyers)
+              .where(ilike(buyers.name, `%${contactName}%`))
+              .limit(1);
+            buyer = found || null;
+
+            // Backfill xeroContactId if missing
+            if (buyer && xeroContactId && !buyer.xeroContactId) {
+              await db
+                .update(buyers)
+                .set({ xeroContactId })
+                .where(eq(buyers.id, buyer.id));
+            }
+          }
 
           if (!buyer) {
             const [created] = await db
               .insert(buyers)
               .values({
                 name: contactName,
-                xeroContactId: invoice.Contact?.ContactID || null,
+                xeroContactId,
               })
               .returning();
             buyer = created;

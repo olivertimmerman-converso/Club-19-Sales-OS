@@ -155,26 +155,49 @@ async function autoSyncXeroInvoice(saleId: string, saleReference: string): Promi
  * Find or create Buyer record
  */
 async function findOrCreateBuyer(buyerName: string, xeroContactId?: string) {
-  // ORIGINAL XATA:
-  // let buyer = await xata.db.Buyers
-  //   .filter({ name: buyerName })
-  //   .getFirst();
+  let buyer = null as typeof buyers.$inferSelect | null;
 
-  // DRIZZLE:
-  let [buyer] = await db
-    .select()
-    .from(buyers)
-    .where(eq(buyers.name, buyerName))
-    .limit(1);
+  // Prefer xeroContactId match to avoid duplicates when names change
+  if (xeroContactId) {
+    const [found] = await db
+      .select()
+      .from(buyers)
+      .where(eq(buyers.xeroContactId, xeroContactId))
+      .limit(1);
+    buyer = found || null;
+
+    // Update name if it changed in Xero
+    if (buyer && buyer.name !== buyerName) {
+      const [updated] = await db
+        .update(buyers)
+        .set({ name: buyerName })
+        .where(eq(buyers.id, buyer.id))
+        .returning();
+      buyer = updated;
+    }
+  }
+
+  // Fall back to name match
+  if (!buyer) {
+    const [found] = await db
+      .select()
+      .from(buyers)
+      .where(eq(buyers.name, buyerName))
+      .limit(1);
+    buyer = found || null;
+
+    // Backfill xeroContactId if missing
+    if (buyer && xeroContactId && !buyer.xeroContactId) {
+      const [updated] = await db
+        .update(buyers)
+        .set({ xeroContactId })
+        .where(eq(buyers.id, buyer.id))
+        .returning();
+      buyer = updated;
+    }
+  }
 
   if (!buyer) {
-    // ORIGINAL XATA:
-    // buyer = await xata.db.Buyers.create({
-    //   name: buyerName,
-    //   xero_contact_id: xeroContactId,
-    // });
-
-    // DRIZZLE:
     const [created] = await db
       .insert(buyers)
       .values({
@@ -183,19 +206,6 @@ async function findOrCreateBuyer(buyerName: string, xeroContactId?: string) {
       })
       .returning();
     buyer = created;
-  } else if (xeroContactId && !buyer.xeroContactId) {
-    // ORIGINAL XATA:
-    // buyer = await xata.db.Buyers.update(buyer.id, {
-    //   xero_contact_id: xeroContactId,
-    // });
-
-    // DRIZZLE:
-    const [updated] = await db
-      .update(buyers)
-      .set({ xeroContactId: xeroContactId })
-      .where(eq(buyers.id, buyer.id))
-      .returning();
-    buyer = updated;
   }
 
   return buyer;
