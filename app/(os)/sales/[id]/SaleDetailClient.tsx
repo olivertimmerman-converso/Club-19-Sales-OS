@@ -971,8 +971,8 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
 
   // Format currency
   const formatCurrency = (amount: number | null | undefined) => {
-    if (!amount) return '£0';
-    return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    if (!amount) return '£0.00';
+    return `£${amount.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   // Handle sale status transition (ongoing / completed)
