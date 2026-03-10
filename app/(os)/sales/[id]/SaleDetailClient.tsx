@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getBrandingThemeMapping } from '@/lib/branding-theme-mappings';
 import { BRANDS, CATEGORIES } from '@/lib/constants';
+import { NewSupplierModal } from '@/components/modals/NewSupplierModal';
 
 interface LinkedInvoice {
   xero_invoice_id: string;
@@ -257,11 +258,13 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
   const [editBuyPrice, setEditBuyPrice] = useState(sale.buy_price?.toString() || '0');
   const [editSupplierId, setEditSupplierId] = useState(sale.supplier?.id || '');
   const [supplierSearch, setSupplierSearch] = useState('');
+  const [supplierList, setSupplierList] = useState<Supplier[]>(suppliers);
+  const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
   const filteredSuppliers = useMemo(() => {
-    if (!supplierSearch) return suppliers;
+    if (!supplierSearch) return supplierList;
     const search = supplierSearch.toLowerCase();
-    return suppliers.filter((s) => s.name.toLowerCase().includes(search));
-  }, [suppliers, supplierSearch]);
+    return supplierList.filter((s) => s.name.toLowerCase().includes(search));
+  }, [supplierList, supplierSearch]);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
   const [editSuccess, setEditSuccess] = useState(false);
@@ -449,6 +452,13 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
     } finally {
       setIsSavingEdit(false);
     }
+  };
+
+  // Handle new supplier created from modal
+  const handleSupplierCreated = (supplier: { id: string; name: string; pending_approval: boolean }) => {
+    setSupplierList((prev) => [...prev, { id: supplier.id, name: supplier.name }]);
+    setEditSupplierId(supplier.id);
+    setSupplierSearch('');
   };
 
   // Handle cancelling edit mode
@@ -1396,6 +1406,16 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
+                  <div className="mt-1 flex items-center gap-1">
+                    <span className="text-xs text-gray-500">Can&apos;t find your supplier?</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewSupplierModal(true)}
+                      className="text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                    >
+                      + Add New Supplier
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-between group">
@@ -3061,6 +3081,13 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
           </div>
         </div>
       )}
+
+      {/* New Supplier Modal */}
+      <NewSupplierModal
+        open={showNewSupplierModal}
+        onClose={() => setShowNewSupplierModal(false)}
+        onCreated={handleSupplierCreated}
+      />
     </div>
   );
 }
