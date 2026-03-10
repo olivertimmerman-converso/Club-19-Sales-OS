@@ -2256,36 +2256,29 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
               <div className="p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Create Payment Plan</h3>
 
-                {/* Number of Instalments */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Number of Instalments
-                  </label>
-                  <input
-                    type="number"
-                    min="2"
-                    max="12"
-                    value={numberOfInstalments}
-                    onChange={(e) => {
-                      const num = parseInt(e.target.value);
-                      setNumberOfInstalments(num);
-                      // Recalculate suggested instalments
-                      const amountPerInstalment = sale.sale_amount_inc_vat / num;
-                      const suggested = Array.from({ length: num }, () => ({
-                        due_date: '',
-                        amount: amountPerInstalment.toFixed(2),
-                      }));
-                      setPlanInstalments(suggested);
-                    }}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
-                  />
-                </div>
-
                 {/* Instalments */}
-                <div className="space-y-4 mb-6">
+                <div className="space-y-3 mb-4">
                   {planInstalments.map((inst, idx) => (
                     <div key={idx} className="border border-gray-200 rounded-lg p-4">
-                      <h4 className="text-sm font-medium text-gray-900 mb-3">Instalment {idx + 1}</h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-900">Instalment {idx + 1}</h4>
+                        {planInstalments.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = planInstalments.filter((_, i) => i !== idx);
+                              setPlanInstalments(updated);
+                              setNumberOfInstalments(updated.length);
+                            }}
+                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                            title="Remove instalment"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -2322,6 +2315,29 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                     </div>
                   ))}
                 </div>
+
+                {/* Add Instalment Button */}
+                {planInstalments.length < 12 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newCount = planInstalments.length + 1;
+                      const amountPerInstalment = (sale.sale_amount_inc_vat / newCount).toFixed(2);
+                      const updated = [
+                        ...planInstalments.map((inst) => ({ ...inst, amount: amountPerInstalment })),
+                        { due_date: '', amount: amountPerInstalment },
+                      ];
+                      setPlanInstalments(updated);
+                      setNumberOfInstalments(newCount);
+                    }}
+                    className="w-full mb-6 inline-flex justify-center items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 text-sm font-medium rounded-lg text-gray-600 hover:border-purple-400 hover:text-purple-600 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Instalment
+                  </button>
+                )}
 
                 {/* Total */}
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg">

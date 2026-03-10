@@ -288,6 +288,9 @@ export function CompleteDataClient({
         if (lineItemSuppliersArray.length > 0) {
           payload.supplier = lineItemSuppliersArray[0].supplierId;
           payload.line_item_suppliers = lineItemSuppliersArray;
+        } else if (supplierId) {
+          // Fallback: use single supplierId if no per-line-item selections
+          payload.supplier = supplierId;
         }
       } else if (supplierId) {
         payload.supplier = supplierId;
@@ -372,6 +375,16 @@ export function CompleteDataClient({
     setSupplierList((prev) => [...prev, { id: supplier.id, name: supplier.name, pendingApproval: supplier.pending_approval }]);
     setSupplierId(supplier.id);
     setSupplierSearch("");
+    // Auto-assign to all line items that don't already have a supplier
+    if (hasLineItems) {
+      setLineItemSuppliers((prev) => {
+        const updated = { ...prev };
+        for (const li of initialLineItems) {
+          if (!updated[li.id]) updated[li.id] = supplier.id;
+        }
+        return updated;
+      });
+    }
   };
 
   // Filter unallocated imports to same currency
