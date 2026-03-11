@@ -726,12 +726,13 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
 
   // Payment plan handlers
   const handleCreatePaymentPlan = () => {
-    // Auto-suggest even split across 3 instalments
+    // Auto-suggest even split across 3 instalments (last gets remainder to avoid rounding errors)
     const defaultCount = 3;
-    const amountPerInstalment = sale.sale_amount_inc_vat / defaultCount;
+    const perInstalment = Math.floor((sale.sale_amount_inc_vat / defaultCount) * 100) / 100;
+    const lastAmount = Math.round((sale.sale_amount_inc_vat - perInstalment * (defaultCount - 1)) * 100) / 100;
     const suggestedInstalments = Array.from({ length: defaultCount }, (_, i) => ({
       due_date: '',
-      amount: amountPerInstalment.toFixed(2),
+      amount: (i < defaultCount - 1 ? perInstalment : lastAmount).toFixed(2),
     }));
     setPlanInstalments(suggestedInstalments);
     setShowCreatePlanModal(true);
@@ -2287,8 +2288,10 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                             type="button"
                             onClick={() => {
                               const updated = planInstalments.filter((_, i) => i !== idx);
-                              const amountPerInstalment = (sale.sale_amount_inc_vat / updated.length).toFixed(2);
-                              setPlanInstalments(updated.map((inst) => ({ ...inst, amount: amountPerInstalment })));
+                              const count = updated.length;
+                              const perInstalment = Math.floor((sale.sale_amount_inc_vat / count) * 100) / 100;
+                              const lastAmount = Math.round((sale.sale_amount_inc_vat - perInstalment * (count - 1)) * 100) / 100;
+                              setPlanInstalments(updated.map((inst, i) => ({ ...inst, amount: (i < count - 1 ? perInstalment : lastAmount).toFixed(2) })));
                             }}
                             className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                             title="Remove instalment"
@@ -2342,10 +2345,11 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                     type="button"
                     onClick={() => {
                       const newCount = planInstalments.length + 1;
-                      const amountPerInstalment = (sale.sale_amount_inc_vat / newCount).toFixed(2);
+                      const perInstalment = Math.floor((sale.sale_amount_inc_vat / newCount) * 100) / 100;
+                      const lastAmount = Math.round((sale.sale_amount_inc_vat - perInstalment * (newCount - 1)) * 100) / 100;
                       const updated = [
-                        ...planInstalments.map((inst) => ({ ...inst, amount: amountPerInstalment })),
-                        { due_date: '', amount: amountPerInstalment },
+                        ...planInstalments.map((inst, i) => ({ ...inst, amount: (i < newCount - 1 ? perInstalment : lastAmount).toFixed(2) })),
+                        { due_date: '', amount: lastAmount.toFixed(2) },
                       ];
                       setPlanInstalments(updated);
                     }}
@@ -2797,7 +2801,8 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                   </div>
                 )}
 
-                {/* Invoice table */}
+                {/* Invoice table — only show when there are actual linked invoices */}
+                {sale.linked_invoices?.length > 0 && (
                 <div className="bg-white rounded-lg border border-indigo-200 overflow-hidden mb-4">
                   <table className="min-w-full divide-y divide-indigo-200">
                     <thead className="bg-indigo-100">
@@ -2883,6 +2888,7 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                     </tfoot>
                   </table>
                 </div>
+                )}
 
                 {/* Link another invoice button (superadmin only) */}
                 {['superadmin', 'operations'].includes(userRole || '') && unallocatedXeroImports.length > 0 && (

@@ -6,6 +6,7 @@ import { TaxRegime } from "@/lib/types/invoice";
 import * as logger from '@/lib/logger';
 import { roundCurrency, subtractCurrency, multiplyCurrency, addCurrency } from '@/lib/utils/currency';
 import { toTitleCase } from '@/lib/utils/normalise';
+import { NewSupplierModal } from '@/components/modals/NewSupplierModal';
 
 // Xata Supplier type
 interface XataSupplier {
@@ -45,6 +46,8 @@ export function StepPricing() {
   const [loadingSupplier, setLoadingSupplier] = useState(false);
   const [supplierNoResults, setSupplierNoResults] = useState(false);
   const [supplierCreateError, setSupplierCreateError] = useState<string | null>(null);
+  const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
+  const [newSupplierForItemId, setNewSupplierForItemId] = useState<string | null>(null);
   const supplierDebounceTimer = useRef<NodeJS.Timeout | null>(null);
   const supplierAbortController = useRef<AbortController | null>(null);
 
@@ -231,6 +234,15 @@ export function StepPricing() {
     }
   };
 
+  // Handle supplier created via NewSupplierModal
+  const handleNewSupplierCreated = (supplier: { id: string; name: string; pending_approval: boolean }) => {
+    const itemId = newSupplierForItemId;
+    if (!itemId) return;
+    selectSupplier(itemId, { id: supplier.id, name: supplier.name, email: '' });
+    setShowNewSupplierModal(false);
+    setNewSupplierForItemId(null);
+  };
+
   // Sync supplier to context on blur (for manually typed suppliers)
   const handleSupplierBlur = (itemId: string) => {
     const supplier = localSuppliers[itemId];
@@ -391,6 +403,20 @@ export function StepPricing() {
                         </svg>
                       </div>
                     )}
+
+                    {/* Add New Supplier link */}
+                    {!supplier.xataId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewSupplierForItemId(item.id);
+                          setShowNewSupplierModal(true);
+                        }}
+                        className="mt-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                      >
+                        + Add New Supplier
+                      </button>
+                    )}
                   </td>
                   <td className="px-3 py-3 text-center text-sm text-gray-900">
                     {item.quantity}
@@ -531,6 +557,12 @@ export function StepPricing() {
       <div className="text-sm text-gray-500">
         <p>Search and select suppliers for each item. Tab between fields to move quickly.</p>
       </div>
+
+      <NewSupplierModal
+        open={showNewSupplierModal}
+        onClose={() => { setShowNewSupplierModal(false); setNewSupplierForItemId(null); }}
+        onCreated={handleNewSupplierCreated}
+      />
     </div>
   );
 }

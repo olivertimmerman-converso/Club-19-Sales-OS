@@ -100,10 +100,23 @@ export async function POST(
       }
     }
 
-    // Prevent linking a sale to itself
+    // Prevent linking a sale to itself (by DB id or Xero invoice id)
     if (sale.id === xero_import_id) {
       return NextResponse.json(
         { error: 'Cannot link a sale to itself' },
+        { status: 400 }
+      );
+    }
+
+    // Also check by Xero invoice ID (prevents linking duplicate DB records of the same invoice)
+    const [importToCheck] = await db
+      .select({ xeroInvoiceId: sales.xeroInvoiceId })
+      .from(sales)
+      .where(eq(sales.id, xero_import_id))
+      .limit(1);
+    if (importToCheck && sale.xeroInvoiceId && importToCheck.xeroInvoiceId === sale.xeroInvoiceId) {
+      return NextResponse.json(
+        { error: 'Cannot link an invoice to itself' },
         { status: 400 }
       );
     }
