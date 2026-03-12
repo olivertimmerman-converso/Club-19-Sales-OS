@@ -52,19 +52,32 @@ export function SalesTableClient({ sales, shoppers, userRole, isDeletedSection =
   // Scroll fade indicator for horizontal table overflow
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollFade, setShowScrollFade] = useState(false);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const scrollHintDismissed = useRef(false);
 
   const handleTableScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
     const canScrollMore = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
     setShowScrollFade(canScrollMore);
+    // Dismiss hint once user starts scrolling — don't bring it back
+    if (el.scrollLeft > 0 && !scrollHintDismissed.current) {
+      scrollHintDismissed.current = true;
+      setShowScrollHint(false);
+    }
   };
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const check = () => {
-      setShowScrollFade(el.scrollWidth > el.clientWidth && el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+      const overflows = el.scrollWidth > el.clientWidth;
+      const canScrollMore = overflows && el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+      setShowScrollFade(canScrollMore);
+      // Show hint only if table overflows and user hasn't scrolled yet
+      if (overflows && !scrollHintDismissed.current && el.scrollLeft === 0) {
+        setShowScrollHint(true);
+      }
     };
     check();
     window.addEventListener('resize', check);
@@ -461,9 +474,16 @@ export function SalesTableClient({ sales, shoppers, userRole, isDeletedSection =
         </div>
         {showScrollFade && (
           <div
-            className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none"
-            style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.9))' }}
+            className="absolute right-0 top-0 bottom-0 w-12 pointer-events-none"
+            style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.95))' }}
           />
+        )}
+        {showScrollHint && (
+          <div className="absolute right-3 top-3 pointer-events-none z-10">
+            <span className="text-[11px] text-gray-400 bg-white/80 backdrop-blur-sm px-2 py-1 rounded-full border border-gray-200/60 tracking-wide">
+              Scroll &#8594;
+            </span>
+          </div>
         )}
       </div>
     </>
