@@ -503,10 +503,11 @@ export async function OperationsDashboard({
             <span className="text-amber-400 text-sm">→</span>
           </div>
           <p className="text-xs text-amber-600 mt-1">Pending assignment</p>
+          <p className="text-[10px] text-amber-400 mt-0.5">Since Jan 2026</p>
         </Link>
 
         <Link
-          href="/sales?filter=incomplete"
+          href="/sales?status=needs-attention"
           className="bg-slate-50 border border-slate-200 rounded-lg p-4 hover:border-slate-300 transition-colors"
         >
           <div className="flex items-center justify-between">
@@ -517,6 +518,7 @@ export async function OperationsDashboard({
             <span className="text-slate-400 text-sm">→</span>
           </div>
           <p className="text-xs text-slate-600 mt-1">Missing data</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">Since Jan 2026</p>
         </Link>
 
         <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -528,6 +530,7 @@ export async function OperationsDashboard({
             <span className="text-green-400">✓</span>
           </div>
           <p className="text-xs text-green-600 mt-1">Data finalized</p>
+          <p className="text-[10px] text-green-400 mt-0.5">Today</p>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
@@ -48,6 +48,28 @@ export function SalesTableClient({ sales, shoppers, userRole, isDeletedSection =
   const [updating, setUpdating] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Scroll fade indicator for horizontal table overflow
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollFade, setShowScrollFade] = useState(false);
+
+  const handleTableScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const canScrollMore = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setShowScrollFade(canScrollMore);
+  };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const check = () => {
+      setShowScrollFade(el.scrollWidth > el.clientWidth && el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [sales]);
 
   const handleShopperChange = async (saleId: string, shopperId: string) => {
     setUpdating(saleId);
@@ -262,8 +284,12 @@ export function SalesTableClient({ sales, shoppers, userRole, isDeletedSection =
       </div>
 
       {/* ── Desktop Table View ── */}
-      <div className="hidden md:block bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="hidden md:block bg-white rounded-lg border border-gray-200 shadow-sm relative">
+        <div
+          ref={scrollRef}
+          onScroll={handleTableScroll}
+          className="overflow-x-auto custom-scrollbar"
+        >
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -433,6 +459,12 @@ export function SalesTableClient({ sales, shoppers, userRole, isDeletedSection =
             </tbody>
           </table>
         </div>
+        {showScrollFade && (
+          <div
+            className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none"
+            style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.9))' }}
+          />
+        )}
       </div>
     </>
   );
