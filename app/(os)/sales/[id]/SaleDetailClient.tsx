@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getBrandingThemeMapping } from '@/lib/branding-theme-mappings';
@@ -155,6 +155,131 @@ function getVATLogicExplanation(brandingTheme: string | null, effectiveVATPercen
     hasDiscrepancy,
     themeName: mapping.name,
   };
+}
+
+function InvoiceSearchSelect({
+  invoices,
+  selectedId,
+  onSelect,
+  disabled,
+  placeholder,
+  formatCurrency,
+  formatDate,
+  highlightBuyerName,
+}: {
+  invoices: XeroImport[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  formatCurrency: (amount: number | null | undefined) => string;
+  formatDate: (date: string | null | undefined) => string;
+  highlightBuyerName?: string;
+}) {
+  const [search, setSearch] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedInvoice = invoices.find(inv => inv.id === selectedId);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return invoices;
+    const q = search.toLowerCase();
+    return invoices.filter(inv =>
+      inv.xero_invoice_number.toLowerCase().includes(q) ||
+      inv.buyer_name.toLowerCase().includes(q)
+    );
+  }, [invoices, search]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      {selectedInvoice && !isOpen ? (
+        <div className="flex items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm">
+          <span className="truncate">
+            <span className="font-medium">{selectedInvoice.xero_invoice_number}</span>
+            {' - '}{selectedInvoice.buyer_name}
+            {' - '}{formatCurrency(selectedInvoice.sale_amount_inc_vat)}
+            {' ('}{formatDate(selectedInvoice.sale_date)}{')'}
+            {highlightBuyerName && selectedInvoice.buyer_name === highlightBuyerName && (
+              <span className="ml-1 text-green-600 text-xs">(Same Client)</span>
+            )}
+          </span>
+          <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => { if (!disabled) { setIsOpen(true); setSearch(''); } }}
+              disabled={disabled}
+              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              title="Change selection"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => { if (!disabled) onSelect(''); }}
+              disabled={disabled}
+              className="p-1 text-gray-400 hover:text-red-500 disabled:opacity-50"
+              title="Clear selection"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setIsOpen(true); }}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder || 'Search invoices...'}
+          disabled={disabled}
+          className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+        />
+      )}
+
+      {isOpen && (
+        <ul className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md bg-white border border-gray-200 shadow-lg text-sm">
+          {filtered.length === 0 ? (
+            <li className="px-3 py-2 text-gray-500">No matching invoices</li>
+          ) : (
+            filtered.map((inv) => (
+              <li
+                key={inv.id}
+                onClick={() => {
+                  onSelect(inv.id);
+                  setSearch('');
+                  setIsOpen(false);
+                }}
+                className={`cursor-pointer px-3 py-2 hover:bg-purple-50 ${inv.id === selectedId ? 'bg-purple-100 font-medium' : ''}`}
+              >
+                <span className="font-medium">{inv.xero_invoice_number}</span>
+                {' - '}{inv.buyer_name}
+                {' - '}{formatCurrency(inv.sale_amount_inc_vat)}
+                {' ('}{formatDate(inv.sale_date)}{')'}
+                {highlightBuyerName && inv.buyer_name === highlightBuyerName && (
+                  <span className="ml-1 text-green-600 text-xs">(Same Client)</span>
+                )}
+              </li>
+            ))
+          )}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unallocatedXeroImports }: SaleDetailClientProps) {
@@ -1773,7 +1898,7 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-600">Shipping Cost</dt>
                   <dd className="text-sm font-medium text-gray-900">
-                    {sale.shipping_method === 'to_be_shipped' && !sale.shipping_cost_confirmed ? (
+                    {!sale.shipping_cost_confirmed ? (
                       <span className="text-amber-600 font-medium">Pending</span>
                     ) : (
                       formatCurrency(sale.shipping_cost)
@@ -1814,7 +1939,7 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                   </div>
                 </div>
               </div>
-              {sale.shipping_method === 'to_be_shipped' && !sale.shipping_cost_confirmed && (
+              {!sale.shipping_cost_confirmed && (
                 <p className="text-xs text-amber-700 italic mt-2">
                   Note: Excludes shipping - not yet confirmed
                 </p>
@@ -2943,22 +3068,16 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Select Invoice</label>
-                <select
-                  value={selectedLinkInvoiceId}
-                  onChange={(e) => setSelectedLinkInvoiceId(e.target.value)}
-                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                <InvoiceSearchSelect
+                  invoices={unallocatedXeroImports.filter(imp => imp.currency === sale.currency)}
+                  selectedId={selectedLinkInvoiceId}
+                  onSelect={(id) => setSelectedLinkInvoiceId(id)}
                   disabled={isLinkingAdditional}
-                >
-                  <option value="">Choose an invoice...</option>
-                  {unallocatedXeroImports
-                    .filter(imp => imp.currency === sale.currency)
-                    .map((imp) => (
-                      <option key={imp.id} value={imp.id}>
-                        {imp.xero_invoice_number} - {imp.buyer_name} - {formatCurrency(imp.sale_amount_inc_vat)} ({formatDate(imp.sale_date)})
-                        {imp.buyer_name === sale.buyer?.name ? ' (Same Client)' : ''}
-                      </option>
-                    ))}
-                </select>
+                  placeholder="Search by invoice number or client name..."
+                  formatCurrency={formatCurrency}
+                  formatDate={formatDate}
+                  highlightBuyerName={sale.buyer?.name}
+                />
                 {unallocatedXeroImports.filter(imp => imp.currency !== sale.currency).length > 0 && (
                   <p className="mt-2 text-xs text-gray-500">
                     {unallocatedXeroImports.filter(imp => imp.currency !== sale.currency).length} invoice(s) hidden due to different currency
@@ -3030,32 +3149,26 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                   </div>
                 )}
 
-                <div className="flex items-center gap-3">
-                  <select
-                    value={selectedXeroImportId}
-                    onChange={(e) => {
-                      setSelectedXeroImportId(e.target.value);
-                      setLinkError(null);
-                      setLinkSuccess(false);
-                    }}
-                    className="flex-1 rounded-md border-blue-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
-                    disabled={isLinking}
-                  >
-                    <option value="">Select Xero Invoice...</option>
-                    {unallocatedXeroImports.map((imp) => (
-                      <option key={imp.id} value={imp.id}>
-                        {imp.xero_invoice_number} - {imp.buyer_name} - £{imp.sale_amount_inc_vat.toLocaleString('en-GB')} ({formatDate(imp.sale_date)})
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleLinkXero}
-                    disabled={!selectedXeroImportId || isLinking}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isLinking ? (sale.xero_invoice_id ? 'Re-linking...' : 'Linking...') : (sale.xero_invoice_id ? 'Re-link Invoice' : 'Link Invoice')}
-                  </button>
-                </div>
+                <InvoiceSearchSelect
+                  invoices={unallocatedXeroImports}
+                  selectedId={selectedXeroImportId}
+                  onSelect={(id) => {
+                    setSelectedXeroImportId(id);
+                    setLinkError(null);
+                    setLinkSuccess(false);
+                  }}
+                  disabled={isLinking}
+                  placeholder="Search by invoice number or client name..."
+                  formatCurrency={formatCurrency}
+                  formatDate={formatDate}
+                />
+                <button
+                  onClick={handleLinkXero}
+                  disabled={!selectedXeroImportId || isLinking}
+                  className="mt-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isLinking ? (sale.xero_invoice_id ? 'Re-linking...' : 'Linking...') : (sale.xero_invoice_id ? 'Re-link Invoice' : 'Link Invoice')}
+                </button>
               </div>
             </div>
           </div>
