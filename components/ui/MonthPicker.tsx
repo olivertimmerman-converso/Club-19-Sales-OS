@@ -21,7 +21,9 @@ export function MonthPicker({ className = "" }: MonthPickerProps) {
 
   const currentMonth = searchParams.get("month") || "current";
 
-  // Generate last 12 months options
+  const EARLIEST_MONTH = new Date(2026, 0, 1); // January 2026
+
+  // Generate month options back to January 2026
   const generateMonthOptions = () => {
     const options: { value: string; label: string }[] = [
       { value: "current", label: "This Month" },
@@ -30,20 +32,14 @@ export function MonthPicker({ className = "" }: MonthPickerProps) {
     ];
 
     const now = new Date();
-    for (let i = 0; i < 12; i++) {
+    for (let i = 2; ; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      if (date < EARLIEST_MONTH) break;
       const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       const label = date.toLocaleDateString("en-GB", {
         month: "long",
         year: "numeric",
       });
-
-      // Skip if this is current month (already have "This Month")
-      if (i === 0) continue;
-
-      // Skip if this is last month (already have "Last Month")
-      if (i === 1) continue;
-
       options.push({ value, label });
     }
 
