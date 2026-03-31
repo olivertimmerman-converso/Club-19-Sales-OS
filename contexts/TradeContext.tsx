@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import {
   Trade,
   TradeItem,
@@ -13,6 +13,74 @@ import {
   WizardState,
 } from "@/lib/types/invoice";
 import { v4 as uuidv4 } from "uuid";
+
+// ============================================================================
+// DRAFT PERSISTENCE
+// ============================================================================
+
+const DRAFT_KEY = "club19_trade_draft";
+const DRAFT_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+interface DraftEnvelope {
+  savedAt: number; // timestamp
+  state: Partial<WizardState>;
+}
+
+function saveDraft(state: WizardState): void {
+  try {
+    const draft: DraftEnvelope = {
+      savedAt: Date.now(),
+      state: {
+        currentStep: state.currentStep,
+        items: state.items,
+        buyer: state.buyer,
+        currentPaymentMethod: state.currentPaymentMethod,
+        deliveryCountry: state.deliveryCountry,
+        shippingCost: state.shippingCost,
+        taxScenario: state.taxScenario,
+        itemLocation: state.itemLocation,
+        clientLocation: state.clientLocation,
+        purchaseType: state.purchaseType,
+        directShip: state.directShip,
+        landedDelivery: state.landedDelivery,
+        hasDeliveryCost: state.hasDeliveryCost,
+        hasIntroducer: state.hasIntroducer,
+        dueDate: state.dueDate,
+        notes: state.notes,
+        estimatedImportExportGBP: state.estimatedImportExportGBP,
+        importVAT: state.importVAT,
+      },
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // localStorage full or unavailable — silently ignore
+  }
+}
+
+function loadDraft(): DraftEnvelope | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const draft: DraftEnvelope = JSON.parse(raw);
+    if (Date.now() - draft.savedAt > DRAFT_MAX_AGE_MS) {
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
+    // Require at least one item to consider it a meaningful draft
+    if (!draft.state.items || draft.state.items.length === 0) {
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
+    return draft;
+  } catch {
+    localStorage.removeItem(DRAFT_KEY);
+    return null;
+  }
+}
+
+export function clearDraft(): void {
+  try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+}
 
 type TradeContextType = {
   state: WizardState;
@@ -78,6 +146,11 @@ type TradeContextType = {
 
   // Reset
   resetWizard: () => void;
+
+  // Draft persistence
+  draftPrompt: DraftEnvelope | null;
+  resumeDraft: () => void;
+  discardDraft: () => void;
 };
 
 const TradeContext = createContext<TradeContextType | undefined>(undefined);
@@ -115,6 +188,31 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<WizardState>(createInitialState);
   const [navigationDirection, setNavigationDirection] = useState<"forward" | "back">("forward");
   const [resetKey, setResetKey] = useState(0);
+  const [draftPrompt, setDraftPrompt] = useState<DraftEnvelope | null>(null);
+  const draftTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Check for saved draft on mount
+  useEffect(() => {
+    const draft = loadDraft();
+    if (draft) {
+      setDraftPrompt(draft);
+    }
+  }, []);
+
+  // Auto-save draft on state changes (debounced 500ms)
+  useEffect(() => {
+    // Don't save if submitting or if there are no items yet
+    if (state.isSubmitting || state.items.length === 0) return;
+
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      saveDraft(state);
+    }, 500);
+
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [state]);
 
   const goToStep = useCallback((step: WizardStep) => {
     setState((prev) => {
@@ -349,6 +447,30 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setState(createInitialState());
     setNavigationDirection("forward");
     setResetKey((prev) => prev + 1); // Force remount of all step components
+    clearDraft();
+  }, []);
+
+  // Resume a saved draft
+  const resumeDraft = useCallback(() => {
+    if (!draftPrompt?.state) return;
+    setState((prev) => ({
+      ...prev,
+      ...draftPrompt.state,
+      // Reset UI state
+      isSubmitting: false,
+      error: null,
+      editingItemId: null,
+      currentItem: null,
+      currentSupplier: null,
+      impliedCosts: null,
+    }));
+    setDraftPrompt(null);
+  }, [draftPrompt]);
+
+  // Discard draft and start fresh
+  const discardDraft = useCallback(() => {
+    clearDraft();
+    setDraftPrompt(null);
   }, []);
 
   const value: TradeContextType = {
@@ -387,6 +509,9 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setSubmitting,
     setError,
     resetWizard,
+    draftPrompt,
+    resumeDraft,
+    discardDraft,
   };
 
   return (

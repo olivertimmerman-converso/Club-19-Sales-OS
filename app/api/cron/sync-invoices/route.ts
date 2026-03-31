@@ -94,6 +94,7 @@ interface XeroInvoice {
   AmountDue: number;
   AmountPaid: number;
   UpdatedDateUTC: string;
+  BrandingThemeID?: string;
   Contact?: {
     ContactID: string;
     Name: string;
@@ -307,12 +308,23 @@ export async function GET(request: NextRequest) {
           const amountsChanged = xeroIsNewer && (
             roundCurrency(toNumber(existing.saleAmountIncVat)) !== roundCurrency(invoice.Total || 0)
           );
+          // Backfill brandingTheme if we have it from Xero and the local record is missing it
+          const brandingThemeNeedsBackfill = invoice.BrandingThemeID && !existing.brandingTheme;
 
-          if (statusChanged || amountsChanged) {
+          if (statusChanged || amountsChanged || brandingThemeNeedsBackfill) {
             const updateSet: Record<string, any> = {
               invoiceStatus: invoice.Status,
               invoicePaidDate: invoice.FullyPaidOnDate ? safeDate(invoice.FullyPaidOnDate) : null,
             };
+
+            // Backfill branding theme from Xero
+            if (brandingThemeNeedsBackfill) {
+              updateSet.brandingTheme = invoice.BrandingThemeID;
+              logger.info('XERO_CRON_INVOICES', 'Backfilling brandingTheme from Xero', {
+                invoiceNumber: invoice.InvoiceNumber,
+                brandingThemeID: invoice.BrandingThemeID,
+              });
+            }
 
             if (amountsChanged) {
               const newIncVat = roundCurrency(invoice.Total || 0);
@@ -439,6 +451,7 @@ export async function GET(request: NextRequest) {
               quantity: firstItem.Quantity || 1,
               buyPrice: 0,
               grossMargin: 0,
+              brandingTheme: invoice.BrandingThemeID || null,
               internalNotes: importNotes,
             })
             .returning();

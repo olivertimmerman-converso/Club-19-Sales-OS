@@ -330,7 +330,8 @@ export function StepPricing() {
               const isSearchActive = activeSupplierSearch === item.id;
 
               return (
-                <tr key={item.id} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                <React.Fragment key={item.id}>
+                <tr className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                   <td className="px-3 py-3">
                     <div className="text-sm font-medium text-gray-900">
                       {item.brand} {item.category}
@@ -459,6 +460,33 @@ export function StepPricing() {
                     </span>
                   </td>
                 </tr>
+                {/* Purchase tracking row */}
+                <tr className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                  <td colSpan={6} className="px-3 pb-3 pt-0">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="flex-1">
+                        <label className="text-xs text-gray-500">Supplier Invoice No.</label>
+                        <input
+                          type="text"
+                          value={item.supplierInvoiceRef || ""}
+                          onChange={(e) => updateItem(item.id, { supplierInvoiceRef: e.target.value || undefined })}
+                          placeholder="e.g. INV-001 or Pending"
+                          className="w-full border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-purple-400"
+                        />
+                      </div>
+                      <div className="flex-1 sm:max-w-[180px]">
+                        <label className="text-xs text-gray-500">Date Purchased</label>
+                        <input
+                          type="date"
+                          value={item.datePurchased || new Date().toISOString().split("T")[0]}
+                          onChange={(e) => updateItem(item.id, { datePurchased: e.target.value || undefined })}
+                          className="w-full border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-purple-400"
+                        />
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                </React.Fragment>
               );
             })}
           </tbody>

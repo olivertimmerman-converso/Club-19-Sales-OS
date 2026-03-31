@@ -14,7 +14,7 @@ type WizardShellProps = {
 };
 
 export function WizardShell({ children }: WizardShellProps) {
-  const { state, canGoNext, canGoPrev, nextStep, prevStep, goToStep, canGoToStep, resetWizard } = useTrade();
+  const { state, canGoNext, canGoPrev, nextStep, prevStep, goToStep, canGoToStep, resetWizard, draftPrompt, resumeDraft, discardDraft } = useTrade();
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
 
   // Scroll to top on step change
@@ -73,6 +73,31 @@ export function WizardShell({ children }: WizardShellProps) {
           </button>
         </div>
       </div>
+
+      {/* Draft Resume Prompt */}
+      {draftPrompt && (
+        <div className="mb-6 rounded-xl border border-purple-200 bg-purple-50 p-4">
+          <p className="text-sm font-medium text-purple-900 mb-3">
+            You have an unsaved draft ({draftPrompt.state.items?.length || 0} item{(draftPrompt.state.items?.length || 0) !== 1 ? "s" : ""}). Resume where you left off?
+          </p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={resumeDraft}
+              className="flex-1 bg-purple-600 text-white text-sm font-medium py-2 px-4 rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              Resume Draft
+            </button>
+            <button
+              type="button"
+              onClick={discardDraft}
+              className="flex-1 border border-purple-300 text-purple-700 text-sm font-medium py-2 px-4 rounded-lg hover:bg-purple-100 transition-colors"
+            >
+              Start Fresh
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Progress Bar */}
       <nav className="mb-6" aria-label="Progress">

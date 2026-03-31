@@ -957,6 +957,8 @@ export interface LineItemData {
   lineMargin: number;
   supplierName?: string;
   supplierId?: string;
+  supplierInvoiceRef?: string;
+  datePurchased?: string;
 }
 
 /**
@@ -1015,6 +1017,8 @@ export async function saveLineItems(
           lineTotal: item.lineTotal,
           lineMargin: item.lineMargin,
           supplierId: item.supplierId || undefined,
+          supplierInvoiceRef: item.supplierInvoiceRef || undefined,
+          datePurchased: item.datePurchased ? new Date(item.datePurchased) : undefined,
         })
         .returning();
 

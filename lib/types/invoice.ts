@@ -73,6 +73,10 @@ export type TradeItem = {
   lineAmountTypes: string;
   brandTheme: string;
 
+  // Purchase tracking
+  supplierInvoiceRef?: string; // Supplier's invoice/receipt reference
+  datePurchased?: string; // ISO date string (YYYY-MM-DD) — when item was purchased from supplier
+
   // Computed fields (optional, calculated on review)
   buyPriceGBP?: number; // Computed: buyPrice * fxRate (if needed)
   sellPriceGBP?: number; // Computed: sellPrice (if GBP) or converted

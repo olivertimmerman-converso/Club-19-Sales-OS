@@ -64,9 +64,7 @@ function getTabsForRole(role: StaffRole): TabConfig[] {
     case "shopper":
       return [
         { label: "New Sale", href: "/trade/new", icon: PlusCircle },
-        { label: "Sales", href: "/sales", icon: Briefcase },
-        { label: "Pending", href: "/admin/sync", icon: Hourglass },
-        { label: "Clients", href: "/clients", icon: Users },
+        { label: "My Sales", href: "/sales", icon: Briefcase },
       ];
     case "founder":
     case "operations":

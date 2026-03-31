@@ -136,6 +136,8 @@ export function StepReview() {
         lineTotal: multiplyCurrency(roundCurrency(item.sellPrice), item.quantity),
         lineMargin: multiplyCurrency(subtractCurrency(roundCurrency(item.sellPrice), roundCurrency(item.buyPrice)), item.quantity),
         supplierName: item.supplier?.name || state.currentSupplier?.name,
+        supplierInvoiceRef: item.supplierInvoiceRef || undefined,
+        datePurchased: item.datePurchased || undefined,
       }));
 
       // Add handling/shipping line item if applicable
@@ -151,6 +153,8 @@ export function StepReview() {
           lineTotal: handlingLineItem.total,
           lineMargin: 0,
           supplierName: '',
+          supplierInvoiceRef: undefined,
+          datePurchased: undefined,
         });
       }
 
@@ -219,6 +223,8 @@ export function StepReview() {
         url: data.invoiceUrl,
       });
 
+      // Clear draft before navigating away
+      try { localStorage.removeItem("club19_trade_draft"); } catch { /* ignore */ }
       window.location.href = `/trade/success?${successUrl.toString()}`;
     } catch (err) {
       const message = err instanceof Error ? err.message : "An unexpected error occurred";

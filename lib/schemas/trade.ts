@@ -58,6 +58,10 @@ export const TradeItemSchema = z.object({
   lineAmountTypes: z.string().min(1),
   brandTheme: z.string().min(1),
 
+  // Purchase tracking (optional)
+  supplierInvoiceRef: z.string().optional(),
+  datePurchased: z.string().optional(), // YYYY-MM-DD
+
   // Computed fields (optional)
   buyPriceGBP: z.number().optional(),
   sellPriceGBP: z.number().optional(),

@@ -98,6 +98,14 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
  * Uses canAccessRoute() from permissions.ts to determine visibility
  */
 export function getSidebarItemsForRole(role: StaffRole): SidebarItem[] {
+  // Shoppers see a stripped-back nav: just New Sale + My Sales
+  if (role === "shopper") {
+    return [
+      { label: "New Sale", href: "/trade/new", icon: "PlusCircle" },
+      { label: "My Sales", href: "/sales", icon: "Briefcase" },
+    ];
+  }
+
   return ALL_SIDEBAR_ITEMS.filter((item) => canAccessRoute(role, item.href));
 }
 
