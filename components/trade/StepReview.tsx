@@ -214,14 +214,18 @@ export function StepReview() {
       logger.info('TRADE_UI', 'Invoice created successfully', { data });
 
       // Redirect to success page with invoice details
-      const successUrl = new URLSearchParams({
+      const successParams: Record<string, string> = {
         invoiceId: data.invoiceId,
         invoiceNumber: data.invoiceNumber,
         contact: data.contactName || state.buyer.name,
         amount: data.total.toString(),
         currency: "GBP",
         url: data.invoiceUrl,
-      });
+      };
+      if (data.saleId) {
+        successParams.saleId = data.saleId;
+      }
+      const successUrl = new URLSearchParams(successParams);
 
       // Clear draft before navigating away
       try { localStorage.removeItem("club19_trade_draft"); } catch { /* ignore */ }

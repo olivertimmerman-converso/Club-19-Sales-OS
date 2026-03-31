@@ -1,0 +1,217 @@
+[dotenv@17.2.3] injecting env (17) from .env.local -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[dotenv@17.2.3] injecting env (23) from .env.vercel.pulled -- tip: ⚙️  override existing env vars with { override: true }
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  write to custom object with { processEnv: myObject }
+═══════════════════════════════════════════════════════════════
+  STEP 1: MC's January 2026 Sales (from spreadsheet)
+═══════════════════════════════════════════════════════════════
+
+Found 20 January rows in MC's sheet:
+
+INV#          CLIENT                   SUPPLIER                 BUY      SELL    MARGIN  PAID
+-----------------------------------------------------------------------------------------------
+3233          JORDAN YORN              NET A PORTER          655.60    855.00     199.4  Y
+3235          YESENIA ESTRADA          HARRODS GREEN AME     130.00    230.00       100  Y
+3259          DAVID PLOWMAN            ELLA                9,265.00 13,000.00      3735  Y
+3262          LIZZIE LOWDEN            LEANA              18,043.00 20,750.00      2707  Y
+3261          REBECCA CHERNOV          BAGISTA             2,000.00  2,500.00       500  Y
+3264          ONARO                    PRIME               7,900.00  9,200.00      1300  Y
+3263          KAREEM FAHMY             EDUARDO             6,000.00  6,800.00       800  Y
+3265          EMELIA GROSOLI           EMPIRE             12,650.00 15,850.00      3200  Y
+3269          KATEY CALDWELL           MAASTIC             3,700.00  4,700.00      1000  Y
+3268          JACK BARRETT             PRIME               6,550.00  7,350.00       800  Y
+3270          JAMES PACKER             ELLE               19,500.00 22,500.00      3000  -
+3271          JORDAN YORN              GLOSS VINTAGE       2,600.00  3,600.00      1000  -
+3279          KATEY CALDWELL           MAASTIC             3,350.00  3,750.00       400  -
+3281          KATEY CALDWELL           HJ                 13,050.00 14,300.00      1250  -
+3283          ALLA SOLEVEY             HJ                  3,130.00  3,500.00       370  Y
+3284          KAREEM FAHMY                                        -         -         0  -
+(none)        EMELIA GROSOLI           BBA                        -         -         -  -
+3288          PREMIUM CONCIERGERIE     STOCK X               259.73    500.00    240.27  Y
+3291/3293     SOMERSET WHITE           KELLY              19,600.00 22,500.00      2900  Y
+3290          KHALED AL MUHAIRY        ELLA               18,845.00 24,500.00      5655  Y
+
+═══════════════════════════════════════════════════════════════
+  STEP 2: MC's January 2026 Sales (from Sales OS database)
+═══════════════════════════════════════════════════════════════
+
+MC found: Mary Clair Bromfield (ID: rec_d5dt9i185bnc3iimglfg)
+
+Found 20 January sales in Sales OS:
+
+INV#          CLIENT                   SUPPLIER                 BUY  SELL(ex)    MARGIN  STATUS
+-----------------------------------------------------------------------------------------------
+INV-3233      Jordan Yorn              Net-a-Porter          745.00    978.88    233.88  PAID
+INV-3235      Yesenia Estrada          Harrods Amex          135.00    287.00    152.00  PAID
+INV-3238      David Mills              Unknown               339.00    338.62     -0.38  PAID
+INV-3259      David Plowman            Ella                9,265.54 13,325.00  4,059.46  PAID
+INV-3261      Rebecca Chernov          Bagista             2,000.00  2,500.00    500.00  PAID
+INV-3262      Lizzie Lowden            Leana              18,300.00 21,473.75  3,173.75  PAID
+INV-3263      Kareem Fahmy             Eduardo             6,000.00  6,972.50    972.50  PAID
+INV-3264      Onaro                    Prime               7,900.00  9,200.00  1,300.00  PAID
+INV-3265      Emelia Grosoli           Empire             12,821.65 15,950.00  3,128.35  PAID
+INV-3267      Jack Barrett Trafigura   Claudia Proper Sh   6,550.00  7,950.00  1,400.00  PAID
+INV-3268      Jack Barrett UK          Prime               6,550.00  7,950.00  1,400.00  PAID
+INV-3269      Katherine Caldwell       Maastic             3,700.00  4,920.00  1,220.00  PAID
+INV-3270      James Packer             Elle               19,500.00 23,600.00  4,100.00  PAID
+INV-3271      Jordan Yorn              Gloss Vintage       2,600.00  3,792.50  1,192.50  PAID
+INV-3279      Katherine Caldwell       Maastic             3,350.00  3,895.00    545.00  PAID
+INV-3281      Katherine Caldwell       Ela Chanel Walton  13,050.00 14,862.50  1,812.50  PAID
+INV-3283      Alla Solovey             HJ Harrods          3,130.00  3,565.00    435.00  PAID
+INV-3284      Kareem Fahmy             Yali               30,000.00 41,715.38 11,715.38  PAID
+INV-3288      Premium Conciergerie     Stock X (Online R     259.73    563.75    304.02  PAID
+INV-3290      Khaled Al- Muhairy       Ella               18,772.08 24,500.00  5,727.92  PAID
+
+═══════════════════════════════════════════════════════════════
+  STEP 3: Comparison Report
+═══════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────┐
+│  MISSING FROM SALES OS (in MC's sheet, not in database)    │
+└─────────────────────────────────────────────────────────────┘
+
+  INV-3291/INV-3293  SOMERSET WHITE  —  K20 BLUE JEAN EPSOM GHW
+    Supplier: KELLY  |  Buy: 19,600.00  |  Sell: 22,500.00
+  INV-3291/INV-3293  SOMERSET WHITE  —  K20 BLUE JEAN EPSOM GHW
+    Supplier: KELLY  |  Buy: 19,600.00  |  Sell: 22,500.00
+
+┌─────────────────────────────────────────────────────────────┐
+│  MISSING FROM MC'S SHEET (in database, not in her sheet)   │
+└─────────────────────────────────────────────────────────────┘
+
+  INV-3238  David Mills  —  Shipping cost for #3194 (Kelly 28 Leather Collection 19/12/25)
+    Supplier: Unknown  |  Buy: 339.00  |  Sell: 338.62  |  Source: allocated
+  INV-3267  Jack Barrett Trafigura  —  Hobo 25 Size Small Brown Suede
+    Supplier: Claudia Proper Shopper  |  Buy: 6,550.00  |  Sell: 7,950.00  |  Source: atelier
+
+┌─────────────────────────────────────────────────────────────┐
+│  DATA MISMATCHES (same invoice, different values)          │
+└─────────────────────────────────────────────────────────────┘
+
+  INV-3233:
+    Supplier     Sheet: NET A PORTER
+                 DB:    Net-a-Porter
+    Sell Price   Sheet: 855.00
+                 DB:    978.88 (ex) / 978.88 (inc)
+    Buy Price    Sheet: 655.60
+                 DB:    745.00
+    Margin       Sheet: 199.40
+                 DB:    233.88
+  INV-3235:
+    Supplier     Sheet: HARRODS GREEN AMEX
+                 DB:    Harrods Amex
+    Sell Price   Sheet: 230.00
+                 DB:    287.00 (ex) / 287.00 (inc)
+    Buy Price    Sheet: 130.00
+                 DB:    135.00
+    Margin       Sheet: 100.00
+                 DB:    152.00
+  INV-3259:
+    Sell Price   Sheet: 13,000.00
+                 DB:    13,325.00 (ex) / 13,325.00 (inc)
+    Margin       Sheet: 3,735.00
+                 DB:    4,059.46
+  INV-3262:
+    Sell Price   Sheet: 20,750.00
+                 DB:    21,473.75 (ex) / 21,473.75 (inc)
+    Buy Price    Sheet: 18,043.00
+                 DB:    18,300.00
+    Margin       Sheet: 2,707.00
+                 DB:    3,173.75
+  INV-3263:
+    Sell Price   Sheet: 6,800.00
+                 DB:    6,972.50 (ex) / 6,972.50 (inc)
+    Margin       Sheet: 800.00
+                 DB:    972.50
+  INV-3265:
+    Sell Price   Sheet: 15,850.00
+                 DB:    15,950.00 (ex) / 15,950.00 (inc)
+    Buy Price    Sheet: 12,650.00
+                 DB:    12,821.65
+    Margin       Sheet: 3,200.00
+                 DB:    3,128.35
+  INV-3268:
+    Client       Sheet: JACK BARRETT
+                 DB:    Jack Barrett UK
+    Sell Price   Sheet: 7,350.00
+                 DB:    7,950.00 (ex) / 7,950.00 (inc)
+    Margin       Sheet: 800.00
+                 DB:    1,400.00
+  INV-3269:
+    Client       Sheet: KATEY CALDWELL
+                 DB:    Katherine Caldwell
+    Sell Price   Sheet: 4,700.00
+                 DB:    4,920.00 (ex) / 4,920.00 (inc)
+    Margin       Sheet: 1,000.00
+                 DB:    1,220.00
+  INV-3270:
+    Sell Price   Sheet: 22,500.00
+                 DB:    23,600.00 (ex) / 23,600.00 (inc)
+    Margin       Sheet: 3,000.00
+                 DB:    4,100.00
+  INV-3271:
+    Sell Price   Sheet: 3,600.00
+                 DB:    3,792.50 (ex) / 3,792.50 (inc)
+    Margin       Sheet: 1,000.00
+                 DB:    1,192.50
+  INV-3279:
+    Client       Sheet: KATEY CALDWELL
+                 DB:    Katherine Caldwell
+    Sell Price   Sheet: 3,750.00
+                 DB:    3,895.00 (ex) / 3,895.00 (inc)
+    Margin       Sheet: 400.00
+                 DB:    545.00
+  INV-3281:
+    Client       Sheet: KATEY CALDWELL
+                 DB:    Katherine Caldwell
+    Supplier     Sheet: HJ
+                 DB:    Ela Chanel Walton
+    Sell Price   Sheet: 14,300.00
+                 DB:    14,862.50 (ex) / 14,862.50 (inc)
+    Margin       Sheet: 1,250.00
+                 DB:    1,812.50
+  INV-3283:
+    Client       Sheet: ALLA SOLEVEY
+                 DB:    Alla Solovey
+    Supplier     Sheet: HJ
+                 DB:    HJ Harrods
+    Sell Price   Sheet: 3,500.00
+                 DB:    3,565.00 (ex) / 3,565.00 (inc)
+    Margin       Sheet: 370.00
+                 DB:    435.00
+  INV-3284:
+    Margin       Sheet: 0.00
+                 DB:    11,715.38
+  INV-3288:
+    Supplier     Sheet: STOCK X
+                 DB:    Stock X (Online Retailer)
+    Sell Price   Sheet: 500.00
+                 DB:    563.75 (ex) / 563.75 (inc)
+    Margin       Sheet: 240.27
+                 DB:    304.02
+  INV-3290:
+    Client       Sheet: KHALED AL MUHAIRY
+                 DB:    Khaled Al- Muhairy
+    Buy Price    Sheet: 18,845.00
+                 DB:    18,772.08
+    Margin       Sheet: 5,655.00
+                 DB:    5,727.92
+
+┌─────────────────────────────────────────────────────────────┐
+│  SHEET ROWS WITHOUT INVOICE NUMBERS                        │
+└─────────────────────────────────────────────────────────────┘
+
+  [blank]  EMELIA GROSOLI  —  B30 HIMA X STAMP UNUSED FULL SET
+    Supplier: BBA  |  Buy: -  |  Sell: -
+
+═══════════════════════════════════════════════════════════════
+  SUMMARY
+═══════════════════════════════════════════════════════════════
+  MC's sheet (January):          20 rows
+  Sales OS (January, MC):        20 invoices
+  Missing from Sales OS:         2
+  Missing from MC's sheet:       2
+  Data mismatches:               46
+  Sheet rows without invoice #:  1
+═══════════════════════════════════════════════════════════════
+
+Report also saved to: mc-january-audit-report.txt

@@ -74,6 +74,7 @@ interface InvoiceResponse {
   total: number;
   amountDue: number;
   invoiceUrl: string;
+  saleId?: string;
 }
 
 /**
@@ -429,6 +430,11 @@ export async function POST(request: NextRequest) {
       });
 
       logger.info("XATA", "Sale synced to Xata database", { saleId: sale?.id });
+
+      // Add saleId to response so success page can use it for PDF download
+      if (sale?.id) {
+        response.saleId = sale.id;
+      }
 
       // Save line items if multi-line invoice
       if (sale && isMultiLine && payload.lineItems && payload.lineItems.length > 0) {

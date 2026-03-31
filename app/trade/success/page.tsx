@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense } from "react";
+import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -17,6 +17,44 @@ function SuccessContent() {
   const total = searchParams.get("amount") || "0";
   const currency = searchParams.get("currency") || "GBP";
   const invoiceUrl = searchParams.get("url") || "";
+  const saleId = searchParams.get("saleId") || "";
+
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
+  const handleDownloadPdf = async () => {
+    if (!saleId) {
+      setPdfError("PDF download not available — please use 'View in Xero' instead");
+      return;
+    }
+
+    setPdfLoading(true);
+    setPdfError(null);
+
+    try {
+      const response = await fetch(`/api/sales/${saleId}/pdf`);
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to download PDF");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = invoiceNumber ? `Club19-${invoiceNumber}.pdf` : "Club19-Invoice.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to download PDF";
+      setPdfError(message);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   const formattedAmount = new Intl.NumberFormat("en-GB", {
     style: "currency",
@@ -105,36 +143,57 @@ function SuccessContent() {
 
           {/* Action Buttons */}
           <div className="px-8 pb-8 space-y-3">
-            {/* Primary: View in Xero - Purple Gradient */}
+            {/* Primary: Download PDF */}
+            {saleId && (
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={pdfLoading}
+                aria-label="Download invoice PDF"
+                className="block w-full rounded-xl bg-gradient-to-r from-purple-600 to-purple-400 text-white py-3 text-center font-medium shadow-md hover:opacity-90 transition-opacity disabled:opacity-60"
+              >
+                <span className="flex items-center justify-center gap-2">
+                  {pdfLoading ? (
+                    <svg className="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  )}
+                  {pdfLoading ? "Downloading..." : "Download Invoice PDF"}
+                </span>
+              </button>
+            )}
+
+            {/* PDF error message */}
+            {pdfError && (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-center">
+                {pdfError}
+              </p>
+            )}
+
+            {/* Secondary: View in Xero */}
             {invoiceUrl && (
               <a
                 href={invoiceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="View invoice in Xero (opens in new tab)"
-                className="block w-full rounded-xl bg-gradient-to-r from-purple-600 to-purple-400 text-white py-3 text-center font-medium shadow-md hover:opacity-90 transition-opacity"
+                className="block w-full border border-purple-300 text-purple-600 rounded-xl py-3 bg-white hover:bg-purple-50 transition-colors text-center font-medium"
               >
                 <span className="flex items-center justify-center gap-2">
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    aria-hidden="true"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                   </svg>
                   View Invoice in Xero
                 </span>
               </a>
             )}
 
-            {/* Secondary: Create Another Invoice - Outlined */}
+            {/* Tertiary: Create Another Invoice */}
             <Link
               href="/trade/new"
               aria-label="Create another invoice"
@@ -143,13 +202,13 @@ function SuccessContent() {
               Create Another Invoice
             </Link>
 
-            {/* Tertiary: View in Sales OS - Outlined Gray */}
+            {/* Quaternary: View in Sales OS */}
             <Link
-              href="/dashboard"
+              href="/sales"
               aria-label="View in Sales OS"
               className="block w-full border border-gray-300 text-gray-700 rounded-xl py-3 bg-white hover:bg-gray-50 transition-colors text-center font-medium"
             >
-              View in Sales OS
+              My Sales
             </Link>
           </div>
 

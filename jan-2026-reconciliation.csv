@@ -1,0 +1,183 @@
+id,xero_invoice_number,sale_reference,sale_date,buyer_name,shopper_name,brand,category,item_title,sale_amount_inc_vat,sale_amount_ex_vat,buy_price,gross_margin,margin_pct,supplier_name,shipping_method,shipping_cost,currency,invoice_status,source,buyer_type,branding_theme,is_export,completed_at,completed_by,linked_invoices_count,linked_invoice_numbers,deleted_at,dismissed,has_introducer,introducer_commission,FLAG_no_buy_price,FLAG_negative_margin,FLAG_no_supplier,FLAG_no_brand,FLAG_missing_fields,missing_fields_list
+rec_d5co6t8uignf327asisg,INV-3218,,2026-01-02,Olivia Crozier,Hope Peverell,Hermès,Bags,"Hermes Birkin 30cm Togo with Gold hardware 
+Brand new in box full set
+
+£2000 deposit",2000.00,2000.00,15585.00,-13585.00,-679.3,Empire,,,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,YES,,,,
+rec_d5dd4vsgmio87vvgjgk0,INV-3219,,2026-01-02,Bettina Looney (C),,Unknown,Unknown,Hermès · Bags - B25 (Qty: 1),15000.00,12500.00,0.00,0.00,0.0,,,,GBP,DELETED,xero_import,,,NO,,,0,,,YES,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5ciqo8uignf327asibg,INV-3220,INV-3221,2026-01-03,Carolyn Rubin Usa,Sophie Timmerman,Hermès,Bags,K20 White cloute PHW,68000.00,68000.00,61500.00,6500.00,9.6,Bags By Appointment,,170.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5co6t8uignf327asit0,INV-3220,,2026-01-03,Carolyn Rubin Usa,,Unknown,Unknown,K20 White Cloute PHW,68000.00,68000.00,0.00,0.00,0.0,,,,GBP,PAID,xero_import,,,NO,,,0,,2026-01-04,YES,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5dcqfsgmio87vvgjft0,INV-3221,,2026-01-03,Carolyn Rubin Usa,,Unknown,Unknown,Hermès · Bags - K20 White cloute PHW (Qty: 1),68000.00,68000.00,0.00,0.00,0.0,,,,GBP,VOIDED,xero_import,,,NO,,,0,,2026-02-24,YES,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5dcprcgmio87vvgjfs0,INV-3222,INV-3222,2026-01-04,Bettina Looney (C),Oliver Timmerman,Chanel,Shoes,Ballet Shoes TEST,1200.00,1000.00,800.00,200.00,20.0,Prospero AI,,40.00,GBP,DELETED,,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,2026-01-04,NO,NO,,,,,,,
+rec_d5dct9p85bnc3iimgglg,INV-3223,INV-3223,2026-01-04,Bettina Looney (C),Oliver Timmerman,Hermès,Bags,B25 TEST,20000.00,16666.67,15000.00,1666.67,10.0,Prospero AI,,40.00,GBP,DELETED,,,d68f1fb5-ab36-48f5-809d-2752a2a1d940,NO,,,0,,2026-01-04,NO,NO,,,,,,,
+rec_d5j7083mjuvmgp14dcog,INV-3224,C19-0001,2026-01-05,De Beauvoir House LLC,Hope Peverell,Hermès,Bags,Hermes Birkin 29 Shoulder Gold Evercolour Gold Hardware,24000.00,24000.00,21000.00,3000.00,12.5,Lily Fortescue,,38.10,GBP,PAID,adopted,,,NO,,,0,,,NO,NO,,,,,,,
+rec_d5dt38ouignf327b823g,INV-3225,,2026-01-05,Kareem Fahmy,,Unknown,Unknown,"B35 Cargo Gris Misty 
+swift 
+Phw 
+W 2025
+£38,950 total price 
+
+Payment plan: 
+
+1st December 2025 - £19,475 *PAID* 
+2nd January 2026 - £9,737.50
+2nd February - £9,737.50",9980.94,9980.94,0.00,0.00,0.0,,,,GBP,PAID,xero_import,,,NO,,,0,,2026-01-05,NO,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5ghk3l9l8q5imgqqs10,INV-3226,INV-3240,2026-01-09,BW PRIVE,Hope Peverell,Hermès,Bags,Hermes Birkin 25cm Gold Grizzly Palladium Hardware,99249.96,99249.96,90697.00,8552.96,8.6,Naj,,33.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5dt39185bnc3iimgl9g,INV-3226,,2026-01-05,BW PRIVE,,Unknown,Unknown,Hermes Birkin 25cm Gold Grizzly Palladium Hardware,98250.00,98250.00,0.00,0.00,0.0,,,,GBP,PAID,xero_import,,,NO,,,0,,2026-01-09,YES,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5dt390uignf327b8240,INV-3227,,2026-01-05,Idris Tunku,,Unknown,Unknown,"Hermes Hac 40cm Noir Shiny Croco Porous with Palladium Hardware
+  
+With Box, dust bag and bababebi certificate  
+
+£5000 PAID 1st DECEMBER* card 
+
+
+£3,000 PAID INV 3203
+
+£10,000 - PAID INV 3049
+
+£10,000 - PAID INV 3001
+
+£20,000 - PAID INV 3107",5000.00,5000.00,0.00,0.00,0.0,,,,GBP,PAID,xero_import,,,NO,,,0,,,YES,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5dsrr985bnc3iimgl70,INV-3228,INV-3228,2026-01-05,Bettina Looney (C),Oliver Timmerman,Hermès,Bags,B25 PHW TOGO TEST,15000.00,12500.00,10000.00,2500.00,20.0,Bags By Appointment,,150.00,GBP,DELETED,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,2026-01-05,NO,NO,,,,,,,
+rec_d5eir28uignf327b85lg,INV-3230,,2026-01-06,BW PRIVE,Hope Peverell,Hermès,Bags,"Hermes Birkin 25cm Nata Glycine Grizzly Palladium Hardware
+
+REMAINING PAYMENT - TOTAL £23,000",1750.00,1750.00,21500.00,-19750.00,-1128.6,BBA,,65.00,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,YES,,,,
+rec_d5n5pqamnq6r29a3cn70,INV-3233,C19-0001,2026-01-07,Jordan Yorn,Mary Clair Bromfield,Ralph Lauren,RTW,"Ralph Lauren wool-blend jacquard knit cardigan 
+Size small
+Beige",978.88,978.88,745.00,233.88,23.9,Net-a-Porter,,,GBP,PAID,adopted,,,NO,,,0,,,NO,NO,,,,,,,
+rec_d5f8ged9l8q5imgqn9j0,INV-3234,INV-3234,2026-01-07,Carolyn Rubin Usa,Sophie Timmerman,Hermès,Bags,K20 Black Pamfille Fringe PHW,68500.00,68500.00,61000.00,7500.00,10.9,Bags By Appointment,,40.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5n5r7qmnq6r29a3cn7g,INV-3235,C19-0002,2026-01-07,Yesenia Estrada,Mary Clair Bromfield,Hermès,Make Up,"Plein Air Baume de Teint 
+Shade 20 / Sable",287.00,287.00,135.00,152.00,53.0,Harrods Amex,,,GBP,PAID,adopted,,,NO,,,0,,,NO,NO,,,,,,,
+rec_d5fomid9l8q5imgqp9vg,INV-3236,INV-3236,2026-01-08,Caroline Stanbury,Alys McMahon,Alaïa,Shoes,Mary Jane flats burgundy size 38.5,1158.00,1158.00,850.00,115.00,9.9,Alaia - Selfridges,,180.00,GBP,DELETED,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,2026-01-09,NO,NO,,,,,,,
+rec_d5fr94rmjuvmgp13tus0,INV-3237,INV-3237,2026-01-08,Bettina Looney (C),Oliver Timmerman,Hermès,Bags,TEST,20000.00,16666.67,10000.00,6666.67,40.0,Prospero AI,,0.00,GBP,DELETED,atelier,,d68f1fb5-ab36-48f5-809d-2752a2a1d940,NO,,,0,,2026-01-08,NO,NO,,,,,,,
+rec_d5gdm42mnq6r29a2m1m0,INV-3238,,2026-01-08,David Mills,Mary Clair Bromfield,Other,Other,Shipping cost for #3194 (Kelly 28 Leather Collection 19/12/25),338.62,338.62,339.00,-0.38,-0.1,Unknown,,,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,YES,,,,
+rec_d5gg69d9l8q5imgqqrmg,INV-3239,,2026-01-09,De Beauvoir House LLC,,Unknown,Unknown,Hermès · Bags - Hermes Birkin 29 Shoulder Gold Evercolour Gold Hardware (Qty: 1),24000.00,24000.00,0.00,0.00,0.0,,,,GBP,DRAFT,xero_import,,,NO,,,0,,,YES,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5ghp7qmnq6r29a2m2vg,INV-3240,,2026-01-09,BW PRIVE,,Unknown,Unknown,Hermès Bags - Hermes Birkin 25cm Gold Grizzly Palladium Hardware,99249.96,99250.00,0.00,0.00,0.0,,,,GBP,DELETED,xero_import,,,NO,,,0,,2026-01-09,YES,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5ge7859l8q5imgqqqt0,INV-3240,INV-3239,2026-01-09,De Beauvoir House LLC,Hope Peverell,Hermès,Bags,Hermes Birkin 29 Shoulder Gold Evercolour Gold Hardware,24000.00,24000.00,21000.00,3000.00,12.5,Lily Fortescue,,0.00,GBP,DELETED,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,2026-01-13,NO,NO,,,,,,,
+rec_d5gi39amnq6r29a2m330,INV-3241,INV-3241,2026-01-09,Bettina Looney (C),Oliver Timmerman,Hermès,Bags,TEST,30000.00,30000.00,25000.00,5000.00,16.7,Prospero AI,,0.00,GBP,DELETED,atelier,,8173b901-4ea8-498b-a4ba-52a8446ec43f,NO,,,0,,2026-01-12,NO,NO,,,,,,,
+rec_d5ifuajmjuvmgp14d7rg,INV-3242,,2026-01-09,Maryam Mohammed Bin Zayed Alnehayan,,Unknown,Unknown,Chanel Small 25 Black Caviar GHW,6900.00,6900.00,0.00,0.00,0.0,,,,GBP,PAID,xero_import,,,NO,,,0,,,YES,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5n6bvbmjuvmgp14hc90,INV-3243,C19-0003,2026-01-11,Maryam Dawood Albassam,Hope Peverell,Chanel,Bags,Chanel Small 25 Black Caviar GHW,1953.95,1953.95,5760.00,-3806.05,-194.8,Claudia Proper Shopper,,,GBP,PAID,adopted,,,NO,,,0,,,NO,NO,,,YES,,,,
+rec_d5i0ebqmnq6r29a2v2gg,INV-3244,INV-3244,2026-01-11,Carolyn Rubin Usa,Sophie Timmerman,Hermès,Bags,Chanel hobo raffia 25,11050.00,11050.00,9660.00,1390.00,12.6,Maastic,,0.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5igaft9l8q5imgr3tvg,INV-3245,INV-3245,2026-01-12,Nico Anisimov,Sophie Timmerman,Chanel,Bags,Chanel 25 mini grey suede bag,7089.00,7089.00,5500.00,1589.00,22.4,Bags By Appointment,,0.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5imqc2mnq6r29a2v7k0,INV-3246,INV-3246,2026-01-12,Carolyn Rubin Usa,Sophie Timmerman,Hermès,Accessories,Hermes charm bracelet gold leather,3250.00,3250.00,2950.00,300.00,9.2,Kiko,,0.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5j5f2d9l8q5imgr40vg,INV-3247,,2026-01-13,De Beauvoir House LLC,Hope Peverell,Hermès,Bags,"Hermes Like New Birkin 25cm Verso Bambou/Caramel
+PHWTogo Y stamp",13000.00,13000.00,10392.00,2608.00,20.1,Shikochic,,18.00,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,,,,,
+rec_d5j5f2amnq6r29a2v9e0,INV-3248,,2026-01-13,BW PRIVE,Hope Peverell,Hermès,Bags,Hermes Garden Party Mini Tressage Gold Palladium Hardware,7100.00,7100.00,6300.00,800.00,11.3,Ariel,,32.50,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,,,,,
+rec_d5j5f2imnq6r29a2v9eg,INV-3251,,2026-01-13,Alessandra Francescutti,Hope Peverell,Hermès,Bags,"Hermes Lindy 26 Himalaya Palladium Hardware 
+Copy Docs Y stamp Like New",97280.00,97280.00,89300.00,7980.00,8.2,Jst69h,,,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,,,,,
+rec_d5jrubqmnq6r29a2vdng,INV-3255,,2026-01-13,Idris Tunku,Hope Peverell,Hermès,Bags,"Hermes Hac 40cm Black DOT TO DOT 
+
+£2000 2nd Payment  
+
+£7500 deposit payment recieved 3211",2000.00,2000.00,0.00,2000.00,100.0,,,,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,YES,,YES,,YES,buy_price; supplier
+rec_d5jrubqmnq6r29a2vdo0,INV-3256,,2026-01-13,Idris Tunku,Hope Peverell,Hermès,Bags,"Hermes Kelly Pochette SO Black Swift 
+
+£20,000 DEPOSIT",25000.00,25000.00,0.00,25000.00,100.0,,,,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,YES,,YES,,YES,buy_price; supplier
+rec_d5jmsjt9l8q5imgr42b0,INV-3257,INV-3257,2026-01-14,Maryam Dawood Albassam,Hope Peverell,Chanel,Bags,Chanel Small 25 Black Caviar,6900.00,6900.00,5750.00,1150.00,16.7,Claudia Proper Shopper,,0.00,GBP,VOIDED,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,2026-02-24,NO,NO,,,,,,,
+rec_d5jruc2mnq6r29a2vdog,INV-3258,,2026-01-14,Alessandra Francescutti,,Unknown,Unknown,"Hermes Lindy 26 Himalaya Palladium Hardware 
+Copy Docs Y stamp Like New
+
+Split Payment 50%",48640.00,48640.00,0.00,0.00,0.0,,,,GBP,PAID,xero_import,,,NO,,,0,,,YES,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5jrucbmjuvmgp14dg50,INV-3259,,2026-01-14,David Plowman,Mary Clair Bromfield,Hermès,Bags,"Constance 18 Gris Pantin 
+Epsom 
+Brushed champagne gold hardware 
+K stamp",13325.00,13325.00,9265.54,4059.46,30.5,Ella,,0.00,GBP,PAID,allocated,end_client,8173b901-4ea8-498b-a4ba-52a8446ec43f,NO,2026-02-20,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
+rec_d5jrucamnq6r29a2vdpg,INV-3260,,2026-01-14,Maryam Dawood Albassam,Hope Peverell,Chanel,Bags,Chanel Small 25 Black Caviar GHW,5065.00,5065.00,5750.00,-685.00,-13.5,Claudia,,,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,YES,,,,
+rec_d5kl4tqmnq6r29a2via0,INV-3261,INV-3261,2026-01-15,Rebecca Chernov,Mary Clair Bromfield,Chanel,Bags,Vintage chanel Drawstring bag with chain Black Pony Hair GHW Dust Bag and card only,2500.00,2500.00,2000.00,500.00,20.0,Bagista,,0.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5l5vgamnq6r29a2vk90,INV-3262,,2026-01-16,Lizzie Lowden,Mary Clair Bromfield,Hermès,Bags,"K25 rouge sellier 
+Chèvre leather 
+Phw 
+K
+
+UK delivery included",21473.75,21473.75,18300.00,3173.75,14.8,Leana,,20.00,GBP,PAID,allocated,end_client,8173b901-4ea8-498b-a4ba-52a8446ec43f,NO,2026-02-20,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
+rec_d5n538imnq6r29a3cn1g,INV-3263,,2026-01-17,Kareem Fahmy,Mary Clair Bromfield,Chanel,Bags,"Chanel 25 Hobo 
+Size Mini
+Beige raffia",6972.50,6972.50,6000.00,972.50,13.9,Eduardo,,60.00,GBP,PAID,allocated,end_client,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,2026-02-20,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
+rec_d5n538jmjuvmgp14hc0g,INV-3264,,2026-01-17,Onaro,Mary Clair Bromfield,Hermès,Bags,"Hac a Dos PM Gold 
+Togo 
+PHW",9200.00,9200.00,7900.00,1300.00,14.1,Prime,,0.00,GBP,PAID,allocated,b2b,8173b901-4ea8-498b-a4ba-52a8446ec43f,NO,2026-02-27,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
+rec_d5mde1rmjuvmgp14h6b0,INV-3265,INV-3265,2026-01-18,Emelia Grosoli,Mary Clair Bromfield,Hermès,Bags,Like New Birkin 25 Jaune Ambre Togo Ghw C stamp Coming as bag and dustbag only Entrupy certificate added into price.,15950.00,15950.00,12821.65,3128.35,19.6,Empire,,0.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5mufcd9l8q5imgrgb70,INV-3266,INV-3266,2026-01-19,Carolyn Rubin Usa,Sophie Timmerman,Hermès,Bags,Kelly bijou silver bag,64000.00,64000.00,53000.00,11000.00,17.2,Kiko,,0.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5n3h4jmjuvmgp14hbo0,INV-3267,INV-3267,2026-01-19,Jack Barrett Trafigura,Mary Clair Bromfield,Chanel,Bags,Hobo 25 Size Small Brown Suede,7950.00,7950.00,6550.00,1400.00,17.6,Claudia Proper Shopper,,0.00,GBP,PAID,atelier,,8173b901-4ea8-498b-a4ba-52a8446ec43f,NO,,,0,,,NO,NO,,,,,,,
+rec_d5n538rmjuvmgp14hc1g,INV-3268,,2026-01-19,Jack Barrett UK,Mary Clair Bromfield,Chanel,Bags,"Chanel Hobo 25 
+Size small
+Brown suede 
+
+Uk delivery included",7950.00,7950.00,6550.00,1400.00,17.6,Prime,,0.00,GBP,PAID,allocated,end_client,8173b901-4ea8-498b-a4ba-52a8446ec43f,NO,2026-02-20,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
+rec_d5n932l9l8q5imgrgemg,INV-3269,INV-3269,2026-01-19,Katherine Caldwell,Mary Clair Bromfield,Chanel,Bags,Chanel 26 “Preppy” bag Size mini Black,4920.00,4920.00,3700.00,1220.00,24.8,Maastic,,0.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5ongdamnq6r29a3cv90,INV-3270,,2026-01-19,James Packer,Mary Clair Bromfield,Hermès,Bags,"Birkin 25 Chai 
+Madame sellier 
+Gold hardware 
+Brand new full set Z stamp",23600.00,23600.00,19500.00,4100.00,17.4,Elle,,100.00,GBP,PAID,allocated,end_client,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,2026-02-20,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
+rec_d5ongcimnq6r29a3cv80,INV-3271,,2026-01-20,Jordan Yorn,Mary Clair Bromfield,Chanel,Bags,"Chanel 26 “Preppy”
+Size mini
+Black caviar
+
+Comes with Entrupy",3792.50,3792.50,2600.00,1192.50,31.4,Gloss Vintage,,100.00,GBP,PAID,allocated,end_client,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,2026-02-27,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
+rec_d5ongdimnq6r29a3cv9g,INV-3277,,2026-01-20,Caroline Stanbury,Sophie Timmerman,Unknown,Unknown,Chanel white preppy leather bag,4500.00,4500.00,0.00,0.00,0.0,,,,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d5ongdimnq6r29a3cva0,INV-3278,,2026-01-21,Idris Tunku,Hope Peverell,Hermès,Bags,"Hermes Kelly Pochette SO Black Swift 
+
+Second Payment £10,000 
+
+£25,000 deposit PAID INV 3256",10000.00,10000.00,0.00,10000.00,100.0,,,,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,YES,,YES,,YES,buy_price; supplier
+rec_d5oughamnq6r29a3d0lg,INV-3279,INV-3279,2026-01-22,Katherine Caldwell,Mary Clair Bromfield,Chanel,RTW,Chanel 26P Black Cardigan FR38,3895.00,3895.00,3350.00,545.00,14.0,Maastic,,0.00,GBP,PAID,atelier,,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,,,0,,,NO,NO,,,,,,,
+rec_d5sa1kl9l8q5imgrlk00,INV-3280,,2026-01-22,De Beauvoir House LLC,Hope Peverell,Hermès,Bags,"Hermes Kelly Elan Rouge Hermes Madame GHW
+K stamp",13300.00,13300.00,11372.00,1928.00,14.5,Cherry,,22.00,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,,,,,
+rec_d5sa1kamnq6r29a3mrog,INV-3281,,2026-01-23,Katherine Caldwell,Mary Clair Bromfield,Chanel,RTW,"Chanel RTW - 
+
+26P black /cream faux fur  
+FR38",14862.50,14862.50,13050.00,1812.50,12.2,Ela Chanel Walton,,200.00,GBP,PAID,allocated,end_client,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,2026-02-27,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
+rec_d5sa1kimnq6r29a3mrq0,INV-3282,,2026-01-23,BW PRIVE,Hope Peverell,Hermès,Bags,Hermes Birkin 25cm Go Team Blue Palladium Hardware,29000.00,29000.00,27500.00,1500.00,5.2,Elle,,,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,,,,,
+rec_d5sa1kamnq6r29a3mrpg,INV-3283,,2026-01-26,Alla Solovey,Mary Clair Bromfield,Chanel,RTW,"Chanel 26P white shorts 
+FR38",3565.00,3565.00,3130.00,435.00,12.2,HJ Harrods,,50.00,GBP,PAID,allocated,end_client,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,2026-02-20,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
+rec_d61lisnjjv2or5f9j8s0,INV-3284,,2026-01-28,Kareem Fahmy,Mary Clair Bromfield,Hermès,Bags,"B35 Cargo Gris Misty 
+swift 
+Phw 
+W 2025
+£38,950 total price 
+
+Payment plan: 
+
+1st December 2025 - £19,475 *PAID* 
+2nd January 2026 - £9,737.50 *PAID* 
+2nd February - £9,737.50",50058.45,41715.38,30000.00,11715.38,28.1,Yali,,,GBP,PAID,allocated,,,NO,,,1,INV-3284-1,,NO,NO,,,,,,,
+rec_d61lisnjjv2or5f9j8rg,INV-3284-1,,2026-01-28,Kareem Fahmy,Mary Clair Bromfield,Hermès,Bags,"B35 Cargo Gris Misty 
+swift 
+Phw 
+W 2025
+£38,950 total price 
+
+Payment plan: 
+
+1st December 2025 - £19,475 *PAID* 
+2nd January 2026 - £9,737.50 *PAID* 
+2nd February - £9,737.50",40077.51,40077.51,30974.31,9103.20,22.7,Yali,,150.00,GBP,PAID,allocated,end_client,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,2026-02-20,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,2026-02-27,NO,NO,,,,,,,
+rec_d61lisfjjv2or5f9j8r0,INV-3285,,2026-01-28,Bettina Looney (C),Sophie Timmerman,Unknown,Unknown,Chanel raffia wicker bag,11000.00,11000.00,0.00,0.00,0.0,,,,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d61lirnjjv2or5f9j8n0,INV-3286,,2026-01-29,Rohiqa Mistry,Hope Peverell,Chanel,Bags,Chanel 25 Raffia Bag,7550.00,7550.00,6050.00,1500.00,19.9,Connie Personal Shopping,,94.00,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,,,,,
+rec_d61lirnjjv2or5f9j8ng,INV-3287,,2026-01-29,Emelia Grosoli,,Unknown,Unknown,"Birkin 30cm
+Himalayan 
+X stamp - 24 June 2016 
+Full set including original receipt and cites QR code card 
+
+(Date of manufacture: Circa 2014-2015)
+
+Blind stamp: XSA633ZA
+
+The species: 
+Nile Crocodile, Crocodylus Niloticus/B
+From Hermès Shanghai Trading Co Ltd 
+Approval Documents: Lin Hu Xu Jun Shanghai No. 1004 - 2015
+
+Species Origin:  The logo denotes a legal source certificate of terrestrial wild animals and their products
+
+Bag approximately 1.5kg
+
+Collected in London",98500.00,98500.00,0.00,0.00,0.0,,,,GBP,PAID,xero_import,,,NO,,,0,,,YES,NO,,YES,,YES,YES,YES,brand; category; buy_price; supplier
+rec_d61lirvjjv2or5f9j8o0,INV-3288,,2026-01-29,Premium Conciergerie,Mary Clair Bromfield,Saucony ,Shoes,"Saucony Ride Millenium Sneakers 
+Eu38.5",563.75,563.75,259.73,304.02,53.9,Stock X (Online Retailer),,50.00,GBP,PAID,allocated,b2b,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,2026-02-27,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
+rec_d61lisfjjv2or5f9j8qg,INV-3289,,2026-01-30,BW PRIVE,Hope Peverell,Hermès,Bags,"Hermes Limited Edition Kelly 20 Rouge H Cloute Box Palladium Hardware
+K stamp full set",45000.00,45000.00,42130.00,2870.00,6.4,Naj,,0.00,GBP,PAID,allocated,,,NO,,,0,,,NO,NO,,,,,,,
+rec_d61lis7jjv2or5f9j8q0,INV-3290,,2026-01-30,Khaled Al- Muhairy,Mary Clair Bromfield,Hermès,Bags,"Birkin 25 
+Rouge H 
+Togo 
+GHW 
+Brand new",24500.00,24500.00,18772.08,5727.92,23.4,Ella,,37.86,GBP,PAID,allocated,end_client,82e46ce4-09cf-4764-8342-4f774cf4040e,NO,2026-02-20,user_36kBJFIqKcrmgADWLqbknXPTNXz,0,,,NO,NO,,,,,,,
