@@ -223,7 +223,7 @@ async function ensureMonthTab(
 // ============================================================================
 
 /**
- * Parses a Sheets API updatedRange string (e.g. "'April 2026'!A47:Y49") and
+ * Parses a Sheets API updatedRange string (e.g. "'April 2026'!A47:Z49") and
  * returns the start row number (47 in the example).
  */
 function parseStartRowFromUpdatedRange(updatedRange: string): number | null {
@@ -238,24 +238,26 @@ function parseStartRowFromUpdatedRange(updatedRange: string): number | null {
  * the actual row numbers.
  *
  * Two-step process:
- *   1. append() with placeholder zeros for I, J, K, T, U, V — gets us the
- *      actual start row from the response
- *   2. update() the formula cells using the resolved row numbers
+ *   1. append() with placeholder row 1 — gets us the actual start row from
+ *      the response
+ *   2. update() the same range with the real formulas using the resolved
+ *      row numbers
  */
 async function appendSaleRows(
   sheets: sheets_v4.Sheets,
   spreadsheetId: string,
   tabName: string,
   sale: SaleWithRelations,
-  lineItems: LineItemWithSupplier[]
+  lineItems: LineItemWithSupplier[],
+  shopperName: string
 ): Promise<{ startRow: number; rowCount: number }> {
   // Step 1: append with placeholder row numbers (we don't know the real ones yet).
   // We pass row number 1 as a stand-in — the formulas will be overwritten in step 2.
-  const placeholderRows = buildRowsFromSale(sale, lineItems, 1);
+  const placeholderRows = buildRowsFromSale(sale, lineItems, shopperName, 1);
 
   const appendRes = await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: `'${tabName}'!A:Y`,
+    range: `'${tabName}'!A:Z`,
     valueInputOption: "USER_ENTERED",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
@@ -274,12 +276,12 @@ async function appendSaleRows(
   }
 
   // Step 2: rebuild rows with the real row numbers and patch the formula cells.
-  // We patch all 25 columns (not just the formula cells) to keep the code
+  // We patch all 26 columns (not just the formula cells) to keep the code
   // simple — overwriting non-formula cells with the same values is harmless
   // and avoids per-cell range arithmetic.
-  const realRows = buildRowsFromSale(sale, lineItems, startRow);
+  const realRows = buildRowsFromSale(sale, lineItems, shopperName, startRow);
   const endRow = startRow + realRows.length - 1;
-  const updateRange = `'${tabName}'!A${startRow}:Y${endRow}`;
+  const updateRange = `'${tabName}'!A${startRow}:Z${endRow}`;
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
@@ -347,7 +349,8 @@ export async function pushSaleToShopperSheet(
       spreadsheetId,
       tabName,
       sale,
-      lineItems
+      lineItems,
+      shopperName
     );
 
     logger.info("SHEETS", "Sale pushed to sheet", {

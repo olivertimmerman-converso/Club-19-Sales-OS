@@ -20,33 +20,34 @@ import { getBrandingThemeName } from "@/lib/branding-theme-mappings";
 
 export const SHEET_HEADERS: readonly string[] = [
   "Date",                // A
-  "Invoice #",           // B
-  "Client",              // C
-  "Supplier",            // D
-  "Item",                // E
-  "VAT method",          // F
-  "Buy price",           // G
-  "Sell price",          // H
-  "Margin",              // I — formula
-  "VAT due",             // J — formula
-  "Gross profit",        // K — formula
-  "Introducer name",     // L
-  "Introducer fee",      // M
-  "CC fee",              // N
-  "Entrupy fee",         // O
-  "DHL / shipping",      // P
-  "Addison Lee / taxi",  // Q
-  "Hand delivery",       // R
-  "Other costs",         // S
-  "Total costs",         // T — formula
-  "Net product profit",  // U — formula
-  "Net sale profit",     // V — formula
-  "Delivery confirmed",  // W
-  "Commission due",      // X — placeholder until Workstream 4
-  "New client bonus",    // Y — placeholder until Workstream 4
+  "Shopper",             // B
+  "Invoice #",           // C
+  "Client",              // D
+  "Supplier",            // E
+  "Item",                // F
+  "VAT method",          // G
+  "Buy price",           // H
+  "Sell price",          // I
+  "Margin",              // J — formula
+  "VAT due",             // K — formula
+  "Gross profit",        // L — formula
+  "Introducer name",     // M
+  "Introducer fee",      // N
+  "CC fee",              // O
+  "Entrupy fee",         // P
+  "DHL / shipping",      // Q
+  "Addison Lee / taxi",  // R
+  "Hand delivery",       // S
+  "Other costs",         // T
+  "Total costs",         // U — formula
+  "Net product profit",  // V — formula
+  "Net sale profit",     // W — formula
+  "Delivery confirmed",  // X
+  "Commission due",      // Y — placeholder until Workstream 4
+  "New client bonus",    // Z — placeholder until Workstream 4
 ] as const;
 
-export const COLUMN_COUNT = SHEET_HEADERS.length; // 25 (A–Y)
+export const COLUMN_COUNT = SHEET_HEADERS.length; // 26 (A–Z)
 
 // ============================================================================
 // TYPES
@@ -190,28 +191,30 @@ function syntheticLineItemFromSale(sale: SaleWithRelations): LineItemWithSupplie
  *
  * Invoice-level costs (introducer fee, CC fee, Entrupy, shipping) attach to
  * the FIRST row only. Subsequent rows of the same invoice show 0 in those
- * columns so the column-T SUM formula doesn't double-count when reading
- * row-by-row, AND so summing T across all rows of an invoice equals the true
+ * columns so the column-U SUM formula doesn't double-count when reading
+ * row-by-row, AND so summing U across all rows of an invoice equals the true
  * sale-level cost.
  *
- * Formula columns (I, J, K, T, U, V) reference their own row via the
+ * Formula columns (J, K, L, U, V, W) reference their own row via the
  * absolute row number — that's why the caller has to pass `firstRowNumber`.
  * Formulas use USER_ENTERED input mode in the Sheets API call so they get
  * parsed, not stored as literal strings.
  *
  * @param sale - sale row joined with buyer + supplier
  * @param lineItems - rows from the line_items table for this sale
+ * @param shopperName - display name of the shopper, populated into column B
  * @param firstRowNumber - the absolute sheet row number where row 0 will land
  * @returns N row arrays ready to feed values.append (one per line item)
  */
 export function buildRowsFromSale(
   sale: SaleWithRelations,
   lineItems: LineItemWithSupplier[],
+  shopperName: string,
   firstRowNumber: number
 ): SheetRow[] {
   // Filter out the auto-generated handling/shipping line item that gets saved
   // to line_items alongside the real products. Costs from the handling line are
-  // already attached as invoice-level columns (N: CC fee, P: shipping) on the
+  // already attached as invoice-level columns (O: CC fee, Q: shipping) on the
   // first product row, so including the handling row would double-count.
   const productLineItems = lineItems.filter((item) => !isHandlingLineItem(item));
 
@@ -226,30 +229,31 @@ export function buildRowsFromSale(
 
     return [
       /* A */ formatSaleDate(sale.saleDate),
-      /* B */ sale.xeroInvoiceNumber || "",
-      /* C */ sale.buyer?.name || "",
-      /* D */ item.supplier?.name || sale.supplier?.name || "",
-      /* E */ buildItemDescription(item.brand, item.category, item.description),
-      /* F */ deriveVatMethod(sale.brandingTheme),
-      /* G */ item.buyPrice ?? 0,
-      /* H */ item.sellPrice ?? 0,
-      /* I */ `=H${rowNumber}-G${rowNumber}`,
-      /* J */ `=IF(F${rowNumber}="Margin Scheme", I${rowNumber}/6, 0)`,
-      /* K */ `=I${rowNumber}-J${rowNumber}`,
-      /* L */ isFirstRow ? sale.introducerName || "" : "",
-      /* M */ isFirstRow ? sale.introducerCommission ?? 0 : 0,
-      /* N */ isFirstRow ? sale.cardFees ?? 0 : 0,
-      /* O */ isFirstRow ? sale.entrupyFee ?? 0 : 0,
-      /* P */ isFirstRow ? sale.shippingCost ?? 0 : 0,
-      /* Q */ 0,
+      /* B */ shopperName || "",
+      /* C */ sale.xeroInvoiceNumber || "",
+      /* D */ sale.buyer?.name || "",
+      /* E */ item.supplier?.name || sale.supplier?.name || "",
+      /* F */ buildItemDescription(item.brand, item.category, item.description),
+      /* G */ deriveVatMethod(sale.brandingTheme),
+      /* H */ item.buyPrice ?? 0,
+      /* I */ item.sellPrice ?? 0,
+      /* J */ `=I${rowNumber}-H${rowNumber}`,
+      /* K */ `=IF(G${rowNumber}="Margin Scheme", J${rowNumber}/6, 0)`,
+      /* L */ `=J${rowNumber}-K${rowNumber}`,
+      /* M */ isFirstRow ? sale.introducerName || "" : "",
+      /* N */ isFirstRow ? sale.introducerCommission ?? 0 : 0,
+      /* O */ isFirstRow ? sale.cardFees ?? 0 : 0,
+      /* P */ isFirstRow ? sale.entrupyFee ?? 0 : 0,
+      /* Q */ isFirstRow ? sale.shippingCost ?? 0 : 0,
       /* R */ 0,
       /* S */ 0,
-      /* T */ `=SUM(M${rowNumber}:S${rowNumber})`,
-      /* U */ `=K${rowNumber}-T${rowNumber}`,
-      /* V */ `=K${rowNumber}-T${rowNumber}`,
-      /* W */ false,
-      /* X */ "",
+      /* T */ 0,
+      /* U */ `=SUM(N${rowNumber}:T${rowNumber})`,
+      /* V */ `=L${rowNumber}-U${rowNumber}`,
+      /* W */ `=L${rowNumber}-U${rowNumber}`,
+      /* X */ false,
       /* Y */ "",
+      /* Z */ "",
     ];
   });
 }
