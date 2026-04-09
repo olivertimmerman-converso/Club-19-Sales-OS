@@ -12,7 +12,7 @@ Two main components:
 - **Database**: PostgreSQL with Drizzle ORM
 - **Auth**: Clerk (roles stored in `publicMetadata.staffRole`)
 - **Hosting**: Vercel Pro
-- **Integrations**: Xero (invoicing, payments)
+- **Integrations**: Xero (invoicing, payments), Google Sheets (per-shopper reporting layer)
 
 ## Critical Development Rules
 
@@ -87,6 +87,46 @@ Three cron jobs in `vercel.json`:
 - **Token refresh** (`/api/cron/refresh-xero`): Every 10 minutes
 - **Invoice sync** (`/api/cron/sync-invoices`): Every 30 minutes — syncs new invoices from Xero
 - **Payment sync** (`/api/cron/sync-payments`): Every hour — updates payment statuses
+
+## Google Sheets Integration
+
+Each shopper has a Google Sheet that mirrors their wizard-created sales. The
+app pushes to these sheets via the Sheets API on every successful wizard
+submit. **Sheets are NOT the source of truth** — the DB is. Sheets is the
+working surface for Sophie's month-end reconciliation and (in Workstream 4)
+for the commission engine to read cost overrides from.
+
+**Setup:**
+- Service account credentials: `GOOGLE_SERVICE_ACCOUNT_KEY_B64` env var
+  (base64-encoded JSON key file). Generate with
+  `base64 -i path/to/key.json | pbcopy`.
+- Per-shopper sheet IDs: `SHEET_ID_HOPE`, `SHEET_ID_MC` (production),
+  `SHEET_ID_TEST` (used in all non-production environments).
+- Each Google Sheet must be shared with the service account email as Editor.
+- Service account scope: only `spreadsheets` (no Drive scope needed).
+
+**Push behaviour:**
+- Trigger: after `saveLineItems` in `app/api/xero/invoices/route.ts`.
+- Failures are logged to the `errors` table with `source = 'sheets-sync'` and
+  never block invoice creation.
+- One row per **line item**, not per sale. Multi-item invoices push N rows
+  sharing the same invoice number. Invoice-level costs (introducer fee, CC
+  fee, Entrupy, shipping) attach to the **first row only** of each invoice
+  so SUM formulas don't double-count.
+- Each month gets its own tab named "Month YYYY" (e.g. "April 2026"), created
+  lazily on first push of the month with frozen header row.
+- Column layout: see `lib/google-sheets-mapping.ts` (25 columns, A–Y).
+
+**Sophie's master sheet (manual setup, no code):**
+Sophie creates a master Google Sheet with one tab per month. Each tab uses
+`=QUERY(IMPORTRANGE("<SHEET_ID>", "Month YYYY!A:Y"), "select * where Col1 is not null")`
+to pull from Hope's and MC's individual sheets. One-time IMPORTRANGE
+permission grant per source sheet. Updates flow automatically.
+
+**Adding a new shopper:**
+1. Create a Google Sheet, share with service account email as Editor
+2. Add the sheet ID as a `SHEET_ID_<NAME>` env var (Vercel + .env.local)
+3. Add the name match in `getSheetIdForShopper()` in `lib/google-sheets.ts`
 
 ## Sale Completion Workflow
 

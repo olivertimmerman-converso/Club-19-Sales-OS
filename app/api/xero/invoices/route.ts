@@ -5,6 +5,10 @@ import { createXeroInvoice } from "@/lib/xero";
 import { getBrandingThemeId } from "@/lib/xero-branding-themes";
 import { syncSaleToMake, buildSalePayload } from "@/lib/make-sync";
 import { syncInvoiceAndAppDataToXata, saveLineItems } from "@/lib/xata-sales";
+import { pushSaleToShopperSheet } from "@/lib/google-sheets";
+import { db } from "@/db";
+import { sales, lineItems as lineItemsTable, errors } from "@/db/schema";
+import { eq, asc } from "drizzle-orm";
 import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -466,6 +470,56 @@ export async function POST(request: NextRequest) {
           saleId: sale.id,
           lineItemCount: payload.lineItems.length,
         });
+      }
+
+      // Phase 2 Workstream 2: push to the shopper's Google Sheet.
+      // Fire-and-forget — failures are caught here, logged to the errors table,
+      // and never bubble up. The Xero invoice and DB row are the source of truth;
+      // a Sheets outage must not block invoice creation.
+      if (sale?.id) {
+        try {
+          const saleWithRelations = await db.query.sales.findFirst({
+            where: eq(sales.id, sale.id),
+            with: { buyer: true, supplier: true },
+          });
+          const saleLineItems = await db.query.lineItems.findMany({
+            where: eq(lineItemsTable.saleId, sale.id),
+            with: { supplier: true },
+            orderBy: [asc(lineItemsTable.lineNumber)],
+          });
+
+          if (saleWithRelations) {
+            const pushResult = await pushSaleToShopperSheet({
+              sale: saleWithRelations,
+              lineItems: saleLineItems,
+              shopperName,
+            });
+
+            if (!pushResult.success) {
+              // Record in errors table for admin visibility
+              await db
+                .insert(errors)
+                .values({
+                  saleId: sale.id,
+                  severity: "low",
+                  source: "sheets-sync",
+                  message: [
+                    `Sheets push failed: ${pushResult.reason || "unknown"}`,
+                  ],
+                  timestamp: new Date(),
+                  resolved: false,
+                })
+                .catch(() => {
+                  /* ignore — errors-table write failure is not actionable here */
+                });
+            }
+          }
+        } catch (sheetsErr) {
+          logger.error("SHEETS", "Push wrapper failed (non-fatal)", {
+            saleId: sale.id,
+            error: sheetsErr instanceof Error ? sheetsErr.message : "unknown",
+          });
+        }
       }
     } catch (err) {
       logger.error("XATA", "Sync failed (non-critical)", { error: err as any } as any);
