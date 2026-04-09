@@ -77,7 +77,12 @@ function getSheetsClient(): sheets_v4.Sheets {
  * In non-production environments, ALL shoppers map to SHEET_ID_TEST so dev
  * work doesn't pollute Hope's or MC's real sheets.
  *
- * Returns null if no mapping exists — the push is then skipped (logged).
+ * In production:
+ *   - Hope → SHEET_ID_HOPE
+ *   - MC → SHEET_ID_MC
+ *   - Anything else (Sophie, Alys, unmapped staff) → SHEET_ID_MASTER
+ *
+ * Returns null only if no env var is configured for the matched bucket.
  */
 export function getSheetIdForShopper(shopperName: string): string | null {
   // Dev / preview / local: everything goes to the test sheet
@@ -92,7 +97,9 @@ export function getSheetIdForShopper(shopperName: string): string | null {
   if (normalized.startsWith("mc") || normalized.includes("oyesilbelde")) {
     return process.env.SHEET_ID_MC || null;
   }
-  return null;
+  // Catch-all for Sophie, Alys, and any unmapped shopper. Sales here land in
+  // the master sheet so nothing falls through the cracks.
+  return process.env.SHEET_ID_MASTER || null;
 }
 
 // ============================================================================

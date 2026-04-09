@@ -101,6 +101,7 @@ for the commission engine to read cost overrides from.
   (base64-encoded JSON key file). Generate with
   `base64 -i path/to/key.json | pbcopy`.
 - Per-shopper sheet IDs: `SHEET_ID_HOPE`, `SHEET_ID_MC` (production),
+  `SHEET_ID_MASTER` (catch-all for Sophie, Alys, and any unmapped shopper),
   `SHEET_ID_TEST` (used in all non-production environments).
 - Each Google Sheet must be shared with the service account email as Editor.
 - Service account scope: only `spreadsheets` (no Drive scope needed).
