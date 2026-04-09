@@ -112,8 +112,98 @@ export function StepPricing() {
         </p>
       </div>
 
-      {/* Pricing Table */}
-      <div className="border border-gray-200 rounded-lg overflow-visible">
+      {/* Pricing Cards — mobile only (md:hidden).
+          The desktop table below crams 5 columns into ~390px on iPhone, making
+          the buy/sell inputs unusably narrow. On mobile, render each item as a
+          stacked card with full-width inputs. */}
+      <div className="md:hidden space-y-3">
+        {state.items.map((item) => {
+          const prices = localPrices[item.id] || { buyPrice: "", sellPrice: "" };
+          const buyNum = roundCurrency(parseFloat(prices.buyPrice) || 0);
+          const sellNum = roundCurrency(parseFloat(prices.sellPrice) || 0);
+          const lineMargin = multiplyCurrency(subtractCurrency(sellNum, buyNum), item.quantity);
+
+          return (
+            <div
+              key={item.id}
+              className="border border-gray-200 rounded-lg p-4 bg-white space-y-3"
+            >
+              {/* Item header */}
+              <div>
+                <div className="text-sm font-semibold text-gray-900">
+                  {item.brand} {item.category}
+                </div>
+                <div className="text-xs text-gray-600 break-words">
+                  {item.description}
+                </div>
+                <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-1">
+                  <span>Qty: {item.quantity}</span>
+                  {item.supplier?.name && <span>· {item.supplier.name}</span>}
+                </div>
+              </div>
+
+              {/* Buy + Sell side-by-side, full width within the card */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Buy (£)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">£</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      min="0"
+                      max="10000000"
+                      value={prices.buyPrice}
+                      onChange={(e) => handlePriceChange(item.id, "buyPrice", e.target.value)}
+                      onBlur={() => handlePriceBlur(item.id, "buyPrice")}
+                      placeholder="0"
+                      className="w-full border border-gray-300 rounded-md pl-7 pr-2 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Sell (£)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">£</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.01"
+                      min="0"
+                      max="10000000"
+                      value={prices.sellPrice}
+                      onChange={(e) => handlePriceChange(item.id, "sellPrice", e.target.value)}
+                      onBlur={() => handlePriceBlur(item.id, "sellPrice")}
+                      placeholder="0"
+                      className="w-full border border-gray-300 rounded-md pl-7 pr-2 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Line margin */}
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <span className="text-xs text-gray-600">Line margin</span>
+                <span
+                  className={`text-sm font-semibold ${
+                    lineMargin >= 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  £{lineMargin.toFixed(0)}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Pricing Table — desktop only (md+) */}
+      <div className="hidden md:block border border-gray-200 rounded-lg overflow-visible">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>

@@ -82,7 +82,7 @@ export function WizardShell({ children }: WizardShellProps) {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">New Sale</h1>
-            <p className="text-gray-600 mt-1">Create a new sale record with Xero invoice</p>
+            <p className="hidden sm:block text-gray-600 mt-1">Create a new sale record with Xero invoice</p>
           </div>
           <button
             type="button"
@@ -264,7 +264,12 @@ export function WizardShell({ children }: WizardShellProps) {
           >
             {state.currentStep < STEP_LABELS.length - 1 ? (
               <>
-                Next: {STEP_LABELS[state.currentStep + 1]}
+                {/* Short label on mobile so the button doesn't wrap when the next
+                    step name is long ("Supplier & Item", "VAT & Logistics") */}
+                <span className="sm:hidden">Next</span>
+                <span className="hidden sm:inline">
+                  Next: {STEP_LABELS[state.currentStep + 1]}
+                </span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
