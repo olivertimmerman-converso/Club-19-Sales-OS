@@ -280,15 +280,20 @@ export function StepReview() {
         <h3 className="font-semibold text-gray-900">Invoice Details</h3>
 
         {/* Due Date */}
-        <div>
+        <div className="min-w-0">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Invoice Due Date <span className="text-red-600">*</span>
           </label>
+          {/* iOS Safari's <input type="date"> has an intrinsic minimum width set
+              by the user agent stylesheet and ignores width: 100% in some
+              contexts, causing the input to overflow narrow parents on iPhone.
+              `appearance-none` strips the native iOS styling, `block max-w-full`
+              forces it to respect the parent's content box. */}
           <input
             type="date"
             value={state.dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="block w-full max-w-full appearance-none border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
         </div>
