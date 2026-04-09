@@ -374,6 +374,10 @@ export interface SaleEconomicsInput {
   buy_price: number;
   card_fees: number;
   shipping_cost: number;
+  /** Phase 2: flat-£ introducer fee, optional. Treated as a cost deduction. */
+  introducer_commission?: number;
+  /** Phase 2: flat-£ entrupy authentication fee, optional. */
+  entrupy_fee?: number;
   /**
    * CRITICAL: Branding theme is required to determine the correct VAT rate
    * - CN Export Sales = 0% VAT
@@ -401,6 +405,8 @@ export function calculateSaleEconomics(
     buy_price: fields.buy_price,
     card_fees: fields.card_fees,
     shipping_cost: fields.shipping_cost,
+    introducer_commission: fields.introducer_commission || 0,
+    entrupy_fee: fields.entrupy_fee || 0,
     // CRITICAL: Pass branding theme to determine correct VAT rate
     branding_theme: fields.branding_theme,
   });
@@ -435,6 +441,12 @@ export interface CreateSalePayload {
   supplierXeroId?: string;
   introducerName?: string;
   introducerCommission?: number;
+
+  // Phase 2 wizard fields (written directly to sales row, not relational)
+  introducerNameFreeText?: string;
+  hasIntroducer?: boolean;
+  isNewClient?: boolean;
+  entrupyFee?: number;
 
   // Authenticity tracking (Story 2)
   authenticity_status?: string; // "verified" | "pending" | "not_verified"
@@ -493,6 +505,9 @@ export async function createSaleFromAppPayload(
     item_title: sanitizeOptional(payload.item_title) || undefined,
     internal_notes: payload.internal_notes ? sanitizeNotes(payload.internal_notes) : undefined,
     introducerName: payload.introducerName ? sanitizeContactName(payload.introducerName) : undefined,
+    introducerNameFreeText: payload.introducerNameFreeText
+      ? sanitizeContactName(payload.introducerNameFreeText)
+      : undefined,
     admin_override_notes: payload.admin_override_notes ? sanitizeNotes(payload.admin_override_notes) : undefined,
 
     // Email fields (basic sanitization)
@@ -542,6 +557,9 @@ export async function createSaleFromAppPayload(
     buy_price: sanitizedPayload.buy_price,
     card_fees: sanitizedPayload.card_fees || 0,
     shipping_cost: sanitizedPayload.shipping_cost || 0,
+    // Phase 2: introducer fee + entrupy fee are flat-£ cost deductions
+    introducer_commission: sanitizedPayload.introducerCommission || 0,
+    entrupy_fee: sanitizedPayload.entrupyFee || 0,
     // CRITICAL: Pass branding theme to determine correct VAT rate
     branding_theme: sanitizedPayload.branding_theme,
   });
@@ -677,6 +695,19 @@ export async function createSaleFromAppPayload(
 
       // Notes
       internalNotes: sanitizedPayload.internal_notes || "",
+
+      // ----------------------------------------------------------------
+      // Phase 2 wizard fields (free-text introducer name, new client flag,
+      // entrupy fee). Persisted directly to sales row, no FK lookups.
+      // The legacy `introducerId` FK is left null when the wizard sets a
+      // free-text name; future management edits via /api/sales/[id]/introducer
+      // can attach a curated introducer record if needed.
+      // ----------------------------------------------------------------
+      introducerName: sanitizedPayload.introducerNameFreeText || null,
+      hasIntroducer: sanitizedPayload.hasIntroducer || false,
+      isNewClient: sanitizedPayload.isNewClient || false,
+      entrupyFee: sanitizedPayload.entrupyFee || 0,
+      introducerCommission: sanitizedPayload.introducerCommission || 0,
     })
     .returning();
 
@@ -861,6 +892,19 @@ export interface AppFormData {
 
   // Notes
   internalNotes?: string;
+
+  // ----------------------------------------------------------------------
+  // Phase 2 wizard fields (written directly to sales row, not relational)
+  // ----------------------------------------------------------------------
+  /** Free-text introducer name from wizard. Stored on sales.introducer_name.
+   *  Distinct from `introducerName` above which is the FK lookup path. */
+  introducerNameFreeText?: string;
+  /** Whether the wizard's introducer toggle is on. Stored on sales.has_introducer. */
+  hasIntroducer?: boolean;
+  /** First delivered sale for this buyer at creation time. Stored on sales.is_new_client. */
+  isNewClient?: boolean;
+  /** Authentication fee, optional. Stored on sales.entrupy_fee and deducted from commissionable margin. */
+  entrupyFee?: number;
 }
 
 export async function syncInvoiceAndAppDataToXata(params: {
@@ -925,6 +969,12 @@ export async function syncInvoiceAndAppDataToXata(params: {
 
       // Notes
       internal_notes: params.formData.internalNotes,
+
+      // Phase 2 wizard fields
+      introducerNameFreeText: params.formData.introducerNameFreeText,
+      hasIntroducer: params.formData.hasIntroducer,
+      isNewClient: params.formData.isNewClient,
+      entrupyFee: params.formData.entrupyFee,
     };
 
     const sale = await createSaleFromAppPayload(payload);

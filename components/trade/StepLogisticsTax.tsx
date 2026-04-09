@@ -81,13 +81,22 @@ export function StepLogisticsTax() {
   // TAX CALCULATION
   // ============================================================================
 
-  // Compute tax result whenever selections change
-  const result = getInvoiceResult(
-    itemLocation,
-    clientLocation,
-    purchaseType,
-    directShip,
-    insuranceLanded
+  // Compute tax result whenever selections change.
+  // CRITICAL: getInvoiceResult returns a fresh object literal each call. Without
+  // useMemo, `result` would be a new reference on every render, the effect below
+  // would run every render, setTaxScenario would write a new object to context,
+  // and we'd be in an infinite render loop. Memoizing on the actual scalar
+  // inputs gives us a stable reference until the user changes a selection.
+  const result = useMemo(
+    () =>
+      getInvoiceResult(
+        itemLocation,
+        clientLocation,
+        purchaseType,
+        directShip,
+        insuranceLanded
+      ),
+    [itemLocation, clientLocation, purchaseType, directShip, insuranceLanded]
   );
 
   // Update context whenever result changes

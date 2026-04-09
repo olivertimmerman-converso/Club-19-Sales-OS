@@ -56,6 +56,9 @@ interface Sale {
   introducer: { id: string; name: string } | null;
   has_introducer: boolean;
   introducer_commission: number | null;
+  /** Phase 2: free-text introducer name set by the wizard. Distinct from the
+   *  FK-linked `introducer` above. May be set even when no FK is attached. */
+  introducer_name: string | null;
   is_payment_plan: boolean;
   payment_plan_instalments: number | null;
   shipping_method: string | null;
@@ -2135,9 +2138,37 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
         </div>
 
         {/* Introducer Management Card - Only show if has_introducer is true OR introducer exists */}
-        {(sale.has_introducer || sale.introducer) && (
+        {(sale.has_introducer || sale.introducer || sale.introducer_name) && (
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 lg:col-span-2">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Introducer</h2>
+
+            {/* Phase 2: Free-text introducer name from wizard. Read-only label
+                shown above the FK dropdown when the wizard set a name but no
+                introducers-table row was attached. Management can still attach
+                a curated row via the dropdown if they want. */}
+            {sale.introducer_name && !sale.introducer && (
+              <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">
+                      Set by shopper at sale
+                    </p>
+                    <p className="text-sm font-medium text-purple-900 mt-0.5">
+                      {sale.introducer_name}
+                      {sale.introducer_commission != null && (
+                        <span className="text-purple-700">
+                          {" "}
+                          · £{sale.introducer_commission.toFixed(2)} fee
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-purple-600 mt-1">
+                      Optionally attach a curated introducer record below.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Success/Error Messages */}
             {introducerSaveSuccess && (

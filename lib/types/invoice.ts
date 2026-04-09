@@ -94,6 +94,7 @@ export type Buyer = {
   // Optional fields
   xeroContactId?: string; // From customer search
   buyer_type?: BuyerType; // B2B or End Client (affects commission structure)
+  country?: string; // Auto-derived from Xero contact address (used to seed deliveryCountry)
 };
 
 // ============================================================================
@@ -163,12 +164,16 @@ export type MakeResponse = {
 // WIZARD STATE
 // ============================================================================
 
-export type WizardStep = 0 | 1 | 2 | 3 | 4; // Item Details -> Pricing -> Supplier & Buyer -> Logistics & Tax -> Review & Create
+// Phase 2 reordered flow: Client -> Supplier & Item -> Pricing -> VAT & Logistics -> Review
+export type WizardStep = 0 | 1 | 2 | 3 | 4;
 
 export type WizardState = {
   currentStep: WizardStep;
 
-  // Step 0: Tax scenario (from existing VAT logic)
+  // Auto-set on creation; not user-editable in wizard
+  saleDate: string; // ISO date
+
+  // Tax scenario (from VAT engine, set on Step 3 — VAT & Logistics)
   taxScenario: {
     accountCode: string;
     taxType: string;
@@ -180,7 +185,7 @@ export type WizardState = {
     vatReclaim: string;
   } | null;
 
-  // Current item being created (Steps 0-1)
+  // Current item being created (Step 1 — Supplier & Item)
   currentItem: {
     brand: string;
     category: string;
@@ -193,36 +198,45 @@ export type WizardState = {
   // Supplier & purchase defaults
   currentSupplier: Supplier | null;
   currentPaymentMethod: PaymentMethod;
-  deliveryCountry: string; // Where items will be delivered (for shipping cost estimation)
+  deliveryCountry: string; // Auto-derived from Xero contact address; falls back to a prompt on Step 3
 
-  // Logistics data (Step 0)
+  // Logistics data (Step 3 — VAT & Logistics)
   itemLocation: string | null; // "uk" | "outside"
   clientLocation: string | null; // "uk" | "outside"
   purchaseType: string | null; // "retail" | "margin"
   directShip: string | null; // "yes" | "no"
   landedDelivery: string | null; // "yes" | "no"
 
-  // Delivery cost (Step 3 - Logistics & Tax)
+  // Delivery cost
   hasDeliveryCost: boolean | null; // true = cost to be confirmed, false = free delivery
 
-  // Shipping cost (entered in Step 1 - Pricing)
+  // Estimated shipping cost (Step 2 — Pricing)
   shippingCost: number; // Explicit shipping cost in GBP (0 = none)
 
-  // Items (Step 1)
+  // Entrupy fee (Step 2 — Pricing, optional ancillary cost)
+  entrupyFee: number;
+
+  // Items (Step 1 — Supplier & Item)
   items: TradeItem[];
   editingItemId: string | null; // ID of item being edited, or 'new'
 
-  // Buyer (Step 2)
+  // Buyer (Step 0 — Client)
   buyer: Buyer | null;
 
-  // Introducer (Step 2 - optional boolean flag only, details added later in Sales OS)
-  hasIntroducer?: boolean;
+  // New client flag — derived from buyer history at the moment the contact is selected
+  isNewClient: boolean;
 
-  // Invoice metadata (Step 2)
+  // Introducer (Step 0 — Client). Phase 2 model: free-text name + flat £ fee.
+  // The fee is treated as a cost deduction, not a percentage split.
+  hasIntroducer?: boolean;
+  introducerName: string;
+  introducerFee: number;
+
+  // Invoice metadata (Step 4 — Review)
   dueDate: string;
   notes: string;
 
-  // Costs & margins (Step 2 - Review)
+  // Costs & margins
   impliedCosts: ImpliedCosts | null;
   estimatedImportExportGBP: number | null;
   importVAT: number | null; // Import VAT cost (20% of buy price when item enters UK)

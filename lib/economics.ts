@@ -237,15 +237,17 @@ export function calculateCommissionableMargin(
   shippingCost: number | string | null | undefined = 0,
   cardFees: number | string | null | undefined = 0,
   directCosts: number | string | null | undefined = 0,
-  introducerCommission: number | string | null | undefined = 0
+  introducerCommission: number | string | null | undefined = 0,
+  entrupyFee: number | string | null | undefined = 0
 ): number {
   const margin = roundCurrency(toNumber(grossMargin));
   const shipping = roundCurrency(toNumber(shippingCost));
   const fees = roundCurrency(toNumber(cardFees));
   const direct = roundCurrency(toNumber(directCosts));
   const introducer = roundCurrency(toNumber(introducerCommission));
+  const entrupy = roundCurrency(toNumber(entrupyFee));
 
-  const totalDeductions = addCurrency(shipping, fees, direct, introducer);
+  const totalDeductions = addCurrency(shipping, fees, direct, introducer, entrupy);
   return subtractCurrency(margin, totalDeductions);
 }
 
@@ -289,6 +291,11 @@ export interface SaleEconomicsParams {
   direct_costs?: number | string | null | undefined;
   introducer_commission?: number | string | null | undefined;
   /**
+   * Phase 2 ancillary cost — authentication fee per sale.
+   * Treated as a cost deduction that reduces commissionable profit.
+   */
+  entrupy_fee?: number | string | null | undefined;
+  /**
    * CRITICAL: Branding theme is required to determine the correct VAT rate
    * - CN Export Sales = 0% VAT
    * - CN 20% VAT = 20% VAT
@@ -307,6 +314,7 @@ export interface SaleEconomics {
   card_fees: number;
   shipping_cost: number;
   introducer_commission: number;
+  entrupy_fee: number;
   commissionable_margin: number;
   gross_margin_percent: number;
   commissionable_margin_percent: number;
@@ -320,6 +328,7 @@ export function calculateSaleEconomics(params: SaleEconomicsParams): SaleEconomi
   const shipping_cost = roundCurrency(toNumber(params.shipping_cost));
   const direct_costs = roundCurrency(toNumber(params.direct_costs));
   const introducer_commission = roundCurrency(toNumber(params.introducer_commission));
+  const entrupy_fee = roundCurrency(toNumber(params.entrupy_fee));
 
   // CRITICAL: Get the correct VAT rate from branding theme
   const vatRate = getVATRateForBrandingTheme(params.branding_theme);
@@ -333,13 +342,14 @@ export function calculateSaleEconomics(params: SaleEconomicsParams): SaleEconomi
   // Step 3: Calculate gross margin (CRITICAL: Sale - Buy ONLY)
   const gross_margin = calculateGrossMargin(sale_amount_ex_vat, buy_price);
 
-  // Step 4: Calculate commissionable margin (Gross - All Deductions)
+  // Step 4: Calculate commissionable margin (Gross - All Deductions, incl. Entrupy)
   const commissionable_margin = calculateCommissionableMargin(
     gross_margin,
     shipping_cost,
     card_fees,
     direct_costs,
-    introducer_commission
+    introducer_commission,
+    entrupy_fee
   );
 
   // Step 5: Calculate margin percentages
@@ -368,6 +378,7 @@ export function calculateSaleEconomics(params: SaleEconomicsParams): SaleEconomi
     card_fees,
     shipping_cost,
     introducer_commission,
+    entrupy_fee,
     commissionable_margin,
     gross_margin_percent,
     commissionable_margin_percent,

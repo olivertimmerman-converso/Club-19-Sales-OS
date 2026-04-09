@@ -5,9 +5,10 @@ import { useTrade } from "@/contexts/TradeContext";
 import { WizardStep } from "@/lib/types/invoice";
 import { RotateCcw } from "lucide-react";
 
-const STEP_LABELS = ["Item Details", "Pricing & Suppliers", "Client & Payment", "Logistics & Tax", "Review & Create"];
+// Phase 2 step order: Client → Supplier & Item → Pricing → VAT & Logistics → Review
+const STEP_LABELS = ["Client", "Supplier & Item", "Pricing", "VAT & Logistics", "Review & Create"];
 
-const STEP_LABELS_SHORT = ["Item", "Price", "Client", "Tax", "Review"];
+const STEP_LABELS_SHORT = ["Client", "Item", "Price", "Tax", "Review"];
 
 type WizardShellProps = {
   children: React.ReactNode;

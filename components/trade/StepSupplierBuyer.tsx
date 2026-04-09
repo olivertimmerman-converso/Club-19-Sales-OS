@@ -3,23 +3,27 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTrade } from "@/contexts/TradeContext";
 import { fetchXeroBuyers, NormalizedContact } from "@/lib/xero";
-import { PaymentMethod, BuyerType } from "@/lib/types/invoice";
+import { BuyerType } from "@/lib/types/invoice";
 import { COUNTRIES, POPULAR_COUNTRIES } from "@/lib/constants";
 import * as logger from '@/lib/logger';
 
+/**
+ * Step 1 — Client (Phase 2 reordered wizard)
+ *
+ * Captures: client search, buyer type, delivery country, introducer name + fee.
+ * Payment method moved to Step 3 (Pricing).
+ * New-client flag is derived from the buyer-history endpoint and persisted to context.
+ */
 export function StepSupplierBuyer() {
   const {
     state,
     setBuyer,
-    setCurrentPaymentMethod,
+    setIsNewClient,
     setDeliveryCountry,
-    setHasIntroducer
+    setHasIntroducer,
+    setIntroducerName,
+    setIntroducerFee,
   } = useTrade();
-
-  // === PAYMENT METHOD STATE ===
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
-    state.currentPaymentMethod || PaymentMethod.CARD
-  );
 
   // === BUYER STATE (Xero search) ===
   const [buyerName, setBuyerName] = useState(state.buyer?.name || "");
@@ -43,8 +47,12 @@ export function StepSupplierBuyer() {
     state.deliveryCountry || "United Kingdom"
   );
 
-  // === INTRODUCER STATE (boolean flag only) ===
+  // === INTRODUCER STATE (Phase 2: name + flat £ fee) ===
   const [hasIntroducerLocal, setHasIntroducerLocal] = useState(state.hasIntroducer || false);
+  const [introducerNameLocal, setIntroducerNameLocal] = useState(state.introducerName || "");
+  const [introducerFeeLocal, setIntroducerFeeLocal] = useState<string>(
+    state.introducerFee ? String(state.introducerFee) : ""
+  );
 
   // Check for Xero connection status on mount
   useEffect(() => {
@@ -98,11 +106,6 @@ export function StepSupplierBuyer() {
       checkXeroConnection();
     }
   }, []);
-
-  // Sync payment method to context
-  useEffect(() => {
-    setCurrentPaymentMethod(paymentMethod);
-  }, [paymentMethod, setCurrentPaymentMethod]);
 
   // === BUYER HANDLERS (Xero integration) ===
   const handleBuyerInput = async (value: string) => {
@@ -174,7 +177,7 @@ export function StepSupplierBuyer() {
     }
   };
 
-  const selectBuyer = (contact: NormalizedContact) => {
+  const selectBuyer = async (contact: NormalizedContact) => {
     setBuyerName(contact.name);
     setXeroContactId(contact.contactId);
     setBuyerDropdownResults([]);
@@ -182,6 +185,24 @@ export function StepSupplierBuyer() {
     setIsBuyerSearchActive(false);
     setBuyerNotFound(false);
     setBuyerNotFoundQuery("");
+
+    // Phase 2: derive isNewClient from delivered-sale history for this Xero contact.
+    // Filter is `completedAt IS NOT NULL` — sales in triage do not disqualify.
+    try {
+      const res = await fetch(
+        `/api/sales/buyer-history?xeroContactId=${encodeURIComponent(contact.contactId)}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setIsNewClient(Boolean(data.isNew));
+      } else {
+        // On error, fall back to "not new" — better to under-credit than over-credit
+        setIsNewClient(false);
+      }
+    } catch (error) {
+      logger.error("TRADE_UI", "buyer-history lookup failed", { error: error as any });
+      setIsNewClient(false);
+    }
   };
 
   // Initiate Xero OAuth connection (opens in new tab to preserve wizard state)
@@ -205,10 +226,23 @@ export function StepSupplierBuyer() {
     setDeliveryCountry(deliveryCountry);
   }, [deliveryCountry, setDeliveryCountry]);
 
-  // === INTRODUCER HANDLER (checkbox only) ===
+  // === INTRODUCER HANDLERS (Phase 2: name + flat £ fee) ===
   const handleIntroducerToggle = (checked: boolean) => {
     setHasIntroducerLocal(checked);
     setHasIntroducer(checked);
+    if (!checked) {
+      setIntroducerNameLocal("");
+      setIntroducerFeeLocal("");
+    }
+  };
+
+  const handleIntroducerNameBlur = () => {
+    setIntroducerName(introducerNameLocal.trim());
+  };
+
+  const handleIntroducerFeeBlur = () => {
+    const parsed = parseFloat(introducerFeeLocal);
+    setIntroducerFee(Number.isFinite(parsed) && parsed >= 0 ? parsed : 0);
   };
 
   return (
@@ -216,7 +250,7 @@ export function StepSupplierBuyer() {
       {/* Header */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">
-          Client & Payment
+          Client
         </h2>
         <p className="text-sm text-gray-600">
           Who are you selling to?
@@ -383,8 +417,15 @@ export function StepSupplierBuyer() {
         {/* Show selected contact confirmation */}
         {xeroContactId && (
           <div className="bg-green-50 border border-green-200 rounded-md p-3">
-            <p className="text-xs text-green-800">
-              ✓ Xero contact selected: <strong>{buyerName}</strong>
+            <p className="text-xs text-green-800 flex items-center gap-2 flex-wrap">
+              <span>
+                ✓ Xero contact selected: <strong>{buyerName}</strong>
+              </span>
+              {state.isNewClient && (
+                <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                  New client
+                </span>
+              )}
             </p>
           </div>
         )}
@@ -426,37 +467,6 @@ export function StepSupplierBuyer() {
           </div>
         </div>
 
-      </div>
-
-      {/* Payment Method Card - Green */}
-      <div className="border-t-4 border-green-600 bg-green-50 p-4 rounded-lg space-y-4">
-        <h3 className="font-semibold text-gray-900">Payment Method</h3>
-        <p className="text-sm text-gray-600">
-          How will the buyer pay Club 19?
-        </p>
-
-        <div className="space-y-2">
-          <label className="flex items-center">
-            <input
-              type="radio"
-              value={PaymentMethod.CARD}
-              checked={paymentMethod === PaymentMethod.CARD}
-              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-              className="mr-2"
-            />
-            <span className="text-sm text-gray-700">Card</span>
-          </label>
-          <label className="flex items-center">
-            <input
-              type="radio"
-              value={PaymentMethod.BANK_TRANSFER}
-              checked={paymentMethod === PaymentMethod.BANK_TRANSFER}
-              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-              className="mr-2"
-            />
-            <span className="text-sm text-gray-700">Bank Transfer</span>
-          </label>
-        </div>
       </div>
 
       {/* Delivery Country Card - Blue */}
@@ -516,9 +526,44 @@ export function StepSupplierBuyer() {
           </label>
         </div>
 
-        <p className="text-xs text-gray-600 mt-2">
-          Introducer details and commission will be added in Sales OS before month-end
-        </p>
+        {/* Name + flat £ fee inputs (only when toggle is on) */}
+        {hasIntroducerLocal && (
+          <div className="space-y-3 pt-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Introducer name <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                value={introducerNameLocal}
+                onChange={(e) => setIntroducerNameLocal(e.target.value)}
+                onBlur={handleIntroducerNameBlur}
+                placeholder="e.g. Caroline Stanbury"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Introducer fee (£) <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={introducerFeeLocal}
+                onChange={(e) => setIntroducerFeeLocal(e.target.value)}
+                onBlur={handleIntroducerFeeBlur}
+                placeholder="0.00"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                Flat amount paid to the introducer. Deducted from commissionable profit.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

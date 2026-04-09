@@ -142,6 +142,7 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
     internal_notes: sale.internalNotes || null,
     has_introducer: sale.hasIntroducer || false,
     introducer_commission: sale.introducerCommission || null,
+    introducer_name: sale.introducerName || null,
     is_payment_plan: sale.isPaymentPlan || false,
     payment_plan_instalments: sale.paymentPlanInstalments || null,
     buyer: sale.buyer ? {

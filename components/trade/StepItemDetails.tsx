@@ -1,14 +1,31 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useTrade } from "@/contexts/TradeContext";
 import { BRANDS, CATEGORIES } from "@/lib/constants";
 import { TradeItem, TaxRegime } from "@/lib/types/invoice";
+import { toTitleCase } from "@/lib/utils/normalise";
+import { NewSupplierModal } from "@/components/modals/NewSupplierModal";
 import { v4 as uuidv4 } from "uuid";
 import * as logger from '@/lib/logger';
 
 const MAX_ITEMS = 10;
 
+interface XataSupplier {
+  id: string;
+  name: string;
+  email: string;
+}
+
+/**
+ * Step 2 — Supplier & Item (Phase 2 reordered wizard)
+ *
+ * Captures: brand, category, description, quantity (form), then per-item
+ * supplier (autocomplete + create), supplier invoice ref, and date purchased
+ * (rendered inline beneath each saved item).
+ *
+ * Pricing moved to Step 3.
+ */
 export function StepItemDetails() {
   const { state, addItem, updateItem, removeItem, startEditingItem } = useTrade();
 
@@ -24,6 +41,140 @@ export function StepItemDetails() {
   const [categoryOther, setCategoryOther] = useState("");
   const [description, setDescription] = useState("");
   const [quantity, setQuantity] = useState(1);
+
+  // === SUPPLIER AUTOCOMPLETE STATE (per saved item) ===
+  // Lifted from StepPricing as part of Phase 2 wizard reorder.
+  const [activeSupplierSearch, setActiveSupplierSearch] = useState<string | null>(null);
+  const [supplierSearchResults, setSupplierSearchResults] = useState<XataSupplier[]>([]);
+  const [loadingSupplier, setLoadingSupplier] = useState(false);
+  const [supplierNoResults, setSupplierNoResults] = useState(false);
+  const [supplierCreateError, setSupplierCreateError] = useState<string | null>(null);
+  const [showNewSupplierModal, setShowNewSupplierModal] = useState(false);
+  const [newSupplierForItemId, setNewSupplierForItemId] = useState<string | null>(null);
+  const [supplierLocalNames, setSupplierLocalNames] = useState<Record<string, string>>({});
+  const supplierDebounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const supplierAbortController = useRef<AbortController | null>(null);
+
+  // Seed local supplier names from items array (handles draft restore + edits)
+  useEffect(() => {
+    setSupplierLocalNames((prev) => {
+      const next = { ...prev };
+      state.items.forEach((item) => {
+        if (next[item.id] === undefined) {
+          next[item.id] = item.supplier?.name || "";
+        }
+      });
+      return next;
+    });
+  }, [state.items]);
+
+  const debouncedSupplierSearch = useMemo(
+    () => (query: string) => {
+      if (supplierDebounceTimer.current) {
+        clearTimeout(supplierDebounceTimer.current);
+      }
+      supplierDebounceTimer.current = setTimeout(async () => {
+        if (supplierAbortController.current) {
+          supplierAbortController.current.abort();
+        }
+        supplierAbortController.current = new AbortController();
+        setLoadingSupplier(true);
+        try {
+          const response = await fetch(
+            `/api/suppliers/search?q=${encodeURIComponent(query)}`,
+            { signal: supplierAbortController.current.signal }
+          );
+          if (!response.ok) throw new Error("Failed to search suppliers");
+          const results: XataSupplier[] = await response.json();
+          setSupplierSearchResults(results);
+          setSupplierNoResults(results.length === 0);
+        } catch (error: any) {
+          if (error.name === "AbortError") return;
+          logger.error("TRADE_UI", "Supplier search failed", { error: error as any } as any);
+          setSupplierSearchResults([]);
+          setSupplierNoResults(false);
+        } finally {
+          setLoadingSupplier(false);
+        }
+      }, 300);
+    },
+    []
+  );
+
+  const handleSupplierInput = (itemId: string, value: string) => {
+    setSupplierLocalNames((prev) => ({ ...prev, [itemId]: value }));
+    setActiveSupplierSearch(itemId);
+    setSupplierNoResults(false);
+    // Clear the linked supplier xataId when user edits
+    updateItem(itemId, {
+      supplier: { name: value, country: "United Kingdom", taxRegime: TaxRegime.UK_VAT },
+    });
+    if (value.length >= 2) {
+      debouncedSupplierSearch(value);
+    } else {
+      setSupplierSearchResults([]);
+    }
+  };
+
+  const selectSupplier = (itemId: string, supplier: XataSupplier) => {
+    setSupplierLocalNames((prev) => ({ ...prev, [itemId]: supplier.name }));
+    setSupplierSearchResults([]);
+    setActiveSupplierSearch(null);
+    setSupplierNoResults(false);
+    updateItem(itemId, {
+      supplier: {
+        name: supplier.name,
+        country: "United Kingdom",
+        taxRegime: TaxRegime.UK_VAT,
+        xataId: supplier.id,
+      },
+    });
+  };
+
+  const handleCreateSupplier = async (itemId: string) => {
+    const supplierName = toTitleCase(supplierLocalNames[itemId] || "");
+    if (!supplierName) return;
+    try {
+      setLoadingSupplier(true);
+      setSupplierCreateError(null);
+      const response = await fetch("/api/suppliers/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: supplierName }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to create supplier");
+      if (data.success && data.supplier) {
+        selectSupplier(itemId, data.supplier);
+      }
+    } catch (error: any) {
+      logger.error("TRADE_UI", "Failed to create supplier", { error: error as any } as any);
+      setSupplierCreateError(error.message || "Failed to create supplier. Please try again.");
+      setTimeout(() => setSupplierCreateError(null), 5000);
+    } finally {
+      setLoadingSupplier(false);
+    }
+  };
+
+  const handleNewSupplierCreated = (supplier: {
+    id: string;
+    name: string;
+    pending_approval: boolean;
+  }) => {
+    const itemId = newSupplierForItemId;
+    if (!itemId) return;
+    selectSupplier(itemId, { id: supplier.id, name: supplier.name, email: "" });
+    setShowNewSupplierModal(false);
+    setNewSupplierForItemId(null);
+  };
+
+  const handleSupplierBlur = (itemId: string) => {
+    // Close dropdown after a short delay so click handlers fire
+    setTimeout(() => {
+      setActiveSupplierSearch(null);
+      setSupplierSearchResults([]);
+    }, 200);
+  };
 
   // Show "Other" input fields
   const showBrandOther = brand === "Other";
@@ -199,10 +350,10 @@ export function StepItemDetails() {
       {/* Header */}
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">
-          Item Details
+          Supplier &amp; Item
         </h2>
         <p className="text-sm text-gray-600">
-          Add items to this invoice (up to {MAX_ITEMS} items)
+          Add items and their suppliers (up to {MAX_ITEMS} items)
         </p>
       </div>
 
@@ -313,42 +464,156 @@ export function StepItemDetails() {
               Items ({state.items.length}/{MAX_ITEMS})
             </h3>
           </div>
-          <div className="space-y-2">
-            {state.items.map((item, index) => (
-              <div
-                key={item.id}
-                className={`flex items-center justify-between p-3 bg-white rounded-lg border ${
-                  state.editingItemId === item.id
-                    ? "border-blue-500 ring-1 ring-blue-500"
-                    : "border-gray-200"
-                }`}
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {index + 1}. {item.brand} {item.category}
-                  </p>
-                  <p className="text-sm text-gray-500 truncate">
-                    {item.description} (Qty: {item.quantity})
-                  </p>
+          <div className="space-y-3">
+            {state.items.map((item, index) => {
+              const supplierName = supplierLocalNames[item.id] ?? item.supplier?.name ?? "";
+              const isLinkedSupplier = !!item.supplier?.xataId;
+              const isSearchActive = activeSupplierSearch === item.id;
+
+              return (
+                <div
+                  key={item.id}
+                  className={`p-3 bg-white rounded-lg border ${
+                    state.editingItemId === item.id
+                      ? "border-blue-500 ring-1 ring-blue-500"
+                      : "border-gray-200"
+                  }`}
+                >
+                  {/* Item header row */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">
+                        {index + 1}. {item.brand} {item.category}
+                      </p>
+                      <p className="text-sm text-gray-500 break-words">
+                        {item.description} (Qty: {item.quantity})
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2 flex-shrink-0">
+                      <button
+                        onClick={() => handleEditItem(item.id)}
+                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        disabled={state.editingItemId === item.id}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleRemoveItem(item.id)}
+                        className="text-red-600 hover:text-red-800 text-sm font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Supplier autocomplete */}
+                  <div className="relative">
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Supplier <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={supplierName}
+                      onChange={(e) => handleSupplierInput(item.id, e.target.value)}
+                      onFocus={() => setActiveSupplierSearch(item.id)}
+                      onBlur={() => handleSupplierBlur(item.id)}
+                      placeholder="Search suppliers..."
+                      className={`w-full border rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                        isLinkedSupplier ? "border-green-300 bg-green-50" : "border-gray-300"
+                      }`}
+                    />
+                    {loadingSupplier && isSearchActive && (
+                      <div className="absolute right-2 top-8">
+                        <svg className="animate-spin h-4 w-4 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </div>
+                    )}
+
+                    {isSearchActive && supplierSearchResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-40 overflow-auto">
+                        {supplierSearchResults.map((s, idx) => (
+                          <div
+                            key={s.id || idx}
+                            onMouseDown={() => selectSupplier(item.id, s)}
+                            className="px-3 py-2 cursor-pointer hover:bg-purple-100 text-sm"
+                          >
+                            <div className="font-medium text-gray-900">{s.name}</div>
+                            {s.email && <div className="text-xs text-gray-500">{s.email}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {isSearchActive && supplierNoResults && !loadingSupplier && supplierName.trim() && (
+                      <div className="absolute z-50 w-full mt-1 bg-blue-50 border border-blue-200 rounded-md p-2">
+                        <p className="text-xs text-blue-800 mb-1">No supplier found</p>
+                        <button
+                          type="button"
+                          onMouseDown={() => handleCreateSupplier(item.id)}
+                          className="text-xs text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded transition-colors"
+                        >
+                          + Create &quot;{supplierName}&quot;
+                        </button>
+                      </div>
+                    )}
+
+                    {!isLinkedSupplier && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewSupplierForItemId(item.id);
+                          setShowNewSupplierModal(true);
+                        }}
+                        className="mt-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                      >
+                        + Add New Supplier
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Supplier invoice ref + date purchased */}
+                  <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Supplier Invoice No.
+                      </label>
+                      <input
+                        type="text"
+                        value={item.supplierInvoiceRef || ""}
+                        onChange={(e) =>
+                          updateItem(item.id, {
+                            supplierInvoiceRef: e.target.value || undefined,
+                          })
+                        }
+                        placeholder="e.g. INV-001 or Pending"
+                        className="w-full border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-purple-400"
+                      />
+                    </div>
+                    <div className="flex-1 sm:max-w-[180px]">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Date Purchased
+                      </label>
+                      <input
+                        type="date"
+                        value={item.datePurchased || new Date().toISOString().split("T")[0]}
+                        onChange={(e) =>
+                          updateItem(item.id, { datePurchased: e.target.value || undefined })
+                        }
+                        className="w-full border border-gray-200 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-purple-400"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2 ml-4">
-                  <button
-                    onClick={() => handleEditItem(item.id)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    disabled={state.editingItemId === item.id}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleRemoveItem(item.id)}
-                    className="text-red-600 hover:text-red-800 text-sm font-medium"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
+          {supplierCreateError && (
+            <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-2">
+              <p className="text-xs text-red-800">{supplierCreateError}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -506,9 +771,18 @@ export function StepItemDetails() {
       {/* Help text */}
       {state.items.length > 0 && (
         <div className="text-sm text-gray-500">
-          <p>Click &quot;Next&quot; when you&apos;ve added all items to continue to pricing.</p>
+          <p>Once every item has a supplier, click &quot;Next&quot; to set prices.</p>
         </div>
       )}
+
+      <NewSupplierModal
+        open={showNewSupplierModal}
+        onClose={() => {
+          setShowNewSupplierModal(false);
+          setNewSupplierForItemId(null);
+        }}
+        onCreated={handleNewSupplierCreated}
+      />
     </div>
   );
 }

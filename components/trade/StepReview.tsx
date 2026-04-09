@@ -97,12 +97,25 @@ export function StepReview() {
   }, []);
 
   // Calculate commissionable margin with currency rounding
+  // Phase 2: introducer fee + entrupy fee are also cost deductions.
   const commissionableMarginGBP = useMemo(() => {
     const importExportCost = roundCurrency(state.estimatedImportExportGBP ?? 0);
     const importVATCost = roundCurrency(state.importVAT ?? 0);
-    const totalDeductions = roundCurrency(impliedCosts.total + importExportCost + importVATCost);
+    const introducerCost = state.hasIntroducer ? roundCurrency(state.introducerFee ?? 0) : 0;
+    const entrupyCost = roundCurrency(state.entrupyFee ?? 0);
+    const totalDeductions = roundCurrency(
+      impliedCosts.total + importExportCost + importVATCost + introducerCost + entrupyCost
+    );
     return subtractCurrency(grossMarginGBP, totalDeductions);
-  }, [grossMarginGBP, impliedCosts, state.estimatedImportExportGBP, state.importVAT]);
+  }, [
+    grossMarginGBP,
+    impliedCosts,
+    state.estimatedImportExportGBP,
+    state.importVAT,
+    state.hasIntroducer,
+    state.introducerFee,
+    state.entrupyFee,
+  ]);
 
   // Handle invoice creation via native Xero API
   const handleCreateInvoice = async () => {
@@ -177,6 +190,13 @@ export function StepReview() {
         shippingCost: state.shippingCost || 0,
         paymentMethod: state.currentPaymentMethod,
         notes: state.notes || undefined,
+
+        // Phase 2 wizard fields
+        isNewClient: state.isNewClient,
+        hasIntroducer: state.hasIntroducer || false,
+        introducerName: state.hasIntroducer ? state.introducerName : undefined,
+        introducerCommission: state.hasIntroducer ? state.introducerFee : 0,
+        entrupyFee: state.entrupyFee || 0,
 
         // Legacy fields for backward compatibility (use first item)
         supplierName: firstItem.supplier?.name || state.currentSupplier?.name,
@@ -325,7 +345,7 @@ export function StepReview() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => goToStep(0)}
+                    onClick={() => goToStep(1)}
                     className="block text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"
                   >
                     Edit
@@ -382,12 +402,29 @@ export function StepReview() {
       {/* Client & Delivery Info */}
       {(state.buyer || state.deliveryCountry) && (
         <div className="border border-purple-300 bg-purple-50 rounded-lg p-4">
-          <h3 className="font-semibold text-purple-900 mb-3">Client & Delivery</h3>
+          <h3 className="font-semibold text-purple-900 mb-3">Client &amp; Delivery</h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <div className="text-purple-700 font-medium">Sale date</div>
+              <div className="text-purple-900">
+                {new Date(state.saleDate).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </div>
+            </div>
             {state.buyer && (
               <div>
                 <div className="text-purple-700 font-medium">Client</div>
-                <div className="text-purple-900">{state.buyer.name}</div>
+                <div className="text-purple-900 flex items-center gap-2 flex-wrap">
+                  <span>{state.buyer.name}</span>
+                  {state.isNewClient && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded bg-purple-200 text-purple-800">
+                      New client
+                    </span>
+                  )}
+                </div>
                 {state.buyer.xeroContactId && (
                   <div className="text-xs text-purple-600 mt-0.5">
                     ✓ Linked to Xero
@@ -405,6 +442,15 @@ export function StepReview() {
               <div>
                 <div className="text-purple-700 font-medium">Payment Method</div>
                 <div className="text-purple-900">{state.currentPaymentMethod}</div>
+              </div>
+            )}
+            {state.hasIntroducer && state.introducerName && (
+              <div className="col-span-2">
+                <div className="text-purple-700 font-medium">Introducer</div>
+                <div className="text-purple-900">
+                  {state.introducerName}
+                  <span className="text-purple-700"> · £{state.introducerFee.toFixed(2)} fee</span>
+                </div>
               </div>
             )}
           </div>
@@ -475,6 +521,22 @@ export function StepReview() {
                 </span>
               </div>
             )}
+          {state.hasIntroducer && state.introducerFee > 0 && (
+            <div className="flex justify-between">
+              <span className="text-purple-700">Introducer fee ({state.introducerName}):</span>
+              <span className="font-medium text-purple-900">
+                −£{state.introducerFee.toFixed(2)}
+              </span>
+            </div>
+          )}
+          {state.entrupyFee > 0 && (
+            <div className="flex justify-between">
+              <span className="text-purple-700">Entrupy fee:</span>
+              <span className="font-medium text-purple-900">
+                −£{state.entrupyFee.toFixed(2)}
+              </span>
+            </div>
+          )}
           <div className="border-t-2 border-purple-300 pt-2 mt-2 flex justify-between">
             <span className="font-semibold text-purple-900">Commissionable margin (GBP):</span>
             <span className="text-lg font-bold text-purple-900">
@@ -485,7 +547,9 @@ export function StepReview() {
         <div className="mt-3 text-xs text-purple-700 bg-white border border-purple-200 p-2 rounded">
           Handling/shipping is billed to the client on the invoice. Commission is calculated on gross margin
           {(state.importVAT ?? 0) > 0 && " minus import VAT"}
-          {(state.estimatedImportExportGBP ?? 0) > 0 && " and import/export taxes"}
+          {(state.estimatedImportExportGBP ?? 0) > 0 && ", import/export taxes"}
+          {state.hasIntroducer && state.introducerFee > 0 && ", introducer fee"}
+          {state.entrupyFee > 0 && ", Entrupy fee"}
           .
         </div>
       </div>

@@ -13,24 +13,25 @@ import { StepReview } from "@/components/trade/StepReview";
 function WizardContent() {
   const { state, resetKey } = useTrade();
 
+  // Phase 2 step order: Client → Supplier & Item → Pricing → VAT & Logistics → Review
   return (
     <div className="w-full" key={resetKey}>
-      {/* Step 0: Item Details */}
+      {/* Step 0: Client */}
       <div className={state.currentStep === 0 ? "block w-full" : "hidden w-full"}>
-        <StepItemDetails />
-      </div>
-
-      {/* Step 1: Pricing */}
-      <div className={state.currentStep === 1 ? "block w-full" : "hidden w-full"}>
-        <StepPricing />
-      </div>
-
-      {/* Step 2: Supplier & Buyer */}
-      <div className={state.currentStep === 2 ? "block w-full" : "hidden w-full"}>
         <StepSupplierBuyer />
       </div>
 
-      {/* Step 3: Logistics & Tax */}
+      {/* Step 1: Supplier & Item */}
+      <div className={state.currentStep === 1 ? "block w-full" : "hidden w-full"}>
+        <StepItemDetails />
+      </div>
+
+      {/* Step 2: Pricing */}
+      <div className={state.currentStep === 2 ? "block w-full" : "hidden w-full"}>
+        <StepPricing />
+      </div>
+
+      {/* Step 3: VAT & Logistics */}
       <div className={state.currentStep === 3 ? "block w-full" : "hidden w-full"}>
         <StepLogisticsTax />
       </div>

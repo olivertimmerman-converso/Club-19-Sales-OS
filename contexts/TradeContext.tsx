@@ -32,11 +32,14 @@ function saveDraft(state: WizardState): void {
       savedAt: Date.now(),
       state: {
         currentStep: state.currentStep,
+        saleDate: state.saleDate,
         items: state.items,
         buyer: state.buyer,
+        isNewClient: state.isNewClient,
         currentPaymentMethod: state.currentPaymentMethod,
         deliveryCountry: state.deliveryCountry,
         shippingCost: state.shippingCost,
+        entrupyFee: state.entrupyFee,
         taxScenario: state.taxScenario,
         itemLocation: state.itemLocation,
         clientLocation: state.clientLocation,
@@ -45,6 +48,8 @@ function saveDraft(state: WizardState): void {
         landedDelivery: state.landedDelivery,
         hasDeliveryCost: state.hasDeliveryCost,
         hasIntroducer: state.hasIntroducer,
+        introducerName: state.introducerName,
+        introducerFee: state.introducerFee,
         dueDate: state.dueDate,
         notes: state.notes,
         estimatedImportExportGBP: state.estimatedImportExportGBP,
@@ -127,9 +132,15 @@ type TradeContextType = {
 
   // Buyer
   setBuyer: (buyer: Buyer) => void;
+  setIsNewClient: (value: boolean) => void;
 
-  // Introducer (boolean flag only)
+  // Introducer (Phase 2: free-text name + flat £ fee)
   setHasIntroducer: (hasIntroducer: boolean) => void;
+  setIntroducerName: (name: string) => void;
+  setIntroducerFee: (amount: number) => void;
+
+  // Entrupy fee (ancillary cost, optional)
+  setEntrupyFee: (amount: number) => void;
 
   // Invoice metadata
   setDueDate: (date: string) => void;
@@ -158,6 +169,7 @@ const TradeContext = createContext<TradeContextType | undefined>(undefined);
 // Helper to create fresh initial state with current date
 const createInitialState = (): WizardState => ({
   currentStep: 0,
+  saleDate: new Date().toISOString().split("T")[0], // Today
   taxScenario: null,
   currentItem: null,
   currentSupplier: null,
@@ -170,9 +182,14 @@ const createInitialState = (): WizardState => ({
   landedDelivery: null,
   hasDeliveryCost: null,
   shippingCost: 0,
+  entrupyFee: 0,
   items: [],
   editingItemId: null,
   buyer: null,
+  isNewClient: false,
+  hasIntroducer: false,
+  introducerName: "",
+  introducerFee: 0,
   dueDate: new Date()
     .toISOString()
     .split("T")[0], // Today
@@ -237,35 +254,55 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // ----------------------------------------------------------------------
+  // Phase 2 step order: Client -> Supplier & Item -> Pricing -> VAT -> Review
+  // ----------------------------------------------------------------------
+  const validateClientStep = (s: WizardState): boolean =>
+    s.buyer !== null &&
+    s.buyer.name.trim() !== "" &&
+    s.buyer.buyer_type !== undefined &&
+    // If introducer toggle on, name and fee must both be set (fee > 0)
+    (!s.hasIntroducer ||
+      (s.introducerName.trim() !== "" && s.introducerFee > 0));
+
+  const validateSupplierItemStep = (s: WizardState): boolean =>
+    s.items.length > 0 &&
+    s.items.every(
+      (item) =>
+        item.brand !== "" &&
+        item.category !== "" &&
+        item.description !== "" &&
+        item.quantity > 0 &&
+        !!item.supplier?.name &&
+        item.supplier.name.trim() !== ""
+    );
+
+  const validatePricingStep = (s: WizardState): boolean =>
+    s.items.length > 0 &&
+    s.items.every(
+      (item) =>
+        item.buyPrice !== undefined &&
+        item.buyPrice >= 0 &&
+        item.sellPrice !== undefined &&
+        item.sellPrice > 0
+    ) &&
+    s.currentPaymentMethod !== null;
+
+  const validateLogisticsStep = (s: WizardState): boolean =>
+    s.taxScenario !== null && s.deliveryCountry.trim() !== "";
+
   const canGoNext = (() => {
     switch (state.currentStep) {
-      case 0: // Item Details - require at least one complete item in the items array
-        return state.items.length > 0 &&
-               state.items.every(item =>
-                 item.brand !== "" &&
-                 item.category !== "" &&
-                 item.description !== "" &&
-                 item.quantity > 0
-               );
-      case 1: // Pricing & Suppliers - all items need buy/sell prices and supplier names
-        return state.items.length > 0 &&
-               state.items.every(item =>
-                 item.buyPrice !== undefined &&
-                 item.buyPrice >= 0 &&
-                 item.sellPrice !== undefined &&
-                 item.sellPrice > 0 &&
-                 item.supplier?.name && item.supplier.name.trim() !== ""
-               );
-      case 2: // Client & Payment - buyer details only (suppliers now per-item)
-        return state.currentPaymentMethod !== null &&
-               state.buyer !== null &&
-               state.buyer.name.trim() !== "" &&
-               state.buyer.buyer_type !== undefined &&
-               state.deliveryCountry.trim() !== "";
-      case 3: // Logistics & Tax
-        return state.taxScenario !== null;
+      case 0: // Client
+        return validateClientStep(state);
+      case 1: // Supplier & Item
+        return validateSupplierItemStep(state);
+      case 2: // Pricing
+        return validatePricingStep(state);
+      case 3: // VAT & Logistics
+        return validateLogisticsStep(state);
       case 4: // Review & Create
-        return false; // No next from final step
+        return false;
       default:
         return false;
     }
@@ -274,39 +311,25 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
   const canGoPrev = state.currentStep > 0;
 
   // Helper function to check if a specific step is valid
-  const isStepValid = useCallback((step: WizardStep): boolean => {
-    switch (step) {
-      case 0: // Item Details - require at least one complete item
-        return state.items.length > 0 &&
-               state.items.every(item =>
-                 item.brand !== "" &&
-                 item.category !== "" &&
-                 item.description !== "" &&
-                 item.quantity > 0
-               );
-      case 1: // Pricing & Suppliers - all items need prices and supplier names
-        return state.items.length > 0 &&
-               state.items.every(item =>
-                 item.buyPrice !== undefined &&
-                 item.buyPrice >= 0 &&
-                 item.sellPrice !== undefined &&
-                 item.sellPrice > 0 &&
-                 item.supplier?.name && item.supplier.name.trim() !== ""
-               );
-      case 2: // Client & Payment - buyer details only (suppliers now per-item)
-        return state.currentPaymentMethod !== null &&
-               state.buyer !== null &&
-               state.buyer.name.trim() !== "" &&
-               state.buyer.buyer_type !== undefined &&
-               state.deliveryCountry.trim() !== "";
-      case 3: // Logistics & Tax
-        return state.taxScenario !== null;
-      case 4: // Review & Create
-        return state.buyer !== null && state.buyer.name.trim() !== "";
-      default:
-        return false;
-    }
-  }, [state.items, state.buyer, state.deliveryCountry, state.currentPaymentMethod, state.taxScenario]);
+  const isStepValid = useCallback(
+    (step: WizardStep): boolean => {
+      switch (step) {
+        case 0:
+          return validateClientStep(state);
+        case 1:
+          return validateSupplierItemStep(state);
+        case 2:
+          return validatePricingStep(state);
+        case 3:
+          return validateLogisticsStep(state);
+        case 4:
+          return state.buyer !== null && state.buyer.name.trim() !== "";
+        default:
+          return false;
+      }
+    },
+    [state]
+  );
 
   // Check if user can navigate to a target step
   const canGoToStep = useCallback((targetStep: WizardStep): boolean => {
@@ -408,11 +431,30 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, buyer }));
   }, []);
 
+  const setIsNewClient = useCallback((value: boolean) => {
+    setState((prev) => ({ ...prev, isNewClient: value }));
+  }, []);
+
   const setHasIntroducer = useCallback((hasIntroducer: boolean) => {
     setState((prev) => ({
       ...prev,
       hasIntroducer,
+      // Clear name and fee when toggle goes off so stale values don't get submitted
+      introducerName: hasIntroducer ? prev.introducerName : "",
+      introducerFee: hasIntroducer ? prev.introducerFee : 0,
     }));
+  }, []);
+
+  const setIntroducerName = useCallback((name: string) => {
+    setState((prev) => ({ ...prev, introducerName: name }));
+  }, []);
+
+  const setIntroducerFee = useCallback((amount: number) => {
+    setState((prev) => ({ ...prev, introducerFee: amount }));
+  }, []);
+
+  const setEntrupyFee = useCallback((amount: number) => {
+    setState((prev) => ({ ...prev, entrupyFee: amount }));
   }, []);
 
   const setDueDate = useCallback((date: string) => {
@@ -500,7 +542,11 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     removeItem,
     startEditingItem,
     setBuyer,
+    setIsNewClient,
     setHasIntroducer,
+    setIntroducerName,
+    setIntroducerFee,
+    setEntrupyFee,
     setDueDate,
     setNotes,
     setImpliedCosts,

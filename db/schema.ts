@@ -36,6 +36,7 @@ export const shoppers = pgTable(
     active: boolean("active").default(true),
     createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+    xataVersion: integer("xata.version"),
   },
   (table) => [
     index("shoppers_name_idx").on(table.name),
@@ -64,6 +65,7 @@ export const buyers = pgTable(
     ownerChangedBy: text("owner_changed_by"),
     createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+    xataVersion: integer("xata.version"),
   },
   (table) => [
     index("buyers_name_idx").on(table.name),
@@ -96,6 +98,7 @@ export const suppliers = pgTable(
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+    xataVersion: integer("xata.version"),
   },
   (table) => [
     index("suppliers_name_idx").on(table.name),
@@ -117,6 +120,7 @@ export const introducers = pgTable("introducers", {
   commissionPercent: doublePrecision("commission_percent"),
   createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+  xataVersion: integer("xata.version"),
 });
 
 export const introducersRelations = relations(introducers, ({ many }) => ({
@@ -134,6 +138,7 @@ export const commissionBands = pgTable("commission_bands", {
   commissionPercent: doublePrecision("commission_percent"),
   createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+  xataVersion: integer("xata.version"),
 });
 
 export const commissionBandsRelations = relations(
@@ -218,6 +223,13 @@ export const sales = pgTable(
     // Introducer
     hasIntroducer: boolean("has_introducer").default(false),
     introducerCommission: doublePrecision("introducer_commission"),
+    introducerName: text("introducer_name"),
+
+    // New client tracking (Phase 2 — first delivered sale for this buyer at time of creation)
+    isNewClient: boolean("is_new_client").default(false),
+
+    // Ancillary costs (Phase 2)
+    entrupyFee: doublePrecision("entrupy_fee"),
 
     // Payment Plan
     isPaymentPlan: boolean("is_payment_plan").default(false),
@@ -263,6 +275,7 @@ export const sales = pgTable(
     // Timestamps
     createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+    xataVersion: integer("xata.version"),
   },
   (table) => [
     index("sales_sale_date_idx").on(table.saleDate),
@@ -330,6 +343,7 @@ export const errors = pgTable(
     resolvedBy: text("resolved_by"),
     createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+    xataVersion: integer("xata.version"),
   },
   (table) => [
     index("errors_sale_id_idx").on(table.saleId),
@@ -363,6 +377,7 @@ export const paymentSchedule = pgTable(
     notes: text("notes"),
     createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+    xataVersion: integer("xata.version"),
   },
   (table) => [index("payment_schedule_sale_id_idx").on(table.saleId)]
 );
@@ -401,6 +416,7 @@ export const lineItems = pgTable(
     source: text("source").default("atelier"),
     createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+    xataVersion: integer("xata.version"),
   },
   (table) => [index("line_items_sale_id_idx").on(table.saleId)]
 );
@@ -433,6 +449,7 @@ export const legacySuppliers = pgTable("legacy_suppliers", {
   tradeCount: integer("trade_count"),
   createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+  xataVersion: integer("xata.version"),
 });
 
 export const legacySuppliersRelations = relations(
@@ -453,6 +470,7 @@ export const legacyClients = pgTable("legacy_clients", {
   requiresReview: boolean("requires_review"),
   createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+  xataVersion: integer("xata.version"),
 });
 
 export const legacyClientsRelations = relations(legacyClients, ({ many }) => ({
@@ -477,6 +495,7 @@ export const legacyTrades = pgTable("legacy_trades", {
   rawRow: jsonb("raw_row"),
   createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
+  xataVersion: integer("xata.version"),
 });
 
 export const legacyTradesRelations = relations(legacyTrades, ({ one }) => ({

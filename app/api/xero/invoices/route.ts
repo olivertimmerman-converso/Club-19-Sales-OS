@@ -62,6 +62,13 @@ interface CreateInvoicePayload {
   commissionableMargin?: number;
   paymentMethod?: string;
   notes?: string;
+
+  // Phase 2 wizard fields
+  isNewClient?: boolean;
+  hasIntroducer?: boolean;
+  introducerName?: string;
+  introducerCommission?: number;
+  entrupyFee?: number;
 }
 
 /**
@@ -406,9 +413,16 @@ export async function POST(request: NextRequest) {
           supplierName: payload.supplierName || "",
           supplierXeroId: undefined, // Not available in current payload
 
-          // Introducer (optional)
-          introducerName: undefined, // Not available in current payload
-          introducerCommission: undefined,
+          // Introducer:
+          // - introducerName is intentionally `undefined` to keep `getOrCreateIntroducer`
+          //   from auto-creating rows in the introducers table on every typo. The
+          //   wizard's free-text name is stored directly on `sales.introducer_name`
+          //   via `introducerNameFreeText` below.
+          // - introducerCommission is the flat £ amount from the wizard. The V1
+          //   commission engine still consumes it (no FK introducer means zero split,
+          //   100% to shopper) — this is fine; Phase 4 replaces the engine.
+          introducerName: undefined,
+          introducerCommission: payload.hasIntroducer ? payload.introducerCommission : undefined,
 
           // Item metadata (use first item for legacy compatibility)
           brand: payload.brand,
@@ -426,6 +440,15 @@ export async function POST(request: NextRequest) {
 
           // Notes
           internalNotes: payload.notes || "",
+
+          // Phase 2 fields (written directly to sales row, no relational lookup)
+          isNewClient: payload.isNewClient || false,
+          introducerNameFreeText:
+            payload.hasIntroducer && payload.introducerName
+              ? payload.introducerName
+              : undefined,
+          hasIntroducer: payload.hasIntroducer || false,
+          entrupyFee: payload.entrupyFee || 0,
         },
       });
 
