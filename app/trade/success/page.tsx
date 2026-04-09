@@ -21,33 +21,65 @@ function SuccessContent() {
 
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  // New wizard-created invoices are always DRAFT in Xero. We track the local
+  // approved state so that after the user clicks "Approve & Download" once,
+  // the button flips to plain "Download PDF" without a page reload.
+  const [isApproved, setIsApproved] = useState(false);
 
+  // Streams a fetched PDF response to a download. Shared between both flows.
+  const triggerDownload = async (response: Response) => {
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = invoiceNumber ? `Club19-${invoiceNumber}.pdf` : "Club19-Invoice.pdf";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // Approve in Xero (flips DRAFT → AUTHORISED) AND download the PDF in one call.
+  const handleApproveAndDownload = async () => {
+    if (!saleId) {
+      setPdfError("Approve unavailable — sale was not saved to the database");
+      return;
+    }
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      const response = await fetch(`/api/sales/${saleId}/approve-and-download`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to approve and download");
+      }
+      await triggerDownload(response);
+      setIsApproved(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to approve and download";
+      setPdfError(message);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  // Download PDF for an already-approved invoice.
   const handleDownloadPdf = async () => {
     if (!saleId) {
       setPdfError("PDF download not available — please use 'View in Xero' instead");
       return;
     }
-
     setPdfLoading(true);
     setPdfError(null);
-
     try {
       const response = await fetch(`/api/sales/${saleId}/pdf`);
-
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || "Failed to download PDF");
       }
-
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = invoiceNumber ? `Club19-${invoiceNumber}.pdf` : "Club19-Invoice.pdf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      await triggerDownload(response);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to download PDF";
       setPdfError(message);
@@ -143,13 +175,13 @@ function SuccessContent() {
 
           {/* Action Buttons */}
           <div className="px-8 pb-8 space-y-3">
-            {/* Primary: Download PDF */}
+            {/* Primary: Approve & Download (DRAFT) or Download PDF (AUTHORISED) */}
             {saleId && (
               <button
                 type="button"
-                onClick={handleDownloadPdf}
+                onClick={isApproved ? handleDownloadPdf : handleApproveAndDownload}
                 disabled={pdfLoading}
-                aria-label="Download invoice PDF"
+                aria-label={isApproved ? "Download invoice PDF" : "Approve invoice in Xero and download PDF"}
                 className="block w-full rounded-xl bg-gradient-to-r from-purple-600 to-purple-400 text-white py-3 text-center font-medium shadow-md hover:opacity-90 transition-opacity disabled:opacity-60"
               >
                 <span className="flex items-center justify-center gap-2">
@@ -163,9 +195,22 @@ function SuccessContent() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   )}
-                  {pdfLoading ? "Downloading..." : "Download Invoice PDF"}
+                  {pdfLoading
+                    ? isApproved
+                      ? "Downloading..."
+                      : "Approving & downloading..."
+                    : isApproved
+                      ? "Download Invoice PDF"
+                      : "Approve & Download PDF"}
                 </span>
               </button>
+            )}
+
+            {/* Helper text — explains what Approve does, only shown pre-approval */}
+            {saleId && !isApproved && (
+              <p className="text-xs text-gray-500 text-center -mt-1">
+                Marks the invoice as approved in Xero, then downloads the PDF.
+              </p>
             )}
 
             {/* PDF error message */}

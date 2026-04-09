@@ -352,7 +352,51 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
   // PDF download state
   const [isPdfDownloading, setIsPdfDownloading] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  // Local mirror of invoice status — flipped to AUTHORISED after a successful
+  // approve-and-download so the button updates without a page reload.
+  const [localInvoiceStatus, setLocalInvoiceStatus] = useState<string | null>(
+    sale.invoice_status
+  );
+  const isDraftInvoice = localInvoiceStatus === 'DRAFT' || localInvoiceStatus === null;
 
+  // Streams a fetched PDF response to a download. Shared between both flows.
+  const triggerPdfDownload = async (response: Response) => {
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = sale.xero_invoice_number
+      ? `Club19-${sale.xero_invoice_number}.pdf`
+      : `Club19-${sale.id}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Approve in Xero (flips DRAFT → AUTHORISED) AND download the PDF in one call.
+  const handleApproveAndDownload = async () => {
+    if (!sale.xero_invoice_id) return;
+    setIsPdfDownloading(true);
+    setPdfError(null);
+    try {
+      const response = await fetch(`/api/sales/${sale.id}/approve-and-download`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setPdfError(data.error || 'Failed to approve and download');
+        return;
+      }
+      await triggerPdfDownload(response);
+      // Flip local status so the button updates immediately
+      setLocalInvoiceStatus('AUTHORISED');
+    } catch {
+      setPdfError('Failed to approve and download — please try again');
+    } finally {
+      setIsPdfDownloading(false);
+    }
+  };
+
+  // Download PDF for an already-approved invoice.
   const handleDownloadPdf = async () => {
     if (!sale.xero_invoice_id) return;
     setIsPdfDownloading(true);
@@ -364,15 +408,7 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
         setPdfError(data.error || 'Failed to download PDF');
         return;
       }
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = sale.xero_invoice_number
-        ? `Club19-${sale.xero_invoice_number}.pdf`
-        : `Club19-${sale.id}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await triggerPdfDownload(response);
     } catch {
       setPdfError('Failed to download PDF — please try again');
     } finally {
@@ -1334,13 +1370,23 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
           {sale.xero_invoice_id && (
             <div className="flex flex-col items-start gap-1">
               <button
-                onClick={handleDownloadPdf}
-                disabled={isPdfDownloading || sale.invoice_status === 'DRAFT'}
-                title={sale.invoice_status === 'DRAFT' ? 'Invoice must be approved in Xero before downloading' : 'Download invoice PDF'}
+                onClick={isDraftInvoice ? handleApproveAndDownload : handleDownloadPdf}
+                disabled={isPdfDownloading}
+                title={
+                  isDraftInvoice
+                    ? 'Approve the invoice in Xero, then download the PDF'
+                    : 'Download invoice PDF'
+                }
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FileDown className="w-4 h-4 mr-2" />
-                {isPdfDownloading ? 'Downloading…' : 'Download PDF'}
+                {isPdfDownloading
+                  ? isDraftInvoice
+                    ? 'Approving…'
+                    : 'Downloading…'
+                  : isDraftInvoice
+                    ? 'Approve & Download PDF'
+                    : 'Download PDF'}
               </button>
               {pdfError && (
                 <p className="text-xs text-red-600">{pdfError}</p>
