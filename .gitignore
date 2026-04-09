@@ -42,3 +42,5 @@ next-env.d.ts
 *.swp
 *.swo
 *~
+.env.vercel.pulled
+.claude/settings.local.json
