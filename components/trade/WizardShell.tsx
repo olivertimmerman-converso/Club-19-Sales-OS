@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { useTrade } from "@/contexts/TradeContext";
 import { WizardStep } from "@/lib/types/invoice";
 import { RotateCcw } from "lucide-react";
@@ -17,47 +17,31 @@ type WizardShellProps = {
 export function WizardShell({ children }: WizardShellProps) {
   const { state, canGoNext, canGoPrev, nextStep, prevStep, goToStep, canGoToStep, resetWizard, draftPrompt, resumeDraft, discardDraft } = useTrade();
   const [showResetConfirm, setShowResetConfirm] = React.useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to top on step change.
-  // The actual scroll container is the OSLayout `<main>` element (overflow-y-auto),
-  // not `window` — so window.scrollTo does nothing on this page. Walk up the DOM
-  // from the wizard root to find the closest scrollable ancestor and reset it.
-  // Done in a rAF + setTimeout to wait for the new step's content to mount, otherwise
-  // we'd be scrolling against stale layout.
+  // Scroll to top on step change — backup pass.
+  //
+  // Primary scroll happens synchronously inside goToStep/nextStep/prevStep
+  // (TradeContext.scrollWizardToTop), at the moment the user clicks Next/Back.
+  // This effect runs AFTER the new step has rendered as a defensive second
+  // reset, in case the synchronous reset was applied before React committed
+  // the new layout.
+  //
+  // The actual scroll container is the OSLayout `<main>` element
+  // (overflow-y-auto), so direct query is more reliable than walking the DOM
+  // for an ancestor with overflow.
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const findScrollableAncestor = (el: HTMLElement | null): HTMLElement | null => {
-      let node = el?.parentElement ?? null;
-      while (node) {
-        const style = window.getComputedStyle(node);
-        const overflowY = style.overflowY;
-        if (
-          (overflowY === "auto" || overflowY === "scroll") &&
-          node.scrollHeight > node.clientHeight
-        ) {
-          return node;
-        }
-        node = node.parentElement;
-      }
-      return null;
-    };
-
-    const scrollAllToTop = () => {
-      // Reset window scroll (covers the case where there's no inner scroller)
+    const reset = () => {
       window.scrollTo({ top: 0, behavior: "auto" });
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
-      // Reset the actual scrolling ancestor (the OSLayout <main>)
-      const scroller = findScrollableAncestor(rootRef.current);
-      if (scroller) {
-        scroller.scrollTo({ top: 0, behavior: "auto" });
-      }
+      const main = document.querySelector("main");
+      if (main) main.scrollTop = 0;
     };
 
-    // Wait one frame so the new step's content is in the DOM, then scroll
-    const raf = requestAnimationFrame(scrollAllToTop);
+    // Wait one frame so the new step's content has been laid out
+    const raf = requestAnimationFrame(reset);
     return () => cancelAnimationFrame(raf);
   }, [state.currentStep]);
 
@@ -92,7 +76,7 @@ export function WizardShell({ children }: WizardShellProps) {
   };
 
   return (
-    <div ref={rootRef} className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-3xl mx-auto">
       {/* Page Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between">

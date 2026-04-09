@@ -231,12 +231,42 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [state]);
 
+  // Scrolls every plausible scroll container to the top. Called synchronously
+  // from goToStep/nextStep/prevStep so the reset happens at the moment of user
+  // intent — no race against React's render cycle.
+  //
+  // The OSLayout puts the wizard inside <main className="overflow-y-auto"> so
+  // window.scrollTo is a no-op. Belt-and-braces resets all four candidates:
+  // window, documentElement, body, and the <main> element directly. Also runs
+  // again in a rAF to catch the case where the new step's content reflows the
+  // <main> after the synchronous reset.
+  const scrollWizardToTop = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const reset = () => {
+      window.scrollTo({ top: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      // Direct query — there's exactly one <main> on every page in this app.
+      const main = document.querySelector("main");
+      if (main) main.scrollTop = 0;
+    };
+
+    // Synchronous reset BEFORE the new step renders, so the user doesn't see
+    // a flash of the new content scrolled.
+    reset();
+    // Backup reset after the next paint, in case the sync reset was applied
+    // against stale layout.
+    requestAnimationFrame(reset);
+  }, []);
+
   const goToStep = useCallback((step: WizardStep) => {
     setState((prev) => {
       setNavigationDirection(step > prev.currentStep ? "forward" : "back");
       return { ...prev, currentStep: step };
     });
-  }, []);
+    scrollWizardToTop();
+  }, [scrollWizardToTop]);
 
   const nextStep = useCallback(() => {
     setNavigationDirection("forward");
@@ -244,7 +274,8 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
       const nextStep = Math.min(4, prev.currentStep + 1) as WizardStep;
       return { ...prev, currentStep: nextStep };
     });
-  }, []);
+    scrollWizardToTop();
+  }, [scrollWizardToTop]);
 
   const prevStep = useCallback(() => {
     setNavigationDirection("back");
@@ -252,7 +283,8 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
       const prevStep = Math.max(0, prev.currentStep - 1) as WizardStep;
       return { ...prev, currentStep: prevStep };
     });
-  }, []);
+    scrollWizardToTop();
+  }, [scrollWizardToTop]);
 
   // ----------------------------------------------------------------------
   // Phase 2 step order: Client -> Supplier & Item -> Pricing -> VAT -> Review
