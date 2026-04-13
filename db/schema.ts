@@ -231,6 +231,17 @@ export const sales = pgTable(
     // Ancillary costs (Phase 2)
     entrupyFee: doublePrecision("entrupy_fee"),
 
+    // Logistics costs (Phase 2 WS3)
+    dhlCost: doublePrecision("dhl_cost"),
+    addisonLeeCost: doublePrecision("addison_lee_cost"),
+    taxiCost: doublePrecision("taxi_cost"),
+    handDeliveryCost: doublePrecision("hand_delivery_cost"),
+    otherLogisticsCost: doublePrecision("other_logistics_cost"),
+
+    // Delivery tracking (Phase 2 WS3)
+    deliveryConfirmed: boolean("delivery_confirmed").default(false),
+    deliveryDate: timestamp("delivery_date", { withTimezone: true }),
+
     // Payment Plan
     isPaymentPlan: boolean("is_payment_plan").default(false),
     paymentPlanInstalments: integer("payment_plan_instalments"),

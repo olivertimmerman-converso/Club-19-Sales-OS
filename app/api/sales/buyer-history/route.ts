@@ -1,14 +1,12 @@
 /**
  * GET /api/sales/buyer-history?xeroContactId={id}
  *
- * Returns the count of delivered (completed) sales for a given buyer.
+ * Returns the count of non-deleted sales for a given buyer.
  * Used by the wizard's Step 1 (Client) to derive the `isNewClient` flag —
- * a buyer is "new" iff they have zero delivered sales in the system.
+ * a buyer is "new" iff they have zero sales in the system.
  *
- * Phase 2 interim filter: `completedAt IS NOT NULL`. A sale that's in triage
- * or assigned-but-incomplete must NOT disqualify the next sale from the new
- * client bonus. When `deliveryConfirmed` ships in Workstream 3, swap the
- * filter to `deliveryConfirmed = true`.
+ * Counts ALL non-deleted sales (including Xero imports that were never
+ * completed). A client with historical Xero-imported sales is not new.
  *
  * We key on `xeroContactId` rather than `buyerId` because the wizard has the
  * Xero contact ID at hand from the contact search; the local `buyers.id` is
@@ -19,7 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { sales, buyers } from "@/db/schema";
-import { and, eq, isNull, isNotNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -48,8 +46,7 @@ export async function GET(request: NextRequest) {
       .where(
         and(
           eq(buyers.xeroContactId, xeroContactId),
-          isNull(sales.deletedAt),
-          isNotNull(sales.completedAt)
+          isNull(sales.deletedAt)
         )
       );
 

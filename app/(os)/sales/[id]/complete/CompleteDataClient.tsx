@@ -55,6 +55,14 @@ interface SaleData {
   buyerType: string | null;
   shippingCost: number | null;
   cardFees: number | null;
+  dhlCost: number | null;
+  addisonLeeCost: number | null;
+  taxiCost: number | null;
+  handDeliveryCost: number | null;
+  otherLogisticsCost: number | null;
+  entrupyFee: number | null;
+  deliveryConfirmed: boolean;
+  deliveryDate: string | null;
   grossMargin: number;
   commissionableMargin: number;
 }
@@ -144,6 +152,32 @@ export function CompleteDataClient({
     sale.cardFees !== null ? sale.cardFees.toString() : ""
   );
 
+  // Logistics costs state (Phase 2 WS3)
+  const [dhlCost, setDhlCost] = useState(
+    sale.dhlCost !== null ? sale.dhlCost.toString() : ""
+  );
+  const [addisonLeeCost, setAddisonLeeCost] = useState(
+    sale.addisonLeeCost !== null ? sale.addisonLeeCost.toString() : ""
+  );
+  const [taxiCost, setTaxiCost] = useState(
+    sale.taxiCost !== null ? sale.taxiCost.toString() : ""
+  );
+  const [handDeliveryCost, setHandDeliveryCost] = useState(
+    sale.handDeliveryCost !== null ? sale.handDeliveryCost.toString() : ""
+  );
+  const [otherLogisticsCost, setOtherLogisticsCost] = useState(
+    sale.otherLogisticsCost !== null ? sale.otherLogisticsCost.toString() : ""
+  );
+  const [entrupyFee, setEntrupyFee] = useState(
+    sale.entrupyFee !== null ? sale.entrupyFee.toString() : ""
+  );
+
+  // Delivery tracking state (Phase 2 WS3)
+  const [deliveryConfirmed, setDeliveryConfirmed] = useState(sale.deliveryConfirmed);
+  const [deliveryDate, setDeliveryDate] = useState(
+    sale.deliveryDate ? sale.deliveryDate.split("T")[0] : ""
+  );
+
   // Payment structure state
   const [showPaymentStructure, setShowPaymentStructure] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
@@ -198,12 +232,20 @@ export function CompleteDataClient({
     // Use the selected branding theme or fall back to sale's existing one
     const theme = brandingTheme || sale.brandingTheme;
 
+    // Sum granular logistics costs, fall back to shippingCost for wizard sales
+    const totalLogistics = [dhlCost, addisonLeeCost, taxiCost, handDeliveryCost, otherLogisticsCost]
+      .reduce((sum, v) => sum + (v ? parseFloat(v) || 0 : 0), 0);
+    const effectiveShipping = totalLogistics > 0
+      ? totalLogistics
+      : (shippingCost ? parseFloat(shippingCost) : 0);
+
     const economics = calculateSaleEconomics({
       sale_amount_inc_vat: sale.saleAmountIncVat,
       buy_price: buyPriceNum,
       card_fees: cardFees ? parseFloat(cardFees) : 0,
-      shipping_cost: shippingCost ? parseFloat(shippingCost) : 0,
+      shipping_cost: effectiveShipping,
       branding_theme: theme,
+      entrupy_fee: entrupyFee ? parseFloat(entrupyFee) : 0,
     });
 
     return {
@@ -211,7 +253,7 @@ export function CompleteDataClient({
       marginPercent: economics.gross_margin_percent,
       saleExVat: economics.sale_amount_ex_vat,
     };
-  }, [buyPrice, cardFees, shippingCost, brandingTheme, sale.saleAmountIncVat, sale.brandingTheme]);
+  }, [buyPrice, cardFees, shippingCost, dhlCost, addisonLeeCost, taxiCost, handDeliveryCost, otherLogisticsCost, entrupyFee, brandingTheme, sale.saleAmountIncVat, sale.brandingTheme]);
 
   // Live completeness calculation - updates as user fills in fields
   const liveCompleteness = useMemo(() => {
@@ -225,7 +267,11 @@ export function CompleteDataClient({
       brandingTheme: brandingTheme || sale.brandingTheme,
       buyerType: buyerType || sale.buyerType,
       itemTitle: itemTitle || sale.itemTitle,
-      shippingCost: shippingCost !== "" ? parseFloat(shippingCost) : sale.shippingCost,
+      // If any granular logistics field is filled, treat shippingCost as non-null
+      shippingCost: [dhlCost, addisonLeeCost, taxiCost, handDeliveryCost, otherLogisticsCost].some(v => v !== "")
+        ? [dhlCost, addisonLeeCost, taxiCost, handDeliveryCost, otherLogisticsCost]
+            .reduce((sum, v) => sum + (v ? parseFloat(v) || 0 : 0), 0)
+        : (shippingCost !== "" ? parseFloat(shippingCost) : sale.shippingCost),
       cardFees: cardFees !== "" ? parseFloat(cardFees) : sale.cardFees,
     };
 
@@ -233,6 +279,7 @@ export function CompleteDataClient({
   }, [
     supplierId, brand, brandOther, showBrandOther, category, categoryOther, showCategoryOther,
     buyPrice, brandingTheme, buyerType, itemTitle, shippingCost, cardFees,
+    dhlCost, addisonLeeCost, taxiCost, handDeliveryCost, otherLogisticsCost,
     sale.supplierId, sale.brand, sale.category, sale.buyPrice, sale.brandingTheme,
     sale.buyerType, sale.itemTitle, sale.shippingCost, sale.cardFees,
   ]);
@@ -303,6 +350,17 @@ export function CompleteDataClient({
       if (buyerType) payload.buyer_type = buyerType;
       if (shippingCost !== "") payload.shipping_cost = parseFloat(shippingCost);
       if (cardFees !== "") payload.card_fees = parseFloat(cardFees);
+      // Granular logistics costs (Phase 2 WS3)
+      if (dhlCost !== "") payload.dhl_cost = parseFloat(dhlCost);
+      if (addisonLeeCost !== "") payload.addison_lee_cost = parseFloat(addisonLeeCost);
+      if (taxiCost !== "") payload.taxi_cost = parseFloat(taxiCost);
+      if (handDeliveryCost !== "") payload.hand_delivery_cost = parseFloat(handDeliveryCost);
+      if (otherLogisticsCost !== "") payload.other_logistics_cost = parseFloat(otherLogisticsCost);
+      if (entrupyFee !== "") payload.entrupy_fee = parseFloat(entrupyFee);
+      // Delivery tracking
+      payload.delivery_confirmed = deliveryConfirmed;
+      if (deliveryConfirmed && deliveryDate) payload.delivery_date = deliveryDate;
+      // Payment structure
       if (depositAmount !== "") payload.deposit_amount = parseFloat(depositAmount);
       if (paymentPlanNotes.trim()) payload.payment_plan_notes = paymentPlanNotes.trim();
 
@@ -984,29 +1042,6 @@ export function CompleteDataClient({
               </div>
             )}
 
-            {/* Shipping Cost - Recommended */}
-            {(missingFields.has("shippingCost") || sale.shippingCost === null) && (
-              <div>
-                <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
-                  Shipping Cost ({sale.currency})
-                  <span className="ml-1 text-xs text-gray-400">(recommended)</span>
-                </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={shippingCost}
-                  onChange={(e) => setShippingCost(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="mt-2 text-xs text-gray-500">
-                  Enter 0 if there were no shipping costs.
-                </p>
-              </div>
-            )}
-
             {/* Card Fees - Recommended */}
             {(missingFields.has("cardFees") || sale.cardFees === null) && (
               <div>
@@ -1029,6 +1064,162 @@ export function CompleteDataClient({
                 </p>
               </div>
             )}
+          </div>
+
+          {/* Logistics & Delivery Costs (Phase 2 WS3) */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-4">Logistics &amp; Delivery Costs</h3>
+
+            {/* Delivery Confirmed — at top, gates commission */}
+            <div className={`mb-5 p-4 rounded-lg border ${deliveryConfirmed ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={deliveryConfirmed}
+                  onChange={(e) => {
+                    setDeliveryConfirmed(e.target.checked);
+                    if (!e.target.checked) setDeliveryDate("");
+                  }}
+                  className="w-5 h-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                />
+                <div>
+                  <span className={`text-sm sm:text-base font-medium ${deliveryConfirmed ? "text-green-800" : "text-gray-700"}`}>
+                    Delivery Confirmed
+                  </span>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Commission eligibility requires delivery confirmation.
+                  </p>
+                </div>
+              </label>
+              {deliveryConfirmed && (
+                <div className="mt-3 ml-8">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Delivery Date
+                  </label>
+                  <input
+                    type="date"
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    className="w-full sm:w-48 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Cost breakdown grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  DHL / Shipping ({sale.currency})
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={dhlCost}
+                  onChange={(e) => setDhlCost(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Addison Lee ({sale.currency})
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={addisonLeeCost}
+                  onChange={(e) => setAddisonLeeCost(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Taxi ({sale.currency})
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={taxiCost}
+                  onChange={(e) => setTaxiCost(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hand Delivery ({sale.currency})
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={handDeliveryCost}
+                  onChange={(e) => setHandDeliveryCost(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Other Logistics ({sale.currency})
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={otherLogisticsCost}
+                  onChange={(e) => setOtherLogisticsCost(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Entrupy Fee ({sale.currency})
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={entrupyFee}
+                  onChange={(e) => setEntrupyFee(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {/* Live total */}
+            {(() => {
+              const total = [dhlCost, addisonLeeCost, taxiCost, handDeliveryCost, otherLogisticsCost, entrupyFee]
+                .reduce((sum, v) => sum + (v ? parseFloat(v) || 0 : 0), 0);
+              const cardFeesNum = cardFees ? parseFloat(cardFees) || 0 : 0;
+              return (total > 0 || cardFeesNum > 0) ? (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Total ancillary costs</span>
+                    <span className="font-medium text-gray-900">
+                      {new Intl.NumberFormat("en-GB", {
+                        style: "currency",
+                        currency: sale.currency,
+                        minimumFractionDigits: 2,
+                      }).format(total + cardFeesNum)}
+                    </span>
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
 
           {/* Payment Structure - Collapsible Optional Section */}

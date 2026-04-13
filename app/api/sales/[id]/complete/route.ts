@@ -10,9 +10,10 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getUserRole } from "@/lib/getUserRole";
 import { calculateSaleEconomics } from "@/lib/economics";
 import { db } from "@/db";
-import { sales, shoppers, lineItems } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { sales, shoppers, lineItems, errors } from "@/db/schema";
+import { eq, asc } from "drizzle-orm";
 import * as logger from "@/lib/logger";
+import { pushSaleToShopperSheet } from "@/lib/google-sheets";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +123,32 @@ export async function POST(
     if (body.payment_plan_notes !== undefined) {
       updateData.paymentPlanNotes = body.payment_plan_notes;
     }
+    // Logistics costs (Phase 2 WS3)
+    if (body.dhl_cost !== undefined) {
+      updateData.dhlCost = body.dhl_cost;
+    }
+    if (body.addison_lee_cost !== undefined) {
+      updateData.addisonLeeCost = body.addison_lee_cost;
+    }
+    if (body.taxi_cost !== undefined) {
+      updateData.taxiCost = body.taxi_cost;
+    }
+    if (body.hand_delivery_cost !== undefined) {
+      updateData.handDeliveryCost = body.hand_delivery_cost;
+    }
+    if (body.other_logistics_cost !== undefined) {
+      updateData.otherLogisticsCost = body.other_logistics_cost;
+    }
+    if (body.entrupy_fee !== undefined) {
+      updateData.entrupyFee = body.entrupy_fee;
+    }
+    // Delivery tracking (Phase 2 WS3)
+    if (body.delivery_confirmed !== undefined) {
+      updateData.deliveryConfirmed = body.delivery_confirmed;
+    }
+    if (body.delivery_date !== undefined) {
+      updateData.deliveryDate = body.delivery_date ? new Date(body.delivery_date) : null;
+    }
 
     // Get values for margin recalculation (merge current with updates)
     const saleAmountIncVat = currentSale.saleAmountIncVat || 0;
@@ -140,24 +167,44 @@ export async function POST(
     const directCosts = currentSale.directCosts || 0;
     const introducerCommission = currentSale.introducerCommission || 0;
 
+    // Granular logistics costs (Phase 2 WS3) — sum for economics
+    const dhlCost = updateData.dhlCost !== undefined
+      ? Number(updateData.dhlCost) : (currentSale.dhlCost || 0);
+    const addisonLeeCost = updateData.addisonLeeCost !== undefined
+      ? Number(updateData.addisonLeeCost) : (currentSale.addisonLeeCost || 0);
+    const taxiCost = updateData.taxiCost !== undefined
+      ? Number(updateData.taxiCost) : (currentSale.taxiCost || 0);
+    const handDeliveryCost = updateData.handDeliveryCost !== undefined
+      ? Number(updateData.handDeliveryCost) : (currentSale.handDeliveryCost || 0);
+    const otherLogisticsCost = updateData.otherLogisticsCost !== undefined
+      ? Number(updateData.otherLogisticsCost) : (currentSale.otherLogisticsCost || 0);
+    const entrupyFee = updateData.entrupyFee !== undefined
+      ? Number(updateData.entrupyFee) : (currentSale.entrupyFee || 0);
+
+    // Total logistics = granular costs if any are set, otherwise fall back to shippingCost
+    const totalLogisticsCost = dhlCost + addisonLeeCost + taxiCost + handDeliveryCost + otherLogisticsCost;
+    const effectiveShippingCost = totalLogisticsCost > 0 ? totalLogisticsCost : shippingCost;
+
     // Recalculate economics using the centralized function
     logger.info("COMPLETE", "Recalculating economics", {
       saleId,
       saleAmountIncVat,
       buyPrice,
       brandingTheme,
-      shippingCost,
+      effectiveShippingCost,
       cardFees,
+      entrupyFee,
     });
 
     const economics = calculateSaleEconomics({
       sale_amount_inc_vat: saleAmountIncVat,
       buy_price: buyPrice,
       branding_theme: brandingTheme,
-      shipping_cost: shippingCost,
+      shipping_cost: effectiveShippingCost,
       card_fees: cardFees,
       direct_costs: directCosts,
       introducer_commission: introducerCommission,
+      entrupy_fee: entrupyFee,
     });
 
     // Add recalculated values to update
@@ -208,6 +255,70 @@ export async function POST(
       updatedFields: Object.keys(updateData),
       completedBy: userId,
     });
+
+    // Push to Google Sheets (fire-and-forget, non-blocking)
+    // Only push for non-atelier sources — wizard-created sales are already pushed
+    // at creation time. Known gap: wizard sales completed later won't update their
+    // existing sheet row (manual edit by Alys for now).
+    if (updatedSale.source !== "atelier") {
+      try {
+        const saleWithRelations = await db.query.sales.findFirst({
+          where: eq(sales.id, saleId),
+          with: { buyer: true, supplier: true },
+        });
+        const saleLineItems = await db.query.lineItems.findMany({
+          where: eq(lineItems.saleId, saleId),
+          with: { supplier: true },
+          orderBy: [asc(lineItems.lineNumber)],
+        });
+
+        if (saleWithRelations) {
+          // Shopper name from the sale's assigned shopper
+          const shopperRecord = saleWithRelations.shopperId
+            ? await db.query.shoppers.findFirst({
+                where: eq(shoppers.id, saleWithRelations.shopperId),
+              })
+            : null;
+          const shopperName = shopperRecord?.name || "";
+
+          const pushResult = await pushSaleToShopperSheet({
+            sale: saleWithRelations,
+            lineItems: saleLineItems,
+            shopperName,
+          });
+
+          if (!pushResult.success) {
+            await db
+              .insert(errors)
+              .values({
+                saleId: saleId,
+                severity: "low",
+                source: "sheets-sync",
+                message: [
+                  `Sheets push on completion failed: ${pushResult.reason || "unknown"}`,
+                ],
+                timestamp: new Date(),
+                resolved: false,
+              })
+              .catch(() => {
+                /* non-fatal */
+              });
+          }
+
+          logger.info("COMPLETE", "Sheets push attempted", {
+            saleId,
+            success: pushResult.success,
+            skipped: pushResult.skipped,
+          });
+        }
+      } catch (sheetsErr) {
+        logger.error("COMPLETE", "Sheets push wrapper failed (non-fatal)", {
+          saleId,
+          error:
+            sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr),
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,
