@@ -33,14 +33,26 @@ import {
   Shield,
   ShoppingBag,
   FileEdit,
+  ClipboardCheck,
+  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
+
+interface IncompleteSale {
+  id: string;
+  sale_reference: string | null;
+  xero_invoice_number: string | null;
+  sale_date: string | null;
+  sale_amount_inc_vat: number;
+  currency: string;
+  buyer_name: string;
+}
 
 export default function ShopperDashboardPage() {
   const { user } = useUser();
   const [sales, setSales] = useState<SaleSummary[]>([]);
   const [metrics, setMetrics] = useState<ShopperMetrics | null>(null);
-  const [incompleteCount, setIncompleteCount] = useState<number>(0);
+  const [incompleteSales, setIncompleteSales] = useState<IncompleteSale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSale, setSelectedSale] = useState<SaleSummary | null>(null);
@@ -58,7 +70,7 @@ export default function ShopperDashboardPage() {
 
       // Fetch incomplete sales (uses clerk_user_id server-side, always works)
       const incompleteResponse = await fetch("/api/sales/incomplete").then((res) => res.json());
-      setIncompleteCount(incompleteResponse.sales?.length || 0);
+      setIncompleteSales(incompleteResponse.sales || []);
 
       // Fetch sales summary (requires fullName for client-side filtering)
       if (user.fullName) {
@@ -140,6 +152,73 @@ export default function ShopperDashboardPage() {
         subtitle={`Welcome back, ${user?.firstName || user?.fullName}! Here's your sales overview.`}
       />
 
+      {/* Needs Completing Section — first thing shoppers see */}
+      {incompleteSales.length > 0 ? (
+        <div className="mb-8 rounded-xl border-2 border-amber-300 bg-amber-50 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <FileEdit className="w-5 h-5 text-amber-600" />
+              <h2 className="text-base font-semibold text-amber-900">
+                {incompleteSales.length} sale{incompleteSales.length !== 1 ? "s" : ""} need completing
+              </h2>
+            </div>
+            <Link
+              href="/staff/shopper/sales"
+              className="text-xs text-amber-700 hover:text-amber-900 font-medium"
+            >
+              View all
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {incompleteSales.slice(0, 5).map((sale) => (
+              <Link
+                key={sale.id}
+                href={`/sales/${sale.id}/complete`}
+                className="flex items-center justify-between p-3 bg-white rounded-lg border border-amber-200 hover:border-amber-400 hover:shadow-sm transition-all group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-900 truncate">
+                      {sale.xero_invoice_number || sale.sale_reference || "No ref"}
+                      <span className="ml-2 text-gray-500 font-normal">{sale.buyer_name}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {sale.sale_date
+                        ? new Date(sale.sale_date).toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "No date"}
+                      {" · "}
+                      {new Intl.NumberFormat("en-GB", {
+                        style: "currency",
+                        currency: sale.currency || "GBP",
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      }).format(sale.sale_amount_inc_vat)}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 text-sm font-medium text-amber-700 group-hover:text-amber-900 flex-shrink-0">
+                  Complete <ArrowRight className="w-4 h-4" />
+                </div>
+              </Link>
+            ))}
+            {incompleteSales.length > 5 && (
+              <p className="text-xs text-amber-600 text-center pt-1">
+                +{incompleteSales.length - 5} more — <Link href="/staff/shopper/sales" className="underline">view all</Link>
+              </p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="mb-8 rounded-xl border border-green-200 bg-green-50 p-4 flex items-center gap-3">
+          <ClipboardCheck className="w-5 h-5 text-green-600 flex-shrink-0" />
+          <span className="text-sm font-medium text-green-800">All caught up — no sales need completing.</span>
+        </div>
+      )}
+
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <MetricCard
@@ -185,9 +264,9 @@ export default function ShopperDashboardPage() {
         <Link href="/staff/shopper/sales" className="block">
           <MetricCard
             title="Data Completion"
-            value={incompleteCount > 0 ? incompleteCount : "All complete"}
+            value={incompleteSales.length > 0 ? incompleteSales.length : "All complete"}
             icon={FileEdit}
-            subtitle={incompleteCount > 0 ? "sales need data" : undefined}
+            subtitle={incompleteSales.length > 0 ? "sales need data" : undefined}
           />
         </Link>
       </div>
