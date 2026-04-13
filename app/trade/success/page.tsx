@@ -247,10 +247,10 @@ function SuccessContent() {
               Create Another Invoice
             </Link>
 
-            {/* Quaternary: View in Sales OS */}
+            {/* Quaternary: View in Atelier */}
             <Link
               href="/sales"
-              aria-label="View in Sales OS"
+              aria-label="View in Atelier"
               className="block w-full border border-gray-300 text-gray-700 rounded-xl py-3 bg-white hover:bg-gray-50 transition-colors text-center font-medium"
             >
               My Sales

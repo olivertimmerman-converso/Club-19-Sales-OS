@@ -104,7 +104,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   CLUB<span className="mx-1 text-[#F3DFA2]/40">|</span>19
                 </div>
                 <div className="font-sans text-[9px] uppercase tracking-[0.15em] text-[#F3DFA2]/60 mt-0.5">
-                  SALES OS
+                  ATELIER
                 </div>
               </div>
             </Link>
@@ -213,7 +213,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {/* Footer */}
           <div className="p-6 border-t border-[#F3DFA2]/20">
             <p className="text-xs text-[#F3DFA2]/40 text-center">
-              Club 19 Sales OS v1.0
+              Club 19 Atelier v1.0
             </p>
           </div>
         </div>

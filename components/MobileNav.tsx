@@ -287,7 +287,7 @@ export function MobileNav({ role }: MobileNavProps) {
                     CLUB<span className="mx-0.5 text-gray-400">|</span>19
                   </div>
                   <div className="font-sans text-[8px] uppercase tracking-[0.15em] text-gray-500">
-                    SALES OS
+                    ATELIER
                   </div>
                 </div>
               </Link>
@@ -343,7 +343,7 @@ export function MobileNav({ role }: MobileNavProps) {
             {/* Drawer Footer */}
             <div className="p-4 border-t border-gray-200 shrink-0">
               <p className="text-xs text-gray-400 text-center">
-                Club 19 Sales OS
+                Club 19 Atelier
               </p>
             </div>
           </div>

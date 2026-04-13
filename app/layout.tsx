@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Club 19 Sales OS",
+    title: "Club 19 Atelier",
   },
   other: {
     "theme-color": "#ffffff",

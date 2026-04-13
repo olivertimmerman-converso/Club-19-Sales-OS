@@ -125,7 +125,7 @@ export function Sidebar({ role }: SidebarProps) {
               CLUB<span className="mx-1 text-gray-400">|</span>19
             </div>
             <div className="font-sans text-[9px] uppercase tracking-[0.15em] text-gray-500">
-              SALES OS
+              ATELIER
             </div>
           </div>
         </Link>
