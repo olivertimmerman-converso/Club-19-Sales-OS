@@ -29,7 +29,7 @@ export async function OSLayout({ children }: OSLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-club19-offwhite">
       {/* Desktop Sidebar — hidden on mobile */}
       <div className="hidden md:flex">
         <Sidebar role={role} />
@@ -44,7 +44,7 @@ export async function OSLayout({ children }: OSLayoutProps) {
         <XeroStatusBanner role={role} />
 
         {/* Desktop Top Bar — hidden on mobile */}
-        <header className="hidden md:flex h-16 bg-white border-b border-gray-200 items-center justify-between px-6">
+        <header className="hidden md:flex h-16 bg-white border-b border-club19-warmgrey items-center justify-between px-6">
           <div className="flex-1">
             {/* Page-specific content can go here */}
           </div>

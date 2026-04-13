@@ -1,23 +1,25 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Cormorant_Garamond, Montserrat } from "next/font/google";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import "./globals.css";
 
-const inter = Inter({
+const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
-  variable: "--font-inter",
-  weight: ["300", "400", "500", "600"],
+  variable: "--font-cormorant",
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
-const playfair = Playfair_Display({
+const montserrat = Montserrat({
   subsets: ["latin"],
-  variable: "--font-playfair",
-  weight: ["400", "500", "600", "700"],
+  variable: "--font-montserrat",
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Club 19 London | Sales Atelier",
+  title: "Club 19 London | Atelier",
   description:
     "Elegant invoice creation and sales management for Club 19 London",
   icons: {
@@ -29,7 +31,7 @@ export const metadata: Metadata = {
     title: "Club 19 Atelier",
   },
   other: {
-    "theme-color": "#ffffff",
+    "theme-color": "#1c2331",
   },
 };
 
@@ -49,21 +51,21 @@ export default function RootLayout({
     <ClerkProvider
       appearance={{
         variables: {
-          colorPrimary: "#000000",
-          colorBackground: "#ffffff",
-          colorText: "#000000",
+          colorPrimary: "#1c2331",
+          colorBackground: "#faf8f5",
+          colorText: "#2d2d2d",
         },
         elements: {
           formButtonPrimary:
-            "bg-club19-black hover:bg-club19-charcoal text-white uppercase tracking-wide",
-          card: "border border-club19-platinum",
+            "bg-club19-navy hover:bg-club19-navy-light text-club19-cream tracking-wide",
+          card: "border border-club19-warmgrey rounded-xl",
         },
       }}
     >
-      <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
-        <body className={inter.className}>
+      <html lang="en" className={`${cormorant.variable} ${montserrat.variable}`}>
+        <body className={montserrat.className}>
           <ErrorBoundary>
-            <div className="min-h-screen bg-white">{children}</div>
+            <div className="min-h-screen bg-club19-offwhite">{children}</div>
           </ErrorBoundary>
         </body>
       </html>

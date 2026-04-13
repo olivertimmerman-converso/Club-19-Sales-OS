@@ -8,41 +8,49 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        serif: ["Playfair Display", "Georgia", "serif"],
-        sans: ["Inter", "system-ui", "sans-serif"],
+        serif: ["var(--font-cormorant)", "Cormorant Garamond", "Georgia", "serif"],
+        sans: ["var(--font-montserrat)", "Montserrat", "system-ui", "sans-serif"],
       },
       colors: {
-        // Club 19 Core Palette
+        // Club 19 Brand Palette
         club19: {
-          black: "#000000",
-          platinum: "#E8E8E8",
-          silver: "#C0C0C0",
-          "silver-dark": "#A8A8A8",
-          charcoal: "#333333",
-          "off-white": "#FAFAFA",
-          gold: "#D4AF37", // Subtle accent only
+          navy: "#1c2331",
+          "navy-light": "#263044",
+          cream: "#f5f0eb",
+          taupe: "#a89984",
+          "taupe-light": "#c4b5a5",
+          warmgrey: "#e8e2db",
+          offwhite: "#faf8f5",
+          // Legacy aliases (keep for backwards compat in code comments referencing them)
+          black: "#1c2331",
+          platinum: "#e8e2db",
+          silver: "#c4b5a5",
+          "silver-dark": "#a89984",
+          charcoal: "#263044",
+          "off-white": "#faf8f5",
+          gold: "#a89984",
         },
-        // Semantic colors mapped to Club 19 palette
+        // Semantic palette
         primary: {
-          DEFAULT: "#000000",
-          50: "#FAFAFA",
-          100: "#F5F5F5",
-          200: "#E8E8E8",
-          300: "#D1D1D1",
-          400: "#A8A8A8",
-          500: "#808080",
-          600: "#333333",
-          700: "#1A1A1A",
-          800: "#0D0D0D",
-          900: "#000000",
+          DEFAULT: "#1c2331",
+          50: "#faf8f5",
+          100: "#f5f0eb",
+          200: "#e8e2db",
+          300: "#c4b5a5",
+          400: "#a89984",
+          500: "#6b6b6b",
+          600: "#2d2d2d",
+          700: "#263044",
+          800: "#1c2331",
+          900: "#151b27",
         },
-        success: "#000000",
-        warning: "#333333",
-        error: "#000000",
-        info: "#000000",
-        border: "#E8E8E8",
-        background: "#FFFFFF",
-        foreground: "#000000",
+        success: "#15803d",
+        warning: "#b45309",
+        error: "#b91c1c",
+        info: "#1d4ed8",
+        border: "#e8e2db",
+        background: "#faf8f5",
+        foreground: "#2d2d2d",
       },
       letterSpacing: {
         luxury: "0.05em",
@@ -50,6 +58,9 @@ module.exports = {
       },
       borderWidth: {
         1: "1px",
+      },
+      boxShadow: {
+        subtle: "0 1px 3px rgba(28,35,49,0.06)",
       },
       animation: {
         "fade-in": "fadeIn 0.3s ease-in-out",

@@ -267,7 +267,7 @@ export function MobileNav({ role }: MobileNavProps) {
           {/* Drawer Panel */}
           <div className="absolute inset-y-0 left-0 w-72 bg-white shadow-xl flex flex-col animate-slide-in-left">
             {/* Drawer Header */}
-            <div className="flex items-center justify-between px-5 h-14 border-b border-gray-200 shrink-0">
+            <div className="flex items-center justify-between px-5 h-14 border-b border-white/10 shrink-0 bg-club19-navy">
               <Link
                 href="/dashboard"
                 className="flex items-center gap-2"
@@ -278,22 +278,22 @@ export function MobileNav({ role }: MobileNavProps) {
                     src="/club19-wordmark.png"
                     alt="Club 19 London"
                     fill
-                    className="object-contain"
+                    className="object-contain brightness-0 invert"
                     priority
                   />
                 </div>
                 <div className="flex flex-col leading-tight">
-                  <div className="font-serif text-sm font-light tracking-wide text-gray-900">
-                    CLUB<span className="mx-0.5 text-gray-400">|</span>19
+                  <div className="font-serif text-sm font-light tracking-wide text-club19-cream">
+                    CLUB<span className="mx-0.5 text-club19-taupe">|</span>19
                   </div>
-                  <div className="font-sans text-[8px] uppercase tracking-[0.15em] text-gray-500">
+                  <div className="font-sans text-[8px] uppercase tracking-[0.15em] text-club19-taupe">
                     ATELIER
                   </div>
                 </div>
               </Link>
               <button
                 onClick={() => setDrawerOpen(false)}
-                className="flex items-center justify-center w-10 h-10 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-center w-10 h-10 rounded-lg text-club19-cream/60 hover:text-club19-cream hover:bg-white/5 transition-colors"
                 aria-label="Close menu"
               >
                 <X size={20} />
@@ -301,14 +301,14 @@ export function MobileNav({ role }: MobileNavProps) {
             </div>
 
             {/* Role Badge */}
-            <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+            <div className="px-5 py-3 bg-club19-navy border-b border-white/10">
+              <span className="text-xs font-medium text-club19-taupe uppercase tracking-wide">
                 {viewAs ? `Viewing as: ${role}` : role}
               </span>
             </div>
 
             {/* Navigation Items */}
-            <nav className="flex-1 overflow-y-auto py-3 px-3">
+            <nav className="flex-1 overflow-y-auto py-3 px-3 bg-club19-navy">
               <ul className="space-y-0.5">
                 {allNavItems.map((item) => {
                   const active = isActive(item.href);
@@ -323,11 +323,11 @@ export function MobileNav({ role }: MobileNavProps) {
                         onClick={() => setDrawerOpen(false)}
                         className={`
                           flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium
-                          transition-colors min-h-[44px]
+                          transition-colors duration-150 min-h-[44px]
                           ${
                             active
-                              ? "bg-gray-900 text-white"
-                              : "text-gray-700 hover:bg-gray-100 active:bg-gray-100"
+                              ? "bg-white/10 text-club19-cream border-l-2 border-club19-taupe"
+                              : "text-club19-cream/70 hover:text-club19-cream hover:bg-white/5 active:bg-white/10"
                           }
                         `}
                       >
@@ -341,8 +341,8 @@ export function MobileNav({ role }: MobileNavProps) {
             </nav>
 
             {/* Drawer Footer */}
-            <div className="p-4 border-t border-gray-200 shrink-0">
-              <p className="text-xs text-gray-400 text-center">
+            <div className="p-4 border-t border-white/10 shrink-0 bg-club19-navy">
+              <p className="text-xs text-club19-taupe text-center">
                 Club 19 Atelier
               </p>
             </div>

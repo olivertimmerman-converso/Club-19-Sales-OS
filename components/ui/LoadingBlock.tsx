@@ -13,8 +13,8 @@ interface LoadingBlockProps {
 export function LoadingBlock({ message = "Loading..." }: LoadingBlockProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12">
-      <Loader2 size={48} className="animate-spin text-[#F3DFA2]" />
-      <p className="mt-4 text-gray-600 font-medium">{message}</p>
+      <Loader2 size={48} className="animate-spin text-club19-taupe" />
+      <p className="mt-4 text-club19-taupe font-sans font-medium">{message}</p>
     </div>
   );
 }

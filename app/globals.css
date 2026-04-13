@@ -2,29 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap");
-
 @layer base {
   :root {
-    --background: #ffffff;
-    --foreground: #000000;
-    --border: #e8e8e8;
-    --club19-black: #000000;
-    --club19-platinum: #e8e8e8;
-    --club19-silver: #c0c0c0;
-    --club19-charcoal: #333333;
+    --background: #faf8f5;
+    --foreground: #2d2d2d;
+    --border: #e8e2db;
+    --club19-navy: #1c2331;
+    --club19-cream: #f5f0eb;
+    --club19-taupe: #a89984;
+    --club19-warmgrey: #e8e2db;
+    --club19-offwhite: #faf8f5;
   }
 
   * {
-    @apply border-club19-platinum;
+    @apply border-club19-warmgrey;
   }
 
   body {
-    @apply bg-white text-club19-black;
+    @apply bg-club19-offwhite text-foreground;
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
-    font-family: "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -35,9 +33,10 @@
   h4,
   h5,
   h6 {
-    font-family: "Playfair Display", Georgia, serif;
+    @apply font-serif;
     font-weight: 600;
     letter-spacing: 0.02em;
+    color: #1c2331;
   }
 }
 
@@ -49,115 +48,119 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-club19-off-white;
+    background: #faf8f5;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-club19-silver hover:bg-club19-silver-dark;
+    background: #c4b5a5;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #a89984;
   }
 
   /* Card styles */
   .card {
-    @apply bg-white border border-club19-platinum transition-all duration-300;
+    @apply bg-white border border-club19-warmgrey rounded-xl shadow-subtle transition-all duration-150;
   }
 
   .card-hover {
-    @apply transition-all duration-300 hover:border-club19-black;
+    @apply transition-all duration-150 hover:shadow-md;
   }
 
   /* Button styles */
   .btn {
-    @apply px-6 py-3 font-medium transition-all duration-300 focus:outline-none uppercase tracking-luxury border;
+    @apply px-6 py-3 font-sans font-medium transition-colors duration-150 focus:outline-none tracking-wide border rounded-lg;
   }
 
   .btn-primary {
-    @apply btn bg-club19-black text-white border-club19-black hover:bg-club19-charcoal;
+    @apply btn bg-club19-navy text-club19-cream border-club19-navy hover:bg-club19-navy-light;
   }
 
   .btn-secondary {
-    @apply btn bg-white text-club19-black border-club19-black hover:bg-club19-black hover:text-white;
+    @apply btn bg-white text-club19-navy border-club19-warmgrey hover:bg-club19-offwhite;
   }
 
   .btn-success {
-    @apply btn bg-club19-black text-white border-club19-black hover:bg-club19-charcoal;
+    @apply btn bg-club19-navy text-club19-cream border-club19-navy hover:bg-club19-navy-light;
   }
 
   .btn-danger {
-    @apply btn bg-club19-black text-white border-club19-black hover:bg-club19-charcoal;
+    @apply btn bg-error text-white border-error hover:opacity-90;
   }
 
   .btn-outline {
-    @apply btn border-club19-black text-club19-black hover:bg-club19-black hover:text-white;
+    @apply btn border-club19-taupe text-club19-navy bg-white hover:bg-club19-offwhite;
   }
 
   /* Input styles */
   .input {
-    @apply w-full px-4 py-3 border border-club19-platinum focus:outline-none focus:border-club19-black transition-all duration-300;
+    @apply w-full px-4 py-3 border border-club19-warmgrey rounded-lg focus:outline-none focus:ring-2 focus:ring-club19-taupe/40 focus:border-club19-taupe transition-colors duration-150;
   }
 
   .input-error {
-    @apply border-club19-black;
+    @apply border-error;
   }
 
   /* Label styles */
   .label {
-    @apply block text-sm font-medium text-club19-black mb-2 uppercase tracking-wide;
+    @apply block text-sm font-sans font-medium text-foreground mb-2;
   }
 
   /* Badge styles */
   .badge {
-    @apply inline-flex items-center px-3 py-1 text-xs font-medium uppercase tracking-wide border;
+    @apply inline-flex items-center px-3 py-1 text-xs font-sans font-medium rounded-full border;
   }
 
   .badge-success {
-    @apply badge bg-white text-club19-black border-club19-black;
+    @apply badge bg-green-50 text-green-700 border-green-200;
   }
 
   .badge-warning {
-    @apply badge bg-club19-platinum text-club19-black border-club19-silver;
+    @apply badge bg-amber-50 text-amber-700 border-amber-200;
   }
 
   .badge-error {
-    @apply badge bg-club19-black text-white border-club19-black;
+    @apply badge bg-red-50 text-red-700 border-red-200;
   }
 
   .badge-info {
-    @apply badge bg-white text-club19-black border-club19-platinum;
+    @apply badge bg-blue-50 text-blue-700 border-blue-200;
   }
 
   /* Progress bar */
   .progress-bar {
-    @apply h-1 bg-club19-platinum overflow-hidden;
+    @apply h-1 bg-club19-warmgrey rounded-full overflow-hidden;
   }
 
   .progress-fill {
-    @apply h-full bg-club19-black transition-all duration-500 ease-out;
+    @apply h-full bg-club19-navy transition-all duration-500 ease-out rounded-full;
   }
 
   /* Alert styles */
   .alert {
-    @apply p-4 border flex items-start gap-3;
+    @apply p-4 border rounded-lg flex items-start gap-3;
   }
 
   .alert-success {
-    @apply alert bg-white border-club19-black text-club19-black;
+    @apply alert bg-green-50 border-green-200 text-green-800;
   }
 
   .alert-warning {
-    @apply alert bg-club19-platinum border-club19-silver text-club19-black;
+    @apply alert bg-amber-50 border-amber-200 text-amber-800;
   }
 
   .alert-error {
-    @apply alert bg-club19-black border-club19-black text-white;
+    @apply alert bg-red-50 border-red-200 text-red-800;
   }
 
   .alert-info {
-    @apply alert bg-white border-club19-platinum text-club19-black;
+    @apply alert bg-blue-50 border-blue-200 text-blue-800;
   }
 
   /* Loading spinner */
   .spinner {
-    @apply animate-spin rounded-full border-2 border-club19-platinum border-t-club19-black;
+    @apply animate-spin rounded-full border-2 border-club19-warmgrey border-t-club19-navy;
   }
 
   /* Fade in animation */
@@ -172,12 +175,12 @@
 
   /* Club 19 Luxury Divider */
   .club19-divider {
-    @apply w-full h-px bg-club19-platinum my-8;
+    @apply w-full h-px bg-club19-warmgrey my-8;
   }
 
   /* Club 19 Heading */
   .club19-heading {
-    @apply font-serif text-club19-black tracking-luxury;
+    @apply font-serif text-club19-navy tracking-luxury;
   }
 
   /* Table scroll shadow */
@@ -186,7 +189,7 @@
     position: sticky;
     top: 0;
     height: 8px;
-    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.05), transparent);
+    background: linear-gradient(to bottom, rgba(28, 35, 49, 0.04), transparent);
     display: block;
     z-index: 15;
   }
@@ -199,6 +202,11 @@
 
   .text-luxury {
     @apply tracking-luxury;
+  }
+
+  /* Tabular numbers for financial data */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -268,6 +276,6 @@
   }
 
   .card {
-    @apply border-club19-platinum;
+    @apply border-club19-warmgrey;
   }
 }
