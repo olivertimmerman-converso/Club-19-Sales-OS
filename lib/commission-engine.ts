@@ -1,6 +1,12 @@
 /**
  * Club 19 Sales OS - Commission Engine V1
  *
+ * @deprecated Use lib/calculations/commission.ts (V2) for all commission
+ * calculations. V2 implements flat-rate bands on cumulative monthly totals
+ * with per-shopper configs. This module is retained only because
+ * lib/xata-sales.ts still calls calculateCommission() during legacy sale
+ * creation. Do not add new callers.
+ *
  * Calculates commission splits between shoppers and introducers
  * based on commissionable margin, commission bands, and admin overrides.
  */
