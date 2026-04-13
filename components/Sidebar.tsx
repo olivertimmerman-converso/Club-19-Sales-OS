@@ -7,6 +7,7 @@
 
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -82,6 +83,18 @@ export function Sidebar({ role }: SidebarProps) {
 
   const items = getSidebarItemsForRole(effectiveRole);
 
+  // Incomplete sales badge — fetch once on mount for shopper role
+  const [incompleteCount, setIncompleteCount] = useState(0);
+  const fetchedRef = useRef(false);
+  useEffect(() => {
+    if (effectiveRole !== "shopper" || fetchedRef.current) return;
+    fetchedRef.current = true;
+    fetch("/api/sales/incomplete")
+      .then((r) => r.json())
+      .then((d) => setIncompleteCount(d.sales?.length || 0))
+      .catch(() => {});
+  }, [effectiveRole]);
+
   // Build href with preserved viewAs param
   const buildHref = (basePath: string) => {
     if (viewAs) {
@@ -151,7 +164,12 @@ export function Sidebar({ role }: SidebarProps) {
                   `}
                 >
                   {Icon && <Icon size={18} />}
-                  <span>{item.label}</span>
+                  <span className="flex-1">{item.label}</span>
+                  {effectiveRole === "shopper" && item.href === "/sales" && incompleteCount > 0 && (
+                    <span className="ml-auto inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-amber-500 text-white">
+                      {incompleteCount}
+                    </span>
+                  )}
                 </Link>
               </li>
             );
