@@ -278,7 +278,7 @@ export function MobileNav({ role }: MobileNavProps) {
                     src="/club19-wordmark.png"
                     alt="Club 19 London"
                     fill
-                    className="object-contain brightness-0 invert"
+                    className="object-contain"
                     priority
                   />
                 </div>
