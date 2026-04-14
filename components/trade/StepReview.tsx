@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { useTrade } from "@/contexts/TradeContext";
-import { FileText, CheckCircle } from "lucide-react";
+import { FileText, CheckCircle, Loader2 } from "lucide-react";
 import * as logger from '@/lib/logger';
 import { roundCurrency, subtractCurrency, multiplyCurrency, addCurrency } from '@/lib/utils/currency';
 import { PaymentMethod } from "@/lib/types/invoice";
@@ -25,6 +25,35 @@ export function StepReview() {
     invoiceUrl: string;
     commissionableMarginGBP: number;
   } | null>(null);
+
+  // Multi-step progress for the Create Invoice button. The submit is one POST
+  // (Xero + DB + Sheets all server-side), so we cycle through user-facing labels
+  // on a timer to reassure the shopper that the app isn't frozen.
+  const SUBMIT_STAGES = [
+    "Creating invoice in Xero…",
+    "Pushing to Google Sheets…",
+    "Finalising…",
+  ];
+  const [submitStage, setSubmitStage] = useState(0);
+  const [submitElapsed, setSubmitElapsed] = useState(0);
+  useEffect(() => {
+    if (!state.isSubmitting) {
+      setSubmitStage(0);
+      setSubmitElapsed(0);
+      return;
+    }
+    const stageTimer = setInterval(() => {
+      setSubmitStage((s) => Math.min(s + 1, SUBMIT_STAGES.length - 1));
+    }, 2500);
+    const elapsedTimer = setInterval(() => {
+      setSubmitElapsed((e) => e + 1);
+    }, 1000);
+    return () => {
+      clearInterval(stageTimer);
+      clearInterval(elapsedTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.isSubmitting]);
 
   // Update items with tax scenario when entering review step
   // This ensures all items have the correct tax codes for Xero
@@ -636,9 +665,17 @@ export function StepReview() {
           }`}
         >
           {state.isSubmitting ? (
-            <>
-              Creating Invoice...
-            </>
+            <span className="flex flex-col items-center gap-1">
+              <span className="flex items-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                {SUBMIT_STAGES[submitStage]}
+              </span>
+              {submitElapsed >= 5 && (
+                <span className="text-xs font-normal opacity-75">
+                  This may take a few moments…
+                </span>
+              )}
+            </span>
           ) : successData ? (
             <>
               <CheckCircle className="w-6 h-6" />
