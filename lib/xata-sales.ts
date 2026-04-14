@@ -447,6 +447,8 @@ export interface CreateSalePayload {
   hasIntroducer?: boolean;
   isNewClient?: boolean;
   entrupyFee?: number;
+  /** Introducer fee as a percentage of gross profit (whole number 0-100). */
+  introducerFeePercent?: number;
 
   // Authenticity tracking (Story 2)
   authenticity_status?: string; // "verified" | "pending" | "not_verified"
@@ -708,6 +710,7 @@ export async function createSaleFromAppPayload(
       isNewClient: sanitizedPayload.isNewClient || false,
       entrupyFee: sanitizedPayload.entrupyFee || 0,
       introducerCommission: sanitizedPayload.introducerCommission || 0,
+      introducerFeePercent: sanitizedPayload.introducerFeePercent ?? null,
     })
     .returning();
 
@@ -905,6 +908,8 @@ export interface AppFormData {
   isNewClient?: boolean;
   /** Authentication fee, optional. Stored on sales.entrupy_fee and deducted from commissionable margin. */
   entrupyFee?: number;
+  /** Introducer fee as a percentage of gross profit. Stored on sales.introducer_fee_percent. */
+  introducerFeePercent?: number;
 }
 
 export async function syncInvoiceAndAppDataToXata(params: {

@@ -187,6 +187,8 @@ export default async function CompleteDataPage({
     entrupyFee: sale.entrupyFee,
     deliveryConfirmed: sale.deliveryConfirmed ?? false,
     deliveryDate: sale.deliveryDate ? sale.deliveryDate.toISOString() : null,
+    introducerFeePercent: sale.introducerFeePercent ?? null,
+    introducerName: sale.introducerName ?? null,
     grossMargin: sale.grossMargin || 0,
     commissionableMargin: sale.commissionableMargin || 0,
   };

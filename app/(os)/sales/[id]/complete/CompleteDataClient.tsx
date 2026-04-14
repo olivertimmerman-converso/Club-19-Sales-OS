@@ -63,6 +63,8 @@ interface SaleData {
   entrupyFee: number | null;
   deliveryConfirmed: boolean;
   deliveryDate: string | null;
+  introducerFeePercent?: number | null;
+  introducerName?: string | null;
   grossMargin: number;
   commissionableMargin: number;
 }
@@ -1072,6 +1074,21 @@ export function CompleteDataClient({
           {/* Logistics & Delivery Costs (Phase 2 WS3) */}
           <div className="mt-6 pt-6 border-t border-gray-200">
             <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-4">Logistics &amp; Delivery Costs</h3>
+
+            {/* Atelier-only: show introducer fee % as read-only reference if set */}
+            {isAtelier && sale.introducerFeePercent != null && sale.introducerFeePercent > 0 && (
+              <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-start gap-2">
+                <Info className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-purple-700">
+                  <span className="font-medium">Introducer:</span>{" "}
+                  {sale.introducerName ? `${sale.introducerName} · ` : ""}
+                  {sale.introducerFeePercent}% of gross profit
+                  <p className="mt-0.5 text-purple-600/80">
+                    The £ amount recalculates automatically as actual costs change the gross profit.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Atelier-only: show the estimated shipping from wizard as a read-only reference */}
             {isAtelier && sale.shippingCost !== null && sale.shippingCost > 0 && (

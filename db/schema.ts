@@ -224,6 +224,10 @@ export const sales = pgTable(
     hasIntroducer: boolean("has_introducer").default(false),
     introducerCommission: doublePrecision("introducer_commission"),
     introducerName: text("introducer_name"),
+    // Phase 2: percent of gross profit (wizard input). introducerCommission
+    // is the calculated £ amount and remains the source of truth for sheets
+    // and commission engine.
+    introducerFeePercent: doublePrecision("introducer_fee_percent"),
 
     // New client tracking (Phase 2 — first delivered sale for this buyer at time of creation)
     isNewClient: boolean("is_new_client").default(false),

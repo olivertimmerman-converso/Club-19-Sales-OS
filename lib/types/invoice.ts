@@ -230,7 +230,7 @@ export type WizardState = {
   // The fee is treated as a cost deduction, not a percentage split.
   hasIntroducer?: boolean;
   introducerName: string;
-  introducerFee: number;
+  introducerFeePercent: number;
 
   // Invoice metadata (Step 4 — Review)
   dueDate: string;

@@ -22,7 +22,7 @@ export function StepSupplierBuyer() {
     setDeliveryCountry,
     setHasIntroducer,
     setIntroducerName,
-    setIntroducerFee,
+    setIntroducerFeePercent,
   } = useTrade();
 
   // === BUYER STATE (Xero search) ===
@@ -47,11 +47,11 @@ export function StepSupplierBuyer() {
     state.deliveryCountry || "United Kingdom"
   );
 
-  // === INTRODUCER STATE (Phase 2: name + flat £ fee) ===
+  // === INTRODUCER STATE (Phase 2: name + percentage of gross profit) ===
   const [hasIntroducerLocal, setHasIntroducerLocal] = useState(state.hasIntroducer || false);
   const [introducerNameLocal, setIntroducerNameLocal] = useState(state.introducerName || "");
   const [introducerFeeLocal, setIntroducerFeeLocal] = useState<string>(
-    state.introducerFee ? String(state.introducerFee) : ""
+    state.introducerFeePercent ? String(state.introducerFeePercent) : ""
   );
 
   // Check for Xero connection status on mount
@@ -242,7 +242,11 @@ export function StepSupplierBuyer() {
 
   const handleIntroducerFeeBlur = () => {
     const parsed = parseFloat(introducerFeeLocal);
-    setIntroducerFee(Number.isFinite(parsed) && parsed >= 0 ? parsed : 0);
+    // Clamp to 0–100 range for a percentage input
+    const clamped = Number.isFinite(parsed) && parsed >= 0
+      ? Math.min(parsed, 100)
+      : 0;
+    setIntroducerFeePercent(clamped);
   };
 
   return (
@@ -545,21 +549,22 @@ export function StepSupplierBuyer() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Introducer fee (£) <span className="text-red-600">*</span>
+                Introducer fee (%) <span className="text-red-600">*</span>
               </label>
               <input
                 type="number"
                 inputMode="decimal"
                 min="0"
-                step="0.01"
+                max="100"
+                step="1"
                 value={introducerFeeLocal}
                 onChange={(e) => setIntroducerFeeLocal(e.target.value)}
                 onBlur={handleIntroducerFeeBlur}
-                placeholder="0.00"
+                placeholder="e.g. 50"
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
               <p className="text-xs text-gray-600 mt-1">
-                Flat amount paid to the introducer. Deducted from commissionable profit.
+                Percentage of gross profit paid to the introducer. e.g. 50 for 50%.
               </p>
             </div>
           </div>

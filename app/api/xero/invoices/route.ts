@@ -72,6 +72,7 @@ interface CreateInvoicePayload {
   hasIntroducer?: boolean;
   introducerName?: string;
   introducerCommission?: number;
+  introducerFeePercent?: number;
   entrupyFee?: number;
 }
 
@@ -453,6 +454,9 @@ export async function POST(request: NextRequest) {
               : undefined,
           hasIntroducer: payload.hasIntroducer || false,
           entrupyFee: payload.entrupyFee || 0,
+          introducerFeePercent: payload.hasIntroducer
+            ? payload.introducerFeePercent ?? undefined
+            : undefined,
         },
       });
 

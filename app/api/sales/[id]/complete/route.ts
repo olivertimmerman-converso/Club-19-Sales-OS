@@ -196,7 +196,7 @@ export async function POST(
       entrupyFee,
     });
 
-    const economics = calculateSaleEconomics({
+    let economics = calculateSaleEconomics({
       sale_amount_inc_vat: saleAmountIncVat,
       buy_price: buyPrice,
       branding_theme: brandingTheme,
@@ -206,6 +206,33 @@ export async function POST(
       introducer_commission: introducerCommission,
       entrupy_fee: entrupyFee,
     });
+
+    // If the sale has an introducer fee % (wizard-captured), recalculate the £
+    // amount from the new gross margin and re-run economics so commissionable
+    // margin reflects the updated introducer cost.
+    let recalculatedIntroducerCommission: number | null = null;
+    const introducerFeePercent = currentSale.introducerFeePercent;
+    if (
+      currentSale.hasIntroducer &&
+      introducerFeePercent != null &&
+      introducerFeePercent > 0 &&
+      economics.gross_margin > 0
+    ) {
+      recalculatedIntroducerCommission = Math.round(
+        economics.gross_margin * (introducerFeePercent / 100) * 100
+      ) / 100;
+      economics = calculateSaleEconomics({
+        sale_amount_inc_vat: saleAmountIncVat,
+        buy_price: buyPrice,
+        branding_theme: brandingTheme,
+        shipping_cost: effectiveShippingCost,
+        card_fees: cardFees,
+        direct_costs: directCosts,
+        introducer_commission: recalculatedIntroducerCommission,
+        entrupy_fee: entrupyFee,
+      });
+      updateData.introducerCommission = recalculatedIntroducerCommission;
+    }
 
     // Add recalculated values to update
     updateData.saleAmountExVat = economics.sale_amount_ex_vat;
