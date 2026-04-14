@@ -111,6 +111,7 @@ export function CompleteDataClient({
   const router = useRouter();
 
   const hasLineItems = initialLineItems.length > 0;
+  const isAtelier = sale.source === "atelier";
 
   // Supplier list state (local so we can add new ones inline)
   const [supplierList, setSupplierList] = useState<Supplier[]>(initialSuppliers);
@@ -475,7 +476,9 @@ export function CompleteDataClient({
 
         {/* Header - mobile optimized */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
-          <h1 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Complete Sale Data</h1>
+          <h1 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">
+            {isAtelier ? "Update Costs" : "Complete Sale Data"}
+          </h1>
 
           {/* Sale Context - stack on mobile */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
@@ -1070,6 +1073,24 @@ export function CompleteDataClient({
           <div className="mt-6 pt-6 border-t border-gray-200">
             <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-4">Logistics &amp; Delivery Costs</h3>
 
+            {/* Atelier-only: show the estimated shipping from wizard as a read-only reference */}
+            {isAtelier && sale.shippingCost !== null && sale.shippingCost > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-blue-700">
+                  <span className="font-medium">Estimated at creation:</span>{" "}
+                  {new Intl.NumberFormat("en-GB", {
+                    style: "currency",
+                    currency: sale.currency,
+                    minimumFractionDigits: 2,
+                  }).format(sale.shippingCost)}
+                  <p className="mt-0.5 text-blue-600/80">
+                    Enter the actual costs below. They will replace the estimate in reports.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Delivery Confirmed — at top, gates commission */}
             <div className={`mb-5 p-4 rounded-lg border ${deliveryConfirmed ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
               <label className="flex items-center gap-3 cursor-pointer">
@@ -1296,7 +1317,7 @@ export function CompleteDataClient({
                 disabled={!isValid || isSaving}
                 className="w-full sm:w-auto px-4 py-3 sm:py-2 text-base sm:text-sm font-medium text-white bg-[#0A0A0A] rounded-lg hover:bg-[#0A0A0A]/90 focus:ring-2 focus:ring-offset-2 focus:ring-[#0A0A0A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isSaving ? "Saving..." : "Save & Complete"}
+                {isSaving ? "Saving..." : isAtelier ? "Update Costs" : "Save & Complete"}
               </button>
             </div>
           </div>

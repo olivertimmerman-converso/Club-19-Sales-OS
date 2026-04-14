@@ -242,6 +242,10 @@ export const sales = pgTable(
     deliveryConfirmed: boolean("delivery_confirmed").default(false),
     deliveryDate: timestamp("delivery_date", { withTimezone: true }),
 
+    // Google Sheets row tracking (for in-place updates)
+    sheetsRowNumber: integer("sheets_row_number"),
+    sheetsTabName: text("sheets_tab_name"),
+
     // Payment Plan
     isPaymentPlan: boolean("is_payment_plan").default(false),
     paymentPlanInstalments: integer("payment_plan_instalments"),

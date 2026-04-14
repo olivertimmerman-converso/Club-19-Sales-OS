@@ -381,3 +381,161 @@ export async function pushSaleToShopperSheet(
     return { success: false, reason: message };
   }
 }
+
+// ============================================================================
+// UPDATE EXISTING ROW (for atelier cost updates)
+// ============================================================================
+
+export interface UpdateSaleRowParams {
+  sale: SaleWithRelations;
+  lineItems: LineItemWithSupplier[];
+  shopperName: string;
+  /** Stored DB value — the row number where this sale's rows START in the tab. */
+  startRow: number;
+  /** Stored DB value — e.g. "April 2026". */
+  tabName: string;
+}
+
+export interface UpdateSaleRowResult {
+  success: boolean;
+  skipped?: boolean;
+  reason?: string;
+  /** If we had to fall back to invoice-number search, the row we found. */
+  resolvedStartRow?: number;
+}
+
+/**
+ * Search column C of the tab for the invoice number. Returns the 1-indexed
+ * row number of the FIRST match, or null if not found.
+ */
+async function findRowByInvoiceNumber(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  tabName: string,
+  invoiceNumber: string
+): Promise<number | null> {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${tabName}'!C:C`,
+  });
+  const rows = res.data.values ?? [];
+  for (let i = 0; i < rows.length; i++) {
+    const cell = rows[i]?.[0];
+    if (cell === invoiceNumber) {
+      return i + 1; // values.get is 0-indexed into the array; sheet rows are 1-indexed
+    }
+  }
+  return null;
+}
+
+/**
+ * Overwrite an existing sale's rows in the sheet with updated data.
+ *
+ * Flow:
+ *   1. Verify column C at `startRow` matches the invoice number. If mismatch,
+ *      search column C for the invoice number (handles manual row inserts
+ *      or edits that shifted the layout).
+ *   2. Rebuild rows via buildRowsFromSale() with the resolved startRow (so
+ *      formula references point at the right rows).
+ *   3. values.update() the A:Z range for all N line-item rows.
+ *
+ * Fire-and-forget: errors are logged and returned but never thrown.
+ */
+export async function updateSaleRowInSheet(
+  params: UpdateSaleRowParams
+): Promise<UpdateSaleRowResult> {
+  const { sale, lineItems, shopperName, startRow, tabName } = params;
+
+  try {
+    const spreadsheetId = getSheetIdForShopper(shopperName);
+    if (!spreadsheetId) {
+      logger.warn("SHEETS", "No sheet mapping for shopper, skipping update", {
+        shopperName,
+      });
+      return { success: true, skipped: true, reason: "no-sheet-mapping" };
+    }
+
+    const sheets = getSheetsClient();
+    const invoiceNumber = sale.xeroInvoiceNumber || "";
+
+    // Step 1: verify + resolve the correct row
+    let resolvedStartRow = startRow;
+
+    try {
+      const verifyRange = `'${tabName}'!C${startRow}`;
+      const verify = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: verifyRange,
+      });
+      const cellValue = verify.data.values?.[0]?.[0];
+
+      if (cellValue !== invoiceNumber) {
+        logger.warn("SHEETS", "Stored row does not match invoice number — searching", {
+          saleId: sale.id,
+          invoiceNumber,
+          storedRow: startRow,
+          foundAtStoredRow: cellValue,
+        });
+
+        const found = await findRowByInvoiceNumber(
+          sheets,
+          spreadsheetId,
+          tabName,
+          invoiceNumber
+        );
+        if (found === null) {
+          return {
+            success: false,
+            reason: `Invoice ${invoiceNumber} not found in tab "${tabName}"`,
+          };
+        }
+        resolvedStartRow = found;
+      }
+    } catch (verifyErr) {
+      // If the verify read fails (tab missing, permission issue), try a search
+      const found = await findRowByInvoiceNumber(
+        sheets,
+        spreadsheetId,
+        tabName,
+        invoiceNumber
+      ).catch(() => null);
+      if (found === null) {
+        throw verifyErr;
+      }
+      resolvedStartRow = found;
+    }
+
+    // Step 2: rebuild rows with the resolved start row
+    const rows = buildRowsFromSale(sale, lineItems, shopperName, resolvedStartRow);
+    const endRow = resolvedStartRow + rows.length - 1;
+
+    // Step 3: overwrite the existing range
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${tabName}'!A${resolvedStartRow}:Z${endRow}`,
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: rows },
+    });
+
+    logger.info("SHEETS", "Sale row updated in sheet", {
+      saleId: sale.id,
+      invoiceNumber,
+      tabName,
+      resolvedStartRow,
+      rowCount: rows.length,
+    });
+
+    return { success: true, resolvedStartRow };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error("SHEETS", "Update failed (non-fatal)", {
+      saleId: sale.id,
+      invoiceNumber: sale.xeroInvoiceNumber,
+      shopperName,
+      tabName,
+      startRow,
+      error: message,
+    });
+    return { success: false, reason: message };
+  }
+}

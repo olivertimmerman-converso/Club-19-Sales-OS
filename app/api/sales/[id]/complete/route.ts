@@ -13,7 +13,7 @@ import { db } from "@/db";
 import { sales, shoppers, lineItems, errors } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import * as logger from "@/lib/logger";
-import { pushSaleToShopperSheet } from "@/lib/google-sheets";
+import { pushSaleToShopperSheet, updateSaleRowInSheet } from "@/lib/google-sheets";
 
 export const dynamic = "force-dynamic";
 
@@ -257,30 +257,78 @@ export async function POST(
     });
 
     // Push to Google Sheets (fire-and-forget, non-blocking)
-    // Only push for non-atelier sources — wizard-created sales are already pushed
-    // at creation time. Known gap: wizard sales completed later won't update their
-    // existing sheet row (manual edit by Alys for now).
-    if (updatedSale.source !== "atelier") {
-      try {
-        const saleWithRelations = await db.query.sales.findFirst({
-          where: eq(sales.id, saleId),
-          with: { buyer: true, supplier: true },
-        });
-        const saleLineItems = await db.query.lineItems.findMany({
-          where: eq(lineItems.saleId, saleId),
-          with: { supplier: true },
-          orderBy: [asc(lineItems.lineNumber)],
-        });
+    //
+    // Two paths:
+    //   - Atelier sales: already have a sheet row from wizard creation. Update
+    //     that row in place using stored sheets_row_number + sheets_tab_name.
+    //   - Non-atelier (adopted/xero_import): no sheet row yet. Append and
+    //     persist the row number for future updates.
+    try {
+      const saleWithRelations = await db.query.sales.findFirst({
+        where: eq(sales.id, saleId),
+        with: { buyer: true, supplier: true },
+      });
+      const saleLineItems = await db.query.lineItems.findMany({
+        where: eq(lineItems.saleId, saleId),
+        with: { supplier: true },
+        orderBy: [asc(lineItems.lineNumber)],
+      });
 
-        if (saleWithRelations) {
-          // Shopper name from the sale's assigned shopper
-          const shopperRecord = saleWithRelations.shopperId
-            ? await db.query.shoppers.findFirst({
-                where: eq(shoppers.id, saleWithRelations.shopperId),
+      if (saleWithRelations) {
+        const shopperRecord = saleWithRelations.shopperId
+          ? await db.query.shoppers.findFirst({
+              where: eq(shoppers.id, saleWithRelations.shopperId),
+            })
+          : null;
+        const shopperName = shopperRecord?.name || "";
+
+        const hasStoredRow =
+          saleWithRelations.sheetsRowNumber != null &&
+          saleWithRelations.sheetsTabName != null;
+
+        if (hasStoredRow) {
+          // In-place update (atelier sales, or non-atelier sales that were
+          // already pushed by an earlier completion).
+          const updateResult = await updateSaleRowInSheet({
+            sale: saleWithRelations,
+            lineItems: saleLineItems,
+            shopperName,
+            startRow: saleWithRelations.sheetsRowNumber!,
+            tabName: saleWithRelations.sheetsTabName!,
+          });
+
+          if (!updateResult.success) {
+            await db
+              .insert(errors)
+              .values({
+                saleId: saleId,
+                severity: "low",
+                source: "sheets-sync",
+                message: [
+                  `Sheets update on completion failed: ${updateResult.reason || "unknown"}`,
+                ],
+                timestamp: new Date(),
+                resolved: false,
               })
-            : null;
-          const shopperName = shopperRecord?.name || "";
+              .catch(() => {});
+          } else if (
+            updateResult.resolvedStartRow &&
+            updateResult.resolvedStartRow !== saleWithRelations.sheetsRowNumber
+          ) {
+            // The row was found at a different position — update our tracking
+            await db
+              .update(sales)
+              .set({ sheetsRowNumber: updateResult.resolvedStartRow })
+              .where(eq(sales.id, saleId))
+              .catch(() => {});
+          }
 
+          logger.info("COMPLETE", "Sheets update attempted", {
+            saleId,
+            success: updateResult.success,
+          });
+        } else if (updatedSale.source !== "atelier") {
+          // Append path: adopted/xero_import sale that hasn't been pushed yet.
           const pushResult = await pushSaleToShopperSheet({
             sale: saleWithRelations,
             lineItems: saleLineItems,
@@ -300,9 +348,16 @@ export async function POST(
                 timestamp: new Date(),
                 resolved: false,
               })
-              .catch(() => {
-                /* non-fatal */
-              });
+              .catch(() => {});
+          } else if (pushResult.startRow && pushResult.tabName) {
+            await db
+              .update(sales)
+              .set({
+                sheetsRowNumber: pushResult.startRow,
+                sheetsTabName: pushResult.tabName,
+              })
+              .where(eq(sales.id, saleId))
+              .catch(() => {});
           }
 
           logger.info("COMPLETE", "Sheets push attempted", {
@@ -310,14 +365,20 @@ export async function POST(
             success: pushResult.success,
             skipped: pushResult.skipped,
           });
+        } else {
+          // Atelier sale without stored row (pre-tracking historical) —
+          // nothing to do. Manual reconciliation required.
+          logger.warn("COMPLETE", "Atelier sale has no stored sheet row; skipping sheets update", {
+            saleId,
+          });
         }
-      } catch (sheetsErr) {
-        logger.error("COMPLETE", "Sheets push wrapper failed (non-fatal)", {
-          saleId,
-          error:
-            sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr),
-        });
       }
+    } catch (sheetsErr) {
+      logger.error("COMPLETE", "Sheets sync wrapper failed (non-fatal)", {
+        saleId,
+        error:
+          sheetsErr instanceof Error ? sheetsErr.message : String(sheetsErr),
+      });
     }
 
     return NextResponse.json({

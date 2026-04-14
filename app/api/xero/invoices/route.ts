@@ -512,6 +512,18 @@ export async function POST(request: NextRequest) {
                 .catch(() => {
                   /* ignore — errors-table write failure is not actionable here */
                 });
+            } else if (pushResult.startRow && pushResult.tabName) {
+              // Persist sheet row tracking for future in-place updates
+              await db
+                .update(sales)
+                .set({
+                  sheetsRowNumber: pushResult.startRow,
+                  sheetsTabName: pushResult.tabName,
+                })
+                .where(eq(sales.id, sale.id))
+                .catch(() => {
+                  /* non-fatal — updates can fall back to invoice-number search */
+                });
             }
           }
         } catch (sheetsErr) {
