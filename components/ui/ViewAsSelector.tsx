@@ -20,7 +20,7 @@ const VIEW_AS_OPTIONS: ViewAsOption[] = [
   { value: "founder", label: "Founder (Sophie)" },
   { value: "operations", label: "Operations (Alys)" },
   { value: "shopper-hope-peverell", label: "Shopper (Hope)" },
-  { value: "shopper-mary-clair-bromfield", label: "Shopper (MC)" },
+  { value: "shopper-mary-clair", label: "Shopper (MC)" },
 ];
 
 export function ViewAsSelector() {

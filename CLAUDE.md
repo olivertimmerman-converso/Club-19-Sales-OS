@@ -25,6 +25,7 @@ These patterns were established to fix recurring bugs. Do not deviate from them.
 5. **Export sales**: Export sales use zero VAT. This is a core business rule that affects invoice creation.
 6. **Xero token refresh**: Runs aggressively (every 4 hours + on deploy). The system must be always-connected without requiring manual monitoring.
 7. **Schema changes require database migration.** Adding columns to `db/schema.ts` does NOT create them in production. Always run `npx drizzle-kit push` or create a migration after modifying the schema. The app will break silently on deploy if code references columns that don't exist.
+8. **One shopper row per Clerk user — Clerk is the source of truth for staff identity.** A unique index on `shoppers.clerk_user_id` enforces this at the DB level. When resolving a shopper from a Clerk session, prefer `clerkUserId`; only fall back to name match for legacy paths. If you need the canonical display name, read `shoppers.name` (which we keep aligned to Clerk's `fullName` via `scripts/align_shoppers_to_clerk.ts`).
 
 ## Key Directories
 

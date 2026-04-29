@@ -43,7 +43,8 @@ function mapViewAsToRole(viewAs: string | null): StaffRole | null {
     case "operations":
       return "operations";
     case "shopper-hope-peverell":
-    case "shopper-mary-clair-bromfield":
+    case "shopper-mary-clair":
+    case "shopper-mary-clair-bromfield": // legacy alias
     case "shopper-hope":
     case "shopper-mc":
     case "shopper-hope-sherwin":

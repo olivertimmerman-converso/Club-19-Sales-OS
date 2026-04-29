@@ -90,11 +90,17 @@ export function getSheetIdForShopper(shopperName: string): string | null {
     return process.env.SHEET_ID_TEST || null;
   }
 
-  // Production: per-shopper map. Match on lowercased prefix so minor
-  // capitalisation differences ("Hope Kavanagh" vs "hope kavanagh") still hit.
+  // Production: per-shopper map. Lowercased substring match so minor name
+  // variations ("Mary Clair" vs "Mary Clair Bromfield" vs the literal "MC")
+  // all route correctly.
   const normalized = shopperName.trim().toLowerCase();
-  if (normalized.startsWith("hope")) return process.env.SHEET_ID_HOPE || null;
-  if (normalized.startsWith("mc") || normalized.includes("oyesilbelde")) {
+  if (normalized.includes("hope")) return process.env.SHEET_ID_HOPE || null;
+  if (
+    normalized.includes("mary clair") ||
+    normalized === "mc" ||
+    normalized.startsWith("mc ") ||
+    normalized.includes("oyesilbelde")
+  ) {
     return process.env.SHEET_ID_MC || null;
   }
   // Catch-all for Sophie, Alys, and any unmapped shopper. Sales here land in

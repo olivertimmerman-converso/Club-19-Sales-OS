@@ -36,9 +36,10 @@ function getViewAsShopperName(viewAs: string | undefined): string | null {
     case "shopper-hope":
     case "shopper-hope-sherwin":
       return "Hope Peverell";
-    case "shopper-mary-clair-bromfield":
+    case "shopper-mary-clair":
+    case "shopper-mary-clair-bromfield": // legacy alias
     case "shopper-mc":
-      return "Mary Clair Bromfield";
+      return "Mary Clair";
     default:
       return null;
   }

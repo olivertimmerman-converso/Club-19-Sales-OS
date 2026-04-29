@@ -19,6 +19,7 @@ import {
   jsonb,
   uuid,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -40,7 +41,10 @@ export const shoppers = pgTable(
   },
   (table) => [
     index("shoppers_name_idx").on(table.name),
-    index("shoppers_clerk_user_id_idx").on(table.clerkUserId),
+    // Unique on Clerk user id so duplicate shopper rows are impossible.
+    // Postgres treats NULLs as distinct, so legacy rows without a Clerk link
+    // remain allowed (and there should only ever be one per real human).
+    uniqueIndex("shoppers_clerk_user_id_idx").on(table.clerkUserId),
   ]
 );
 
