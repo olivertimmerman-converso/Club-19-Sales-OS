@@ -72,36 +72,49 @@ import * as logger from "./logger";
 // ============================================================================
 
 /**
- * Get or create a shopper by name
+ * Get or create a shopper, preferring a Clerk-linked row when available.
  *
- * @param name - The shopper's full name
- * @returns Existing or newly created shopper record
+ * Resolution order:
+ *   1. Match by `clerkUserId` (most reliable — avoids legacy duplicates)
+ *   2. Match by exact name + active=true
+ *   3. Match by exact name (any state)
+ *   4. Create a new row
  *
- * @example
- * const shopper = await getOrCreateShopperByName("Hope Smith");
+ * Without the clerkUserId hint we historically attached new sales to whichever
+ * row matched the user's display name first — including legacy/inactive
+ * duplicates created before clerkUserId was wired up. That's how MC's sales
+ * kept landing on the inactive "Mary Clair" record while her canonical
+ * "Mary Clair Bromfield" record sat dormant.
+ *
+ * @param name - The shopper's full name (from Clerk)
+ * @param clerkUserId - Optional Clerk user ID; strongly preferred when known
  */
 export async function getOrCreateShopperByName(
-  name: string
+  name: string,
+  clerkUserId?: string
 ): Promise<Shopper> {
-  // ORIGINAL XATA:
-  // const existing = await xata().db.Shoppers.filter({ name }).getFirst();
-  // if (existing) return existing;
-  //
-  // return await xata().db.Shoppers.create({
-  //   name,
-  //   email: "",
-  //   commission_scheme: "",
-  //   active: true,
-  // });
+  if (clerkUserId) {
+    const [byClerk] = await db
+      .select()
+      .from(shoppers)
+      .where(eq(shoppers.clerkUserId, clerkUserId))
+      .limit(1);
+    if (byClerk) return byClerk;
+  }
 
-  // DRIZZLE:
-  const [existing] = await db
+  const [activeMatch] = await db
+    .select()
+    .from(shoppers)
+    .where(and(eq(shoppers.name, name), eq(shoppers.active, true)))
+    .limit(1);
+  if (activeMatch) return activeMatch;
+
+  const [anyMatch] = await db
     .select()
     .from(shoppers)
     .where(eq(shoppers.name, name))
     .limit(1);
-
-  if (existing) return existing;
+  if (anyMatch) return anyMatch;
 
   const [created] = await db
     .insert(shoppers)
@@ -110,6 +123,7 @@ export async function getOrCreateShopperByName(
       email: "",
       commissionScheme: "",
       active: true,
+      clerkUserId: clerkUserId ?? null,
     })
     .returning();
 
@@ -432,6 +446,8 @@ export interface CreateSalePayload {
   // Party names (will be resolved to IDs)
   shopperName: string;
   shopperEmail?: string;
+  /** Clerk user ID of the logged-in shopper. Strongly preferred for shopper resolution. */
+  shopperClerkUserId?: string;
   buyerName: string;
   buyerEmail?: string;
   buyerXeroId?: string;
@@ -521,7 +537,10 @@ export async function createSaleFromAppPayload(
   // B) RESOLVE RELATIONAL TABLES
   logger.info("XATA", "Resolving relationships");
 
-  const shopper = await getOrCreateShopperByName(sanitizedPayload.shopperName);
+  const shopper = await getOrCreateShopperByName(
+    sanitizedPayload.shopperName,
+    sanitizedPayload.shopperClerkUserId
+  );
   logger.info("XATA", "Shopper resolved", { name: shopper.name, id: shopper.id });
 
   const buyer = await getOrCreateBuyer(
@@ -873,6 +892,10 @@ export interface AppFormData {
   // Parties
   shopperName: string;
   shopperEmail?: string;
+  /** Clerk user ID of the logged-in shopper. Lets the resolver hit the canonical
+   *  Clerk-linked row instead of falling back to a name match (which has caused
+   *  duplicate-shopper bugs in the past). */
+  shopperClerkUserId?: string;
   supplierName: string;
   supplierEmail?: string;
   supplierXeroId?: string;
@@ -940,6 +963,7 @@ export async function syncInvoiceAndAppDataToXata(params: {
       // Parties
       shopperName: params.formData.shopperName,
       shopperEmail: params.formData.shopperEmail,
+      shopperClerkUserId: params.formData.shopperClerkUserId,
       buyerName: params.xeroInvoice.Contact.Name,
       buyerEmail: params.xeroInvoice.Contact.EmailAddress,
       buyerXeroId: params.xeroInvoice.Contact.ContactID,

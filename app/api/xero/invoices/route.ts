@@ -413,6 +413,7 @@ export async function POST(request: NextRequest) {
           // Absolutely required
           shopperName,
           shopperEmail,
+          shopperClerkUserId: userId,
 
           // Supplier
           supplierName: payload.supplierName || "",

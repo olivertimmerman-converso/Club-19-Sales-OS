@@ -12,19 +12,20 @@
  * can flip to a plain "Download PDF" button on subsequent loads.
  *
  * Permissions: superadmin, admin, founder, operations, OR the shopper who
- * owns the sale (matched via clerkUserId on the shoppers table).
+ * owns the sale (matched via clerkUserId on the shoppers table, falling
+ * back to full-name match for legacy shopper records).
  *
  * Idempotent: if the invoice is already AUTHORISED (or further along, e.g.
  * PAID), the PUT call is skipped and we go straight to the PDF fetch.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getValidTokens } from "@/lib/xero-auth";
 import { getUserRole } from "@/lib/getUserRole";
 import { db } from "@/db";
 import { sales, shoppers } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -73,14 +74,26 @@ export async function POST(
     const elevatedRoles = ["superadmin", "admin", "founder", "operations"];
     let permitted = elevatedRoles.includes(role);
 
-    // If not elevated, check whether the user is the shopper who owns the sale
+    // If not elevated, check whether the user is the shopper who owns the sale.
+    // Prefer clerkUserId (reliable) and fall back to matching by full name —
+    // legacy shopper records may not have clerkUserId populated yet.
     if (!permitted && sale.shopperId) {
-      const [ownerShopper] = await db
-        .select({ clerkUserId: shoppers.clerkUserId })
-        .from(shoppers)
-        .where(and(eq(shoppers.id, sale.shopperId), eq(shoppers.clerkUserId, userId)))
-        .limit(1);
-      permitted = !!ownerShopper;
+      let shopperRecord = await db.query.shoppers.findFirst({
+        where: eq(shoppers.clerkUserId, userId),
+      });
+
+      if (!shopperRecord) {
+        const client = await clerkClient();
+        const user = await client.users.getUser(userId);
+        const userFullName = user?.fullName;
+        if (userFullName) {
+          shopperRecord = await db.query.shoppers.findFirst({
+            where: eq(shoppers.name, userFullName),
+          });
+        }
+      }
+
+      permitted = !!shopperRecord && shopperRecord.id === sale.shopperId;
     }
 
     if (!permitted) {
