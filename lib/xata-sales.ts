@@ -465,6 +465,8 @@ export interface CreateSalePayload {
   entrupyFee?: number;
   /** Introducer fee as a percentage of gross profit (whole number 0-100). */
   introducerFeePercent?: number;
+  /** Whether the wizard captured the fee as a percent of profit or a flat £ amount. */
+  introducerFeeType?: "percent" | "flat";
 
   // Authenticity tracking (Story 2)
   authenticity_status?: string; // "verified" | "pending" | "not_verified"
@@ -730,6 +732,7 @@ export async function createSaleFromAppPayload(
       entrupyFee: sanitizedPayload.entrupyFee || 0,
       introducerCommission: sanitizedPayload.introducerCommission || 0,
       introducerFeePercent: sanitizedPayload.introducerFeePercent ?? null,
+      introducerFeeType: sanitizedPayload.introducerFeeType ?? null,
     })
     .returning();
 
@@ -933,6 +936,8 @@ export interface AppFormData {
   entrupyFee?: number;
   /** Introducer fee as a percentage of gross profit. Stored on sales.introducer_fee_percent. */
   introducerFeePercent?: number;
+  /** Whether the wizard captured the fee as % of profit or flat £. Stored on sales.introducer_fee_type. */
+  introducerFeeType?: "percent" | "flat";
 }
 
 export async function syncInvoiceAndAppDataToXata(params: {
@@ -1004,6 +1009,8 @@ export async function syncInvoiceAndAppDataToXata(params: {
       hasIntroducer: params.formData.hasIntroducer,
       isNewClient: params.formData.isNewClient,
       entrupyFee: params.formData.entrupyFee,
+      introducerFeePercent: params.formData.introducerFeePercent,
+      introducerFeeType: params.formData.introducerFeeType,
     };
 
     const sale = await createSaleFromAppPayload(payload);

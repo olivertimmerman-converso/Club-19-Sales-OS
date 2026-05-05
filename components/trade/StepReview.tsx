@@ -125,14 +125,25 @@ export function StepReview() {
     return { shipping: 0, cardFees: 0, total: 0 };
   }, []);
 
-  // Introducer fee is captured as a percentage of gross profit on the wizard.
-  // Derive the £ amount here for display + deductions.
+  // Introducer fee is captured either as a % of gross profit or as a flat £
+  // amount on the wizard. Derive the £ amount here for display + deductions.
   const introducerFeeGBP = useMemo(() => {
     if (!state.hasIntroducer) return 0;
+    if (state.introducerFeeType === "flat") {
+      const flat = state.introducerFeeFlat ?? 0;
+      if (flat <= 0) return 0;
+      return roundCurrency(flat);
+    }
     const percent = state.introducerFeePercent ?? 0;
     if (percent <= 0 || grossMarginGBP <= 0) return 0;
     return roundCurrency(grossMarginGBP * (percent / 100));
-  }, [state.hasIntroducer, state.introducerFeePercent, grossMarginGBP]);
+  }, [
+    state.hasIntroducer,
+    state.introducerFeeType,
+    state.introducerFeePercent,
+    state.introducerFeeFlat,
+    grossMarginGBP,
+  ]);
 
   // Calculate commissionable margin with currency rounding
   // Phase 2: introducer fee + entrupy fee are also cost deductions.
@@ -232,7 +243,15 @@ export function StepReview() {
         hasIntroducer: state.hasIntroducer || false,
         introducerName: state.hasIntroducer ? state.introducerName : undefined,
         introducerCommission: introducerFeeGBP,
-        introducerFeePercent: state.hasIntroducer ? (state.introducerFeePercent ?? 0) : 0,
+        introducerFeeType: state.hasIntroducer ? state.introducerFeeType : undefined,
+        introducerFeePercent:
+          state.hasIntroducer && state.introducerFeeType === "percent"
+            ? state.introducerFeePercent ?? 0
+            : 0,
+        introducerFeeFlat:
+          state.hasIntroducer && state.introducerFeeType === "flat"
+            ? state.introducerFeeFlat ?? 0
+            : 0,
         entrupyFee: state.entrupyFee || 0,
 
         // Legacy fields for backward compatibility (use first item)
@@ -491,7 +510,12 @@ export function StepReview() {
                 <div className="text-purple-700 font-medium">Introducer</div>
                 <div className="text-purple-900">
                   {state.introducerName}
-                  <span className="text-purple-700"> · {(state.introducerFeePercent ?? 0).toFixed(0)}% (£{introducerFeeGBP.toFixed(2)})</span>
+                  <span className="text-purple-700">
+                    {" "}·{" "}
+                    {state.introducerFeeType === "flat"
+                      ? `Flat £${introducerFeeGBP.toFixed(2)}`
+                      : `${(state.introducerFeePercent ?? 0).toFixed(0)}% (£${introducerFeeGBP.toFixed(2)})`}
+                  </span>
                 </div>
               </div>
             )}
@@ -565,7 +589,13 @@ export function StepReview() {
             )}
           {state.hasIntroducer && introducerFeeGBP > 0 && (
             <div className="flex justify-between">
-              <span className="text-purple-700">Introducer fee ({state.introducerName}, {(state.introducerFeePercent ?? 0).toFixed(0)}%):</span>
+              <span className="text-purple-700">
+                Introducer fee ({state.introducerName},{" "}
+                {state.introducerFeeType === "flat"
+                  ? "flat £"
+                  : `${(state.introducerFeePercent ?? 0).toFixed(0)}%`}
+                ):
+              </span>
               <span className="font-medium text-purple-900">
                 −£{introducerFeeGBP.toFixed(2)}
               </span>

@@ -32,6 +32,26 @@ export enum TradeSource {
 export type BuyerType = "b2b" | "end_client";
 
 // ============================================================================
+// INTRODUCER FEE TYPE
+// ============================================================================
+
+export type IntroducerFeeType = "percent" | "flat";
+
+/**
+ * Narrow a raw DB value (Drizzle returns text columns as `string | null`)
+ * to the IntroducerFeeType union. Any unexpected value falls through to
+ * null, which is the safe default at every read site (no recalc, no flat-
+ * mode display branch, sheets falls back to bare introducer name).
+ */
+export function normalizeIntroducerFeeType(
+  raw: unknown
+): IntroducerFeeType | null {
+  if (raw === "flat") return "flat";
+  if (raw === "percent") return "percent";
+  return null;
+}
+
+// ============================================================================
 // SUPPLIER
 // ============================================================================
 
@@ -226,11 +246,15 @@ export type WizardState = {
   // New client flag — derived from buyer history at the moment the contact is selected
   isNewClient: boolean;
 
-  // Introducer (Step 0 — Client). Phase 2 model: free-text name + flat £ fee.
-  // The fee is treated as a cost deduction, not a percentage split.
+  // Introducer (Step 0 — Client). Phase 2 model: free-text name + fee.
+  // MC's referrers are paid either as a % of gross profit OR a flat £ amount —
+  // the wizard toggles between the two via `introducerFeeType`. The fee is
+  // treated as a cost deduction, not a percentage commission split.
   hasIntroducer?: boolean;
   introducerName: string;
-  introducerFeePercent: number;
+  introducerFeeType: IntroducerFeeType;
+  introducerFeePercent: number; // used when type === "percent"
+  introducerFeeFlat: number; // used when type === "flat" (£ amount)
 
   // Invoice metadata (Step 4 — Review)
   dueDate: string;

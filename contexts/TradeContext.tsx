@@ -49,7 +49,9 @@ function saveDraft(state: WizardState): void {
         hasDeliveryCost: state.hasDeliveryCost,
         hasIntroducer: state.hasIntroducer,
         introducerName: state.introducerName,
+        introducerFeeType: state.introducerFeeType,
         introducerFeePercent: state.introducerFeePercent,
+        introducerFeeFlat: state.introducerFeeFlat,
         dueDate: state.dueDate,
         notes: state.notes,
         estimatedImportExportGBP: state.estimatedImportExportGBP,
@@ -134,10 +136,12 @@ type TradeContextType = {
   setBuyer: (buyer: Buyer) => void;
   setIsNewClient: (value: boolean) => void;
 
-  // Introducer (Phase 2: free-text name + flat £ fee)
+  // Introducer (Phase 2: free-text name + fee, either % of gross profit or flat £)
   setHasIntroducer: (hasIntroducer: boolean) => void;
   setIntroducerName: (name: string) => void;
+  setIntroducerFeeType: (type: "percent" | "flat") => void;
   setIntroducerFeePercent: (percent: number) => void;
+  setIntroducerFeeFlat: (amount: number) => void;
 
   // Entrupy fee (ancillary cost, optional)
   setEntrupyFee: (amount: number) => void;
@@ -189,7 +193,9 @@ const createInitialState = (): WizardState => ({
   isNewClient: false,
   hasIntroducer: false,
   introducerName: "",
+  introducerFeeType: "percent",
   introducerFeePercent: 0,
+  introducerFeeFlat: 0,
   dueDate: new Date()
     .toISOString()
     .split("T")[0], // Today
@@ -293,9 +299,13 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     s.buyer !== null &&
     s.buyer.name.trim() !== "" &&
     s.buyer.buyer_type !== undefined &&
-    // If introducer toggle on, name and fee must both be set (fee > 0)
+    // If introducer toggle on, name and fee must both be set (fee > 0).
+    // The fee field depends on the chosen type: % of profit or flat £.
     (!s.hasIntroducer ||
-      (s.introducerName.trim() !== "" && s.introducerFeePercent > 0));
+      (s.introducerName.trim() !== "" &&
+        (s.introducerFeeType === "flat"
+          ? s.introducerFeeFlat > 0
+          : s.introducerFeePercent > 0)));
 
   const validateSupplierItemStep = (s: WizardState): boolean =>
     s.items.length > 0 &&
@@ -474,6 +484,7 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
       // Clear name and fee when toggle goes off so stale values don't get submitted
       introducerName: hasIntroducer ? prev.introducerName : "",
       introducerFeePercent: hasIntroducer ? prev.introducerFeePercent : 0,
+      introducerFeeFlat: hasIntroducer ? prev.introducerFeeFlat : 0,
     }));
   }, []);
 
@@ -481,8 +492,23 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setState((prev) => ({ ...prev, introducerName: name }));
   }, []);
 
+  const setIntroducerFeeType = useCallback((type: "percent" | "flat") => {
+    // When the type changes, clear the unused field so a stale value from the
+    // other input doesn't accidentally submit.
+    setState((prev) => ({
+      ...prev,
+      introducerFeeType: type,
+      introducerFeePercent: type === "percent" ? prev.introducerFeePercent : 0,
+      introducerFeeFlat: type === "flat" ? prev.introducerFeeFlat : 0,
+    }));
+  }, []);
+
   const setIntroducerFeePercent = useCallback((percent: number) => {
     setState((prev) => ({ ...prev, introducerFeePercent: percent }));
+  }, []);
+
+  const setIntroducerFeeFlat = useCallback((amount: number) => {
+    setState((prev) => ({ ...prev, introducerFeeFlat: amount }));
   }, []);
 
   const setEntrupyFee = useCallback((amount: number) => {
@@ -577,7 +603,9 @@ export function TradeProvider({ children }: { children: React.ReactNode }) {
     setIsNewClient,
     setHasIntroducer,
     setIntroducerName,
+    setIntroducerFeeType,
     setIntroducerFeePercent,
+    setIntroducerFeeFlat,
     setEntrupyFee,
     setDueDate,
     setNotes,

@@ -8,6 +8,7 @@ import { XERO_BRANDING_THEMES } from "@/lib/branding-theme-mappings";
 import { getCompletionColor, assessCompleteness } from "@/lib/completeness";
 import { calculateSaleEconomics } from "@/lib/economics";
 import type { CompletenessResult, SaleForCompleteness } from "@/lib/completeness";
+import type { IntroducerFeeType } from "@/lib/types/invoice";
 import { ArrowLeft, CheckCircle, AlertCircle, Info, ChevronDown, ChevronUp, Link2, PlusCircle, X, Loader2 } from "lucide-react";
 import { NewSupplierModal } from "@/components/modals/NewSupplierModal";
 
@@ -64,6 +65,8 @@ interface SaleData {
   deliveryConfirmed: boolean;
   deliveryDate: string | null;
   introducerFeePercent?: number | null;
+  introducerFeeType?: IntroducerFeeType | null;
+  introducerCommission?: number | null;
   introducerName?: string | null;
   grossMargin: number;
   commissionableMargin: number;
@@ -1075,20 +1078,40 @@ export function CompleteDataClient({
           <div className="mt-6 pt-6 border-t border-gray-200">
             <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-4">Logistics &amp; Delivery Costs</h3>
 
-            {/* Atelier-only: show introducer fee % as read-only reference if set */}
-            {isAtelier && sale.introducerFeePercent != null && sale.introducerFeePercent > 0 && (
-              <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-start gap-2">
-                <Info className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-purple-700">
-                  <span className="font-medium">Introducer:</span>{" "}
-                  {sale.introducerName ? `${sale.introducerName} · ` : ""}
-                  {sale.introducerFeePercent}% of gross profit
-                  <p className="mt-0.5 text-purple-600/80">
-                    The £ amount recalculates automatically as actual costs change the gross profit.
-                  </p>
+            {/* Atelier-only: show the introducer fee captured at creation as a read-only
+                reference. The basis depends on the wizard's fee-type toggle: a % of gross
+                profit (recalculates as costs change) or a fixed flat £. */}
+            {isAtelier &&
+              ((sale.introducerFeeType === "flat" &&
+                sale.introducerCommission != null &&
+                sale.introducerCommission > 0) ||
+                (sale.introducerFeeType !== "flat" &&
+                  sale.introducerFeePercent != null &&
+                  sale.introducerFeePercent > 0)) && (
+                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-start gap-2">
+                  <Info className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-purple-700">
+                    <span className="font-medium">Introducer:</span>{" "}
+                    {sale.introducerName ? `${sale.introducerName} · ` : ""}
+                    {sale.introducerFeeType === "flat" ? (
+                      <>
+                        flat £
+                        {(sale.introducerCommission ?? 0).toLocaleString("en-GB", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </>
+                    ) : (
+                      <>{sale.introducerFeePercent}% of gross profit</>
+                    )}
+                    <p className="mt-0.5 text-purple-600/80">
+                      {sale.introducerFeeType === "flat"
+                        ? "The £ amount is fixed and does not change with cost adjustments."
+                        : "The £ amount recalculates automatically as actual costs change the gross profit."}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Atelier-only: show the estimated shipping from wizard as a read-only reference */}
             {isAtelier && sale.shippingCost !== null && sale.shippingCost > 0 && (

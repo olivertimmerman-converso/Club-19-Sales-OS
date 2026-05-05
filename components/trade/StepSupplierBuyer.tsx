@@ -22,7 +22,9 @@ export function StepSupplierBuyer() {
     setDeliveryCountry,
     setHasIntroducer,
     setIntroducerName,
+    setIntroducerFeeType,
     setIntroducerFeePercent,
+    setIntroducerFeeFlat,
   } = useTrade();
 
   // === BUYER STATE (Xero search) ===
@@ -47,12 +49,19 @@ export function StepSupplierBuyer() {
     state.deliveryCountry || "United Kingdom"
   );
 
-  // === INTRODUCER STATE (Phase 2: name + percentage of gross profit) ===
+  // === INTRODUCER STATE (Phase 2: name + fee, either % of gross profit or flat £) ===
   const [hasIntroducerLocal, setHasIntroducerLocal] = useState(state.hasIntroducer || false);
   const [introducerNameLocal, setIntroducerNameLocal] = useState(state.introducerName || "");
-  const [introducerFeeLocal, setIntroducerFeeLocal] = useState<string>(
-    state.introducerFeePercent ? String(state.introducerFeePercent) : ""
+  const [introducerFeeTypeLocal, setIntroducerFeeTypeLocal] = useState<"percent" | "flat">(
+    state.introducerFeeType || "percent"
   );
+  const [introducerFeeLocal, setIntroducerFeeLocal] = useState<string>(() => {
+    const initial =
+      state.introducerFeeType === "flat"
+        ? state.introducerFeeFlat
+        : state.introducerFeePercent;
+    return initial ? String(initial) : "";
+  });
 
   // Check for Xero connection status on mount
   useEffect(() => {
@@ -226,7 +235,7 @@ export function StepSupplierBuyer() {
     setDeliveryCountry(deliveryCountry);
   }, [deliveryCountry, setDeliveryCountry]);
 
-  // === INTRODUCER HANDLERS (Phase 2: name + flat £ fee) ===
+  // === INTRODUCER HANDLERS (Phase 2: name + fee with percent/flat toggle) ===
   const handleIntroducerToggle = (checked: boolean) => {
     setHasIntroducerLocal(checked);
     setHasIntroducer(checked);
@@ -240,13 +249,35 @@ export function StepSupplierBuyer() {
     setIntroducerName(introducerNameLocal.trim());
   };
 
+  const handleIntroducerFeeTypeChange = (type: "percent" | "flat") => {
+    setIntroducerFeeTypeLocal(type);
+    setIntroducerFeeType(type);
+    // Clear the visible input so the user re-enters in the new units —
+    // re-using a "30" entered as a percent as a £ amount (or vice versa)
+    // would silently give a very wrong fee.
+    setIntroducerFeeLocal("");
+    setIntroducerFeePercent(0);
+    setIntroducerFeeFlat(0);
+  };
+
   const handleIntroducerFeeBlur = () => {
     const parsed = parseFloat(introducerFeeLocal);
-    // Clamp to 0–100 range for a percentage input
-    const clamped = Number.isFinite(parsed) && parsed >= 0
-      ? Math.min(parsed, 100)
-      : 0;
-    setIntroducerFeePercent(clamped);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      setIntroducerFeePercent(0);
+      setIntroducerFeeFlat(0);
+      return;
+    }
+    if (introducerFeeTypeLocal === "flat") {
+      // Flat £ fee — round to pence, no upper clamp.
+      const rounded = Math.round(parsed * 100) / 100;
+      setIntroducerFeeFlat(rounded);
+      setIntroducerFeePercent(0);
+    } else {
+      // Percent of gross profit — clamp to 0–100.
+      const clamped = Math.min(parsed, 100);
+      setIntroducerFeePercent(clamped);
+      setIntroducerFeeFlat(0);
+    }
   };
 
   return (
@@ -548,23 +579,67 @@ export function StepSupplierBuyer() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Introducer fee (%) <span className="text-red-600">*</span>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fee type <span className="text-red-600">*</span>
               </label>
-              <input
-                type="number"
-                inputMode="decimal"
-                min="0"
-                max="100"
-                step="1"
-                value={introducerFeeLocal}
-                onChange={(e) => setIntroducerFeeLocal(e.target.value)}
-                onBlur={handleIntroducerFeeBlur}
-                placeholder="e.g. 50"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
+              <div className="flex gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => handleIntroducerFeeTypeChange("percent")}
+                  className={`flex-1 cursor-pointer rounded-md border px-3 py-2 text-sm font-medium transition-all ${
+                    introducerFeeTypeLocal === "percent"
+                      ? "bg-orange-600 text-white border-orange-600 shadow-sm"
+                      : "bg-white text-gray-700 border-gray-300 hover:border-orange-400"
+                  }`}
+                >
+                  % of gross profit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleIntroducerFeeTypeChange("flat")}
+                  className={`flex-1 cursor-pointer rounded-md border px-3 py-2 text-sm font-medium transition-all ${
+                    introducerFeeTypeLocal === "flat"
+                      ? "bg-orange-600 text-white border-orange-600 shadow-sm"
+                      : "bg-white text-gray-700 border-gray-300 hover:border-orange-400"
+                  }`}
+                >
+                  Flat £ amount
+                </button>
+              </div>
+
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {introducerFeeTypeLocal === "flat"
+                  ? "Introducer fee (£)"
+                  : "Introducer fee (%)"}{" "}
+                <span className="text-red-600">*</span>
+              </label>
+              <div className="relative">
+                {introducerFeeTypeLocal === "flat" && (
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">
+                    £
+                  </span>
+                )}
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  max={introducerFeeTypeLocal === "flat" ? undefined : 100}
+                  step={introducerFeeTypeLocal === "flat" ? "0.01" : "1"}
+                  value={introducerFeeLocal}
+                  onChange={(e) => setIntroducerFeeLocal(e.target.value)}
+                  onBlur={handleIntroducerFeeBlur}
+                  placeholder={
+                    introducerFeeTypeLocal === "flat" ? "e.g. 500" : "e.g. 50"
+                  }
+                  className={`w-full border border-gray-300 rounded-md ${
+                    introducerFeeTypeLocal === "flat" ? "pl-7 pr-3" : "px-3"
+                  } py-2 focus:outline-none focus:ring-2 focus:ring-orange-500`}
+                />
+              </div>
               <p className="text-xs text-gray-600 mt-1">
-                Percentage of gross profit paid to the introducer. e.g. 50 for 50%.
+                {introducerFeeTypeLocal === "flat"
+                  ? "Flat fee paid to the introducer in GBP."
+                  : "Percentage of gross profit paid to the introducer. e.g. 50 for 50%."}
               </p>
             </div>
           </div>

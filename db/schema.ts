@@ -232,6 +232,12 @@ export const sales = pgTable(
     // is the calculated £ amount and remains the source of truth for sheets
     // and commission engine.
     introducerFeePercent: doublePrecision("introducer_fee_percent"),
+    // Phase 2 (May 2026): MC's referrers are paid either as a % of gross profit
+    // OR a flat £ fee. `introducerFeeType` records which input the wizard used
+    // ("percent" | "flat"). When "flat", `introducerCommission` is the user-
+    // entered £ amount directly and `introducerFeePercent` is null. When
+    // "percent", `introducerCommission` is derived from gross_margin × percent.
+    introducerFeeType: text("introducer_fee_type"),
 
     // New client tracking (Phase 2 — first delivered sale for this buyer at time of creation)
     isNewClient: boolean("is_new_client").default(false),

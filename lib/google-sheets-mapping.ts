@@ -13,6 +13,7 @@
 
 import type { Sale, LineItem, Buyer, Supplier } from "@/db/schema";
 import { getBrandingThemeName } from "@/lib/branding-theme-mappings";
+import { normalizeIntroducerFeeType } from "@/lib/types/invoice";
 
 // ============================================================================
 // HEADERS
@@ -112,6 +113,24 @@ export function deriveVatMethod(brandingTheme: string | null): string {
   // Strip the "CN " prefix used internally so Sophie sees "Margin Scheme"
   // not "CN Margin Scheme".
   return friendlyName.replace(/^CN\s+/, "");
+}
+
+/**
+ * Build the introducer label for column M. We append a short basis suffix
+ * ("(30%)" or "(flat £)") so Sophie's reconciliation shows at a glance whether
+ * the fee in column N was calculated as a percentage of gross profit or paid
+ * as a flat amount. Older sales without `introducerFeeType` fall back to the
+ * plain name to preserve historical sheet content.
+ */
+function buildIntroducerLabel(sale: SaleWithRelations): string {
+  const name = (sale.introducerName || "").trim();
+  if (!name) return "";
+  const feeType = normalizeIntroducerFeeType(sale.introducerFeeType);
+  if (feeType === "flat") return `${name} (flat £)`;
+  if (feeType === "percent" && sale.introducerFeePercent != null) {
+    return `${name} (${sale.introducerFeePercent}%)`;
+  }
+  return name;
 }
 
 /**
@@ -240,7 +259,7 @@ export function buildRowsFromSale(
       /* J */ `=I${rowNumber}-H${rowNumber}`,
       /* K */ `=IF(G${rowNumber}="Margin Scheme", J${rowNumber}/6, 0)`,
       /* L */ `=J${rowNumber}-K${rowNumber}`,
-      /* M */ isFirstRow ? sale.introducerName || "" : "",
+      /* M */ isFirstRow ? buildIntroducerLabel(sale) : "",
       /* N */ isFirstRow ? sale.introducerCommission ?? 0 : 0,
       /* O */ isFirstRow ? sale.cardFees ?? 0 : 0,
       /* P */ isFirstRow ? sale.entrupyFee ?? 0 : 0,

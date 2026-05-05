@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getUserRole } from "@/lib/getUserRole";
 import { calculateSaleEconomics } from "@/lib/economics";
+import { normalizeIntroducerFeeType } from "@/lib/types/invoice";
 import { db } from "@/db";
 import { sales, shoppers, lineItems, errors } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
@@ -209,11 +210,14 @@ export async function POST(
 
     // If the sale has an introducer fee % (wizard-captured), recalculate the £
     // amount from the new gross margin and re-run economics so commissionable
-    // margin reflects the updated introducer cost.
+    // margin reflects the updated introducer cost. Flat-£ fees are fixed at
+    // creation and do not need recalculating here.
     let recalculatedIntroducerCommission: number | null = null;
     const introducerFeePercent = currentSale.introducerFeePercent;
+    const introducerFeeType = normalizeIntroducerFeeType(currentSale.introducerFeeType);
     if (
       currentSale.hasIntroducer &&
+      introducerFeeType !== "flat" &&
       introducerFeePercent != null &&
       introducerFeePercent > 0 &&
       economics.gross_margin > 0

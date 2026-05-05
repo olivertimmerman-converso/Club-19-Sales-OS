@@ -12,6 +12,7 @@ import { db } from "@/db";
 import { sales, buyers, shoppers, suppliers as suppliersTable, lineItems } from "@/db/schema";
 import { eq, and, isNull, desc, inArray, asc } from "drizzle-orm";
 import { assessCompleteness } from "@/lib/completeness";
+import { normalizeIntroducerFeeType } from "@/lib/types/invoice";
 import { CompleteDataClient } from "./CompleteDataClient";
 
 export default async function CompleteDataPage({
@@ -188,6 +189,8 @@ export default async function CompleteDataPage({
     deliveryConfirmed: sale.deliveryConfirmed ?? false,
     deliveryDate: sale.deliveryDate ? sale.deliveryDate.toISOString() : null,
     introducerFeePercent: sale.introducerFeePercent ?? null,
+    introducerFeeType: normalizeIntroducerFeeType(sale.introducerFeeType),
+    introducerCommission: sale.introducerCommission ?? null,
     introducerName: sale.introducerName ?? null,
     grossMargin: sale.grossMargin || 0,
     commissionableMargin: sale.commissionableMargin || 0,

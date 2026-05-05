@@ -72,7 +72,9 @@ interface CreateInvoicePayload {
   hasIntroducer?: boolean;
   introducerName?: string;
   introducerCommission?: number;
+  introducerFeeType?: "percent" | "flat";
   introducerFeePercent?: number;
+  introducerFeeFlat?: number;
   entrupyFee?: number;
 }
 
@@ -455,9 +457,15 @@ export async function POST(request: NextRequest) {
               : undefined,
           hasIntroducer: payload.hasIntroducer || false,
           entrupyFee: payload.entrupyFee || 0,
-          introducerFeePercent: payload.hasIntroducer
-            ? payload.introducerFeePercent ?? undefined
+          // Introducer fee type + percent are only meaningful when the toggle
+          // is on. For "flat" sales we store the type but leave percent null.
+          introducerFeeType: payload.hasIntroducer
+            ? payload.introducerFeeType
             : undefined,
+          introducerFeePercent:
+            payload.hasIntroducer && payload.introducerFeeType !== "flat"
+              ? payload.introducerFeePercent ?? undefined
+              : undefined,
         },
       });
 
