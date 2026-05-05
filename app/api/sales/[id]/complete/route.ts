@@ -318,8 +318,11 @@ export async function POST(
           saleWithRelations.sheetsTabName != null;
 
         if (hasStoredRow) {
-          // In-place update (atelier sales, or non-atelier sales that were
-          // already pushed by an earlier completion).
+          // In-place update across all configured legs (master + per-shopper).
+          // Master uses stored row+tab; per-shopper legs always search by
+          // invoice number. See the self-healing note in updateSaleOnOneSheet
+          // for what happens to legacy MC/Hope sales whose sheetsRowNumber
+          // points at the per-shopper sheet rather than master.
           const updateResult = await updateSaleRowInSheet({
             sale: saleWithRelations,
             lineItems: saleLineItems,
@@ -328,35 +331,44 @@ export async function POST(
             tabName: saleWithRelations.sheetsTabName!,
           });
 
-          if (!updateResult.success) {
+          if (
+            updateResult.masterResolvedStartRow &&
+            updateResult.masterResolvedStartRow !==
+              saleWithRelations.sheetsRowNumber
+          ) {
+            // Master row was found at a different position — overwrite our
+            // tracking. This is also the self-healing path for legacy sales.
+            await db
+              .update(sales)
+              .set({ sheetsRowNumber: updateResult.masterResolvedStartRow })
+              .where(eq(sales.id, saleId))
+              .catch(() => {});
+          }
+
+          for (const leg of updateResult.legs) {
+            if (leg.success) continue;
+            const isMaster = leg.spreadsheetId === process.env.SHEET_ID_MASTER;
             await db
               .insert(errors)
               .values({
                 saleId: saleId,
-                severity: "low",
+                severity: isMaster ? "medium" : "low",
                 source: "sheets-sync",
                 message: [
-                  `Sheets update on completion failed: ${updateResult.reason || "unknown"}`,
+                  `leg=${isMaster ? "master" : "shopper"} spreadsheet=${leg.spreadsheetId}`,
+                  `Sheets update on completion failed: ${leg.reason || "unknown"}`,
                 ],
                 timestamp: new Date(),
                 resolved: false,
               })
-              .catch(() => {});
-          } else if (
-            updateResult.resolvedStartRow &&
-            updateResult.resolvedStartRow !== saleWithRelations.sheetsRowNumber
-          ) {
-            // The row was found at a different position — update our tracking
-            await db
-              .update(sales)
-              .set({ sheetsRowNumber: updateResult.resolvedStartRow })
-              .where(eq(sales.id, saleId))
               .catch(() => {});
           }
 
           logger.info("COMPLETE", "Sheets update attempted", {
             saleId,
             success: updateResult.success,
+            legs: updateResult.legs.length,
+            failedLegs: updateResult.legs.filter((l) => !l.success).length,
           });
         } else if (updatedSale.source !== "atelier") {
           // Append path: adopted/xero_import sale that hasn't been pushed yet.
@@ -366,28 +378,33 @@ export async function POST(
             shopperName,
           });
 
-          if (!pushResult.success) {
+          if (pushResult.masterStartRow && pushResult.masterTabName) {
+            await db
+              .update(sales)
+              .set({
+                sheetsRowNumber: pushResult.masterStartRow,
+                sheetsTabName: pushResult.masterTabName,
+              })
+              .where(eq(sales.id, saleId))
+              .catch(() => {});
+          }
+
+          for (const leg of pushResult.legs) {
+            if (leg.success) continue;
+            const isMaster = leg.spreadsheetId === process.env.SHEET_ID_MASTER;
             await db
               .insert(errors)
               .values({
                 saleId: saleId,
-                severity: "low",
+                severity: isMaster ? "medium" : "low",
                 source: "sheets-sync",
                 message: [
-                  `Sheets push on completion failed: ${pushResult.reason || "unknown"}`,
+                  `leg=${isMaster ? "master" : "shopper"} spreadsheet=${leg.spreadsheetId}`,
+                  `Sheets push on completion failed: ${leg.reason || "unknown"}`,
                 ],
                 timestamp: new Date(),
                 resolved: false,
               })
-              .catch(() => {});
-          } else if (pushResult.startRow && pushResult.tabName) {
-            await db
-              .update(sales)
-              .set({
-                sheetsRowNumber: pushResult.startRow,
-                sheetsTabName: pushResult.tabName,
-              })
-              .where(eq(sales.id, saleId))
               .catch(() => {});
           }
 
@@ -395,6 +412,8 @@ export async function POST(
             saleId,
             success: pushResult.success,
             skipped: pushResult.skipped,
+            legs: pushResult.legs.length,
+            failedLegs: pushResult.legs.filter((l) => !l.success).length,
           });
         } else {
           // Atelier sale without stored row (pre-tracking historical) —

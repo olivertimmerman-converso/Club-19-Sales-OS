@@ -196,10 +196,20 @@ async function main() {
     process.exit(1);
   }
 
+  // In dev there's a single test-sheet leg. In prod the master leg drives
+  // the row tracking we surface here.
+  const anchorLeg =
+    result.legs.find((l) => l.spreadsheetId === process.env.SHEET_ID_MASTER) ??
+    result.legs[0];
+  const startRow = anchorLeg?.startRow ?? 0;
+  const rowCount = anchorLeg?.rowCount ?? 0;
+
   console.log(
-    `[test-sheets-push] Open the sheet and look for rows ${result.startRow}–${
-      (result.startRow ?? 0) + (result.rowCount ?? 0) - 1
-    } in tab "${result.tabName}"`
+    `[test-sheets-push] Open the sheet and look for rows ${startRow}–${
+      startRow + rowCount - 1
+    } in tab "${anchorLeg?.tabName}" (legs: ${result.legs.length}, failed: ${
+      result.legs.filter((l) => !l.success).length
+    })`
   );
   process.exit(0);
 }

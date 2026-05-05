@@ -508,34 +508,42 @@ export async function POST(request: NextRequest) {
               shopperName,
             });
 
-            if (!pushResult.success) {
-              // Record in errors table for admin visibility
+            // Persist sheet row tracking from the master leg. The DB anchors
+            // on master; per-shopper rows are searched on each update.
+            if (pushResult.masterStartRow && pushResult.masterTabName) {
+              await db
+                .update(sales)
+                .set({
+                  sheetsRowNumber: pushResult.masterStartRow,
+                  sheetsTabName: pushResult.masterTabName,
+                })
+                .where(eq(sales.id, sale.id))
+                .catch(() => {
+                  /* non-fatal — updates can fall back to invoice-number search */
+                });
+            }
+
+            // Log one error row per failed leg so master vs per-shopper
+            // failures are distinguishable post-hoc. The leg context lives
+            // in message[0] until we add a dedicated `context` column.
+            for (const leg of pushResult.legs) {
+              if (leg.success) continue;
+              const isMaster = leg.spreadsheetId === process.env.SHEET_ID_MASTER;
               await db
                 .insert(errors)
                 .values({
                   saleId: sale.id,
-                  severity: "low",
+                  severity: isMaster ? "medium" : "low",
                   source: "sheets-sync",
                   message: [
-                    `Sheets push failed: ${pushResult.reason || "unknown"}`,
+                    `leg=${isMaster ? "master" : "shopper"} spreadsheet=${leg.spreadsheetId}`,
+                    `Sheets push failed: ${leg.reason || "unknown"}`,
                   ],
                   timestamp: new Date(),
                   resolved: false,
                 })
                 .catch(() => {
                   /* ignore — errors-table write failure is not actionable here */
-                });
-            } else if (pushResult.startRow && pushResult.tabName) {
-              // Persist sheet row tracking for future in-place updates
-              await db
-                .update(sales)
-                .set({
-                  sheetsRowNumber: pushResult.startRow,
-                  sheetsTabName: pushResult.tabName,
-                })
-                .where(eq(sales.id, sale.id))
-                .catch(() => {
-                  /* non-fatal — updates can fall back to invoice-number search */
                 });
             }
           }
