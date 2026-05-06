@@ -7,6 +7,7 @@ import { getBrandingThemeMapping } from '@/lib/branding-theme-mappings';
 import { BRANDS, CATEGORIES } from '@/lib/constants';
 import { NewSupplierModal } from '@/components/modals/NewSupplierModal';
 import { FileDown } from 'lucide-react';
+import { getInvoiceStatusDisplay } from '@/lib/invoice-status';
 
 interface LinkedInvoice {
   xero_invoice_id: string;
@@ -1239,23 +1240,13 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
     : 0;
   const vatLogic = getVATLogicExplanation(sale.branding_theme, effectiveVATPercent);
 
-  // Format status badge
+  // Format status badge — colours and labels live in lib/invoice-status.ts.
   const getStatusBadge = (status: string | null | undefined) => {
     if (!status) return <span className="text-gray-400">—</span>;
-
-    const statusColors: Record<string, string> = {
-      'DRAFT': 'bg-gray-100 text-gray-700',
-      'SUBMITTED': 'bg-blue-100 text-blue-700',
-      'AUTHORISED': 'bg-green-100 text-green-700',
-      'PAID': 'bg-green-100 text-green-700',
-      'VOIDED': 'bg-red-100 text-red-700',
-    };
-
-    const colorClass = statusColors[status] || 'bg-gray-100 text-gray-700';
-
+    const { label, colorClass } = getInvoiceStatusDisplay(status);
     return (
       <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${colorClass}`}>
-        {status}
+        {label}
       </span>
     );
   };

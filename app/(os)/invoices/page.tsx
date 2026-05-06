@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db } from "@/db";
 import { sales } from "@/db/schema";
 import { desc } from "drizzle-orm";
+import { getInvoiceStatusDisplay } from "@/lib/invoice-status";
 
 export const dynamic = "force-dynamic";
 
@@ -90,23 +91,13 @@ export default async function InvoicesPage({
     });
   };
 
-  // Format status badge
+  // Format status badge — colours and labels live in lib/invoice-status.ts.
   const getStatusBadge = (status: string | null | undefined) => {
     if (!status) return <span className="text-gray-400">—</span>;
-
-    const statusColors: Record<string, string> = {
-      'DRAFT': 'bg-gray-100 text-gray-700',
-      'SUBMITTED': 'bg-blue-100 text-blue-700',
-      'AUTHORISED': 'bg-yellow-100 text-yellow-700',
-      'PAID': 'bg-green-100 text-green-700',
-      'VOIDED': 'bg-red-100 text-red-700',
-    };
-
-    const colorClass = statusColors[status] || 'bg-gray-100 text-gray-700';
-
+    const { label, colorClass } = getInvoiceStatusDisplay(status);
     return (
       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
-        {status}
+        {label}
       </span>
     );
   };
