@@ -533,8 +533,8 @@ export function SyncPageClient({
                 <p className="text-xs sm:text-sm text-amber-800">
                   Showing the most recent <strong>{rowCap}</strong> of{' '}
                   <strong>{unallocatedTotalCount}</strong> unallocated sales in this
-                  period. Narrow the filter (e.g. "Last month" or "This month") to see
-                  the rest.
+                  period. Narrow the filter (e.g. &ldquo;Last month&rdquo; or
+                  &ldquo;This month&rdquo;) to see the rest.
                 </p>
               </div>
             )}
