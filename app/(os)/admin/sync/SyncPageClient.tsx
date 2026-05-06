@@ -25,7 +25,15 @@ interface Shopper {
   name: string;
 }
 
-type PeriodFilter = '2026' | 'this-month' | 'last-3-months' | 'all';
+type PeriodFilter =
+  | 'this-month'
+  | 'last-month'
+  | 'last-3-months'
+  | '2026'
+  | '2025'
+  | 'all';
+
+const DEFAULT_PERIOD: PeriodFilter = '2026';
 
 interface AggregateStats {
   totalCount: number;
@@ -41,22 +49,40 @@ interface Props {
   currentPeriod: PeriodFilter;
   aggregateStats: AggregateStats;
   userRole: string | null;
+  /** Uncapped count for the current period — for the "showing N of M" banner. */
+  unallocatedTotalCount: number;
+  /** Uncapped count for dismissed sales in the current period. */
+  dismissedTotalCount: number;
+  /** The server-side LIMIT applied to the lists. */
+  rowCap: number;
 }
 
 const PERIOD_OPTIONS: { value: PeriodFilter; label: string }[] = [
-  { value: '2026', label: '2026 only' },
   { value: 'this-month', label: 'This month' },
+  { value: 'last-month', label: 'Last month' },
   { value: 'last-3-months', label: 'Last 3 months' },
+  { value: '2026', label: '2026 only' },
+  { value: '2025', label: '2025 only' },
   { value: 'all', label: 'All time' },
 ];
 
-export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, currentPeriod, aggregateStats, userRole }: Props) {
+export function SyncPageClient({
+  unallocatedSales,
+  dismissedSales,
+  shoppers,
+  currentPeriod,
+  aggregateStats,
+  userRole,
+  unallocatedTotalCount,
+  dismissedTotalCount,
+  rowCap,
+}: Props) {
   const router = useRouter();
   const isShopper = userRole === 'shopper';
 
   const handlePeriodChange = (newPeriod: PeriodFilter) => {
     const url = new URL(window.location.href);
-    if (newPeriod === '2026') {
+    if (newPeriod === DEFAULT_PERIOD) {
       url.searchParams.delete('period'); // Default, no need to show in URL
     } else {
       url.searchParams.set('period', newPeriod);
@@ -471,7 +497,11 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
                 <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <h2 className="text-base sm:text-lg font-semibold text-amber-900">
-                    Unallocated ({visibleSales.length})
+                    Unallocated ({visibleSales.length}
+                    {unallocatedTotalCount > rowCap
+                      ? ` of ${unallocatedTotalCount}`
+                      : ''}
+                    )
                   </h2>
                   <p className="text-xs sm:text-sm text-amber-700">
                     {isShopper ? 'Claim invoices to add to your sales.' : 'Assign invoices to shoppers.'}
@@ -496,6 +526,18 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
                 </select>
               </div>
             </div>
+
+            {unallocatedTotalCount > rowCap && (
+              <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-md flex items-start gap-2">
+                <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs sm:text-sm text-amber-800">
+                  Showing the most recent <strong>{rowCap}</strong> of{' '}
+                  <strong>{unallocatedTotalCount}</strong> unallocated sales in this
+                  period. Narrow the filter (e.g. "Last month" or "This month") to see
+                  the rest.
+                </p>
+              </div>
+            )}
 
             <div className="overflow-x-auto -mx-4 sm:mx-0">
               <table className="min-w-full divide-y divide-amber-200">
@@ -647,6 +689,16 @@ export function SyncPageClient({ unallocatedSales, dismissedSales, shoppers, cur
 
           {showDismissed && visibleDismissedSales.length > 0 && (
             <div className="border-t border-gray-200 p-4">
+              {dismissedTotalCount > rowCap && (
+                <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-md flex items-start gap-2">
+                  <Info className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    Showing the most recent <strong>{rowCap}</strong> of{' '}
+                    <strong>{dismissedTotalCount}</strong> dismissed invoices in this
+                    period.
+                  </p>
+                </div>
+              )}
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead>

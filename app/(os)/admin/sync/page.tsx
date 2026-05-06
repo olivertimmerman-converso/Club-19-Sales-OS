@@ -4,15 +4,37 @@ import { getUserRole } from '@/lib/getUserRole';
 // ORIGINAL XATA: import { getXataClient } from '@/src/xata';
 import { db } from "@/db";
 import { sales, shoppers } from "@/db/schema";
-import { eq, and, isNull, gte, lte, or, desc, asc } from "drizzle-orm";
+import { eq, and, isNull, gte, lte, or, desc, asc, count } from "drizzle-orm";
 import { SyncPageClient } from './SyncPageClient';
 
 export const dynamic = "force-dynamic";
 
-type PeriodFilter = '2026' | 'this-month' | 'last-3-months' | 'all';
+// Period values, in dropdown display order.
+const PERIOD_VALUES = [
+  'this-month',
+  'last-month',
+  'last-3-months',
+  '2026',
+  '2025',
+  'all',
+] as const;
+type PeriodFilter = (typeof PERIOD_VALUES)[number];
+
+const DEFAULT_PERIOD: PeriodFilter = '2026';
+
+// Hard row cap on the unallocated query. "All time" returns ~1000 rows
+// going back to 2024; rendering each one as an interactive React row with
+// dropdowns/buttons makes the page feel frozen. The cap keeps the UI
+// responsive — when capped, the client shows "showing N of M" and asks
+// the user to narrow the filter to see more.
+const ROW_CAP = 200;
 
 interface Props {
   searchParams: Promise<{ period?: string }>;
+}
+
+function isValidPeriod(value: string | undefined): value is PeriodFilter {
+  return value !== undefined && (PERIOD_VALUES as readonly string[]).includes(value);
 }
 
 function getDateRangeForPeriod(period: PeriodFilter): { start: Date; end: Date } | null {
@@ -24,10 +46,21 @@ function getDateRangeForPeriod(period: PeriodFilter): { start: Date; end: Date }
         start: new Date(2026, 0, 1), // Jan 1, 2026
         end: new Date(2026, 11, 31, 23, 59, 59), // Dec 31, 2026
       };
+    case '2025':
+      return {
+        start: new Date(2025, 0, 1),
+        end: new Date(2025, 11, 31, 23, 59, 59),
+      };
     case 'this-month':
       return {
         start: new Date(now.getFullYear(), now.getMonth(), 1),
         end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59),
+      };
+    case 'last-month':
+      return {
+        start: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+        // Last day of last month = day 0 of this month
+        end: new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59),
       };
     case 'last-3-months':
       return {
@@ -52,7 +85,9 @@ export default async function SyncPage({ searchParams }: Props) {
   }
 
   const params = await searchParams;
-  const period = (params.period as PeriodFilter) || '2026'; // Default to 2026 only
+  // Validate the URL param against the known set so a typo can't poison the
+  // server component (the prior `as PeriodFilter` cast was a lie at runtime).
+  const period: PeriodFilter = isValidPeriod(params.period) ? params.period : DEFAULT_PERIOD;
   const dateRange = getDateRangeForPeriod(period);
 
   // ORIGINAL XATA: const xata = getXataClient();
@@ -106,23 +141,45 @@ export default async function SyncPage({ searchParams }: Props) {
     dismissedConditions.push(lte(sales.saleDate, dateRange.end));
   }
 
-  // Run all 3 queries in parallel
-  const [unallocatedRaw, dismissedRaw, shoppersRaw] = await Promise.all([
+  // Run queries in parallel. The unallocated + dismissed lists are capped at
+  // ROW_CAP rows for render performance; we also fetch the uncapped count
+  // alongside so the UI can show "showing N of M" when a tighter filter is
+  // needed.
+  const [
+    unallocatedRaw,
+    dismissedRaw,
+    shoppersRaw,
+    unallocatedCountRaw,
+    dismissedCountRaw,
+  ] = await Promise.all([
     db.query.sales.findMany({
       where: and(...unallocatedConditions),
       with: { buyer: true },
       orderBy: [desc(sales.saleDate)],
+      limit: ROW_CAP,
     }),
     db.query.sales.findMany({
       where: and(...dismissedConditions),
       with: { buyer: true },
       orderBy: [desc(sales.saleDate)],
+      limit: ROW_CAP,
     }),
     db.query.shoppers.findMany({
       where: eq(shoppers.active, true),
       orderBy: [asc(shoppers.name)],
     }),
+    db
+      .select({ value: count() })
+      .from(sales)
+      .where(and(...unallocatedConditions)),
+    db
+      .select({ value: count() })
+      .from(sales)
+      .where(and(...dismissedConditions)),
   ]);
+
+  const unallocatedTotalCount = unallocatedCountRaw[0]?.value ?? unallocatedRaw.length;
+  const dismissedTotalCount = dismissedCountRaw[0]?.value ?? dismissedRaw.length;
 
   // SERIALIZE EVERYTHING - convert to plain JSON
   const unallocatedSales = unallocatedRaw.map(sale => ({
@@ -181,7 +238,9 @@ export default async function SyncPage({ searchParams }: Props) {
   }).length;
 
   const aggregateStats = {
-    totalCount: unallocatedSales.length,
+    // totalCount reflects the uncapped count for THIS period so the header
+    // banner stays honest even when the rendered list is truncated.
+    totalCount: unallocatedTotalCount,
     totalValue: totalUnallocatedValue,
     thisWeekCount,
     thisMonthCount,
@@ -200,6 +259,9 @@ export default async function SyncPage({ searchParams }: Props) {
         currentPeriod={period}
         aggregateStats={aggregateStats}
         userRole={role}
+        unallocatedTotalCount={unallocatedTotalCount}
+        dismissedTotalCount={dismissedTotalCount}
+        rowCap={ROW_CAP}
       />
     </div>
   );
