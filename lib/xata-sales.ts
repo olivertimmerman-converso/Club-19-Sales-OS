@@ -29,7 +29,7 @@ import {
   type Sale,
   type LineItem,
 } from "@/db/schema";
-import { eq, and, lte, desc, asc } from "drizzle-orm";
+import { eq, and, lte, desc, asc, sql } from "drizzle-orm";
 
 // ============================================================================
 // LEGACY XATA IMPORTS (Preserved for reference - DO NOT USE)
@@ -313,20 +313,15 @@ export async function getOrCreateIntroducer(
   name: string,
   commission_percent?: number
 ): Promise<Introducer> {
-  // ORIGINAL XATA:
-  // const existing = await xata().db.Introducers.filter({ name }).getFirst();
-  // if (existing) return existing;
-  //
-  // return await xata().db.Introducers.create({
-  //   name,
-  //   commission_percent: commission_percent || 0,
-  // });
-
-  // DRIZZLE:
+  // Lookup is case- and whitespace-insensitive so "caroline stanbury" and
+  // "Caroline Stanbury  " both resolve to the same canonical row, preventing
+  // duplicate introducers when a shopper bypasses the wizard's combobox
+  // suggestions and types the name freehand.
+  const trimmed = name.trim();
   const [existing] = await db
     .select()
     .from(introducers)
-    .where(eq(introducers.name, name))
+    .where(sql`lower(trim(${introducers.name})) = lower(${trimmed})`)
     .limit(1);
 
   if (existing) return existing;
@@ -334,7 +329,7 @@ export async function getOrCreateIntroducer(
   const [created] = await db
     .insert(introducers)
     .values({
-      name,
+      name: trimmed,
       commissionPercent: commission_percent || 0,
     })
     .returning();

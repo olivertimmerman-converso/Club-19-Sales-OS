@@ -62,6 +62,17 @@ export function StepSupplierBuyer() {
         : state.introducerFeePercent;
     return initial ? String(initial) : "";
   });
+  // Curated introducer log (from /api/introducers). Loaded lazily the first
+  // time the introducer toggle is switched on. Used to populate a search-and-
+  // pick combobox so shoppers reuse existing names instead of creating dupes
+  // via typos. The wizard still passes the typed name through on submit; the
+  // backend's getOrCreateIntroducer upserts so a brand-new name attaches a
+  // real FK to the sale row.
+  const [knownIntroducers, setKnownIntroducers] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  const [knownIntroducersLoaded, setKnownIntroducersLoaded] = useState(false);
+  const [introducerDropdownOpen, setIntroducerDropdownOpen] = useState(false);
 
   // Check for Xero connection status on mount
   useEffect(() => {
@@ -236,18 +247,64 @@ export function StepSupplierBuyer() {
   }, [deliveryCountry, setDeliveryCountry]);
 
   // === INTRODUCER HANDLERS (Phase 2: name + fee with percent/flat toggle) ===
+  const loadKnownIntroducers = async () => {
+    if (knownIntroducersLoaded) return;
+    try {
+      const res = await fetch("/api/introducers");
+      if (res.ok) {
+        const data = (await res.json()) as Array<{ id: string; name: string }>;
+        setKnownIntroducers(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      logger.warn("TRADE_UI", "Failed to load introducer log", {
+        error: err as any,
+      });
+    } finally {
+      setKnownIntroducersLoaded(true);
+    }
+  };
+
   const handleIntroducerToggle = (checked: boolean) => {
     setHasIntroducerLocal(checked);
     setHasIntroducer(checked);
-    if (!checked) {
+    if (checked) {
+      // Lazy-load on first toggle so we don't fetch for sales without an introducer.
+      void loadKnownIntroducers();
+    } else {
       setIntroducerNameLocal("");
       setIntroducerFeeLocal("");
+      setIntroducerDropdownOpen(false);
     }
+  };
+
+  const handleIntroducerNameChange = (value: string) => {
+    setIntroducerNameLocal(value);
+    setIntroducerDropdownOpen(true);
   };
 
   const handleIntroducerNameBlur = () => {
     setIntroducerName(introducerNameLocal.trim());
+    // Defer close so a click on a dropdown row registers before the dropdown unmounts.
+    setTimeout(() => setIntroducerDropdownOpen(false), 150);
   };
+
+  const selectIntroducer = (name: string) => {
+    setIntroducerNameLocal(name);
+    setIntroducerName(name);
+    setIntroducerDropdownOpen(false);
+  };
+
+  // Dropdown rows: existing introducers filtered by the typed query.
+  const introducerSuggestions = (() => {
+    const q = introducerNameLocal.trim().toLowerCase();
+    if (!q) return knownIntroducers.slice(0, 8);
+    return knownIntroducers
+      .filter((i) => i.name.toLowerCase().includes(q))
+      .slice(0, 8);
+  })();
+  const exactMatchExists = knownIntroducers.some(
+    (i) => i.name.trim().toLowerCase() === introducerNameLocal.trim().toLowerCase()
+  );
 
   const handleIntroducerFeeTypeChange = (type: "percent" | "flat") => {
     setIntroducerFeeTypeLocal(type);
@@ -564,18 +621,63 @@ export function StepSupplierBuyer() {
         {/* Name + flat £ fee inputs (only when toggle is on) */}
         {hasIntroducerLocal && (
           <div className="space-y-3 pt-2">
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Introducer name <span className="text-red-600">*</span>
               </label>
               <input
                 type="text"
                 value={introducerNameLocal}
-                onChange={(e) => setIntroducerNameLocal(e.target.value)}
+                onChange={(e) => handleIntroducerNameChange(e.target.value)}
+                onFocus={() => {
+                  void loadKnownIntroducers();
+                  setIntroducerDropdownOpen(true);
+                }}
                 onBlur={handleIntroducerNameBlur}
-                placeholder="e.g. Caroline Stanbury"
+                placeholder="Start typing or pick an existing introducer..."
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                autoComplete="off"
               />
+              <p className="text-xs text-gray-600 mt-1">
+                Pick from the list below to reuse an existing introducer, or type a new
+                name — new introducers are added to the log automatically when the sale
+                is created.
+              </p>
+
+              {introducerDropdownOpen &&
+                (introducerSuggestions.length > 0 ||
+                  (introducerNameLocal.trim() && !exactMatchExists)) && (
+                  <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {introducerSuggestions.map((entry) => (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        // onMouseDown fires before the input's onBlur, so the
+                        // click registers even though blur defers close.
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          selectIntroducer(entry.name);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-orange-50 text-sm text-gray-900"
+                      >
+                        {entry.name}
+                      </button>
+                    ))}
+                    {introducerNameLocal.trim() && !exactMatchExists && (
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          selectIntroducer(introducerNameLocal.trim());
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-orange-100 bg-orange-50 text-sm text-orange-900 border-t border-orange-200"
+                      >
+                        + Add new introducer:{" "}
+                        <strong>&ldquo;{introducerNameLocal.trim()}&rdquo;</strong>
+                      </button>
+                    )}
+                  </div>
+                )}
             </div>
 
             <div>

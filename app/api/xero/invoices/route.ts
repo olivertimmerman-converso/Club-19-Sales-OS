@@ -422,14 +422,21 @@ export async function POST(request: NextRequest) {
           supplierXeroId: undefined, // Not available in current payload
 
           // Introducer:
-          // - introducerName is intentionally `undefined` to keep `getOrCreateIntroducer`
-          //   from auto-creating rows in the introducers table on every typo. The
-          //   wizard's free-text name is stored directly on `sales.introducer_name`
-          //   via `introducerNameFreeText` below.
-          // - introducerCommission is the flat £ amount from the wizard. The V1
-          //   commission engine still consumes it (no FK introducer means zero split,
-          //   100% to shopper) — this is fine; Phase 4 replaces the engine.
-          introducerName: undefined,
+          // - introducerName is passed through so getOrCreateIntroducer (case-
+          //   insensitive) attaches an introducers FK to the sale. The wizard's
+          //   combobox surfaces existing introducers as the shopper types so they
+          //   pick the canonical record instead of typo-creating a duplicate; on
+          //   submit, brand-new names create a fresh row in the introducers log.
+          //   This replaces the old post-hoc admin step where management had to
+          //   manually attach a curated record from the sale detail page.
+          // - introducerNameFreeText also populates sales.introducer_name for
+          //   sheet display and back-compat with rows where the FK is null.
+          // - introducerCommission is the £ amount from the wizard. The V1
+          //   commission engine still consumes it; Phase 4 replaces the engine.
+          introducerName:
+            payload.hasIntroducer && payload.introducerName
+              ? payload.introducerName
+              : undefined,
           introducerCommission: payload.hasIntroducer ? payload.introducerCommission : undefined,
 
           // Item metadata (use first item for legacy compatibility)
