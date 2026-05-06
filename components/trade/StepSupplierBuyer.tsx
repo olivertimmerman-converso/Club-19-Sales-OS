@@ -639,7 +639,7 @@ export function StepSupplierBuyer() {
               <p className="text-xs text-gray-600 mt-1">
                 {introducerFeeTypeLocal === "flat"
                   ? "Flat fee paid to the introducer in GBP."
-                  : "Percentage of gross profit paid to the introducer. e.g. 50 for 50%."}
+                  : "Percentage of net profit (gross minus costs, excluding the introducer fee itself) paid to the introducer. e.g. 50 for 50%."}
               </p>
             </div>
           </div>

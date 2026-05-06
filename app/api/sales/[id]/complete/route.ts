@@ -209,9 +209,15 @@ export async function POST(
     });
 
     // If the sale has an introducer fee % (wizard-captured), recalculate the £
-    // amount from the new gross margin and re-run economics so commissionable
-    // margin reflects the updated introducer cost. Flat-£ fees are fixed at
-    // creation and do not need recalculating here.
+    // amount and re-run economics so commissionable margin reflects the
+    // updated introducer cost. Flat-£ fees are fixed at creation and do not
+    // recalculate here.
+    //
+    // The percent is applied to "net before introducer" — gross minus all
+    // actual cost deductions EXCEPT the introducer fee — so the introducer's
+    // share scales with real costs instead of leaving the shopper to absorb
+    // the entire post-cost reduction. We derive that base by running
+    // economics once with introducer=0 and reading commissionable_margin.
     let recalculatedIntroducerCommission: number | null = null;
     const introducerFeePercent = currentSale.introducerFeePercent;
     const introducerFeeType = normalizeIntroducerFeeType(currentSale.introducerFeeType);
@@ -219,12 +225,25 @@ export async function POST(
       currentSale.hasIntroducer &&
       introducerFeeType !== "flat" &&
       introducerFeePercent != null &&
-      introducerFeePercent > 0 &&
-      economics.gross_margin > 0
+      introducerFeePercent > 0
     ) {
-      recalculatedIntroducerCommission = Math.round(
-        economics.gross_margin * (introducerFeePercent / 100) * 100
-      ) / 100;
+      const econNoIntroducer = calculateSaleEconomics({
+        sale_amount_inc_vat: saleAmountIncVat,
+        buy_price: buyPrice,
+        branding_theme: brandingTheme,
+        shipping_cost: effectiveShippingCost,
+        card_fees: cardFees,
+        direct_costs: directCosts,
+        introducer_commission: 0,
+        entrupy_fee: entrupyFee,
+      });
+      const netBeforeIntroducer = econNoIntroducer.commissionable_margin;
+
+      recalculatedIntroducerCommission =
+        netBeforeIntroducer > 0
+          ? Math.round(netBeforeIntroducer * (introducerFeePercent / 100) * 100) / 100
+          : 0;
+
       economics = calculateSaleEconomics({
         sale_amount_inc_vat: saleAmountIncVat,
         buy_price: buyPrice,

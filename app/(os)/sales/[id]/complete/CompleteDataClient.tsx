@@ -1102,12 +1102,12 @@ export function CompleteDataClient({
                         })}
                       </>
                     ) : (
-                      <>{sale.introducerFeePercent}% of gross profit</>
+                      <>{sale.introducerFeePercent}% of net (gross minus actual costs)</>
                     )}
                     <p className="mt-0.5 text-purple-600/80">
                       {sale.introducerFeeType === "flat"
                         ? "The £ amount is fixed and does not change with cost adjustments."
-                        : "The £ amount recalculates automatically as actual costs change the gross profit."}
+                        : "The £ amount recalculates automatically as actual costs change the net profit."}
                     </p>
                   </div>
                 </div>

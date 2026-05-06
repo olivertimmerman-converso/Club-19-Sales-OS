@@ -125,8 +125,32 @@ export function StepReview() {
     return { shipping: 0, cardFees: 0, total: 0 };
   }, []);
 
-  // Introducer fee is captured either as a % of gross profit or as a flat £
-  // amount on the wizard. Derive the £ amount here for display + deductions.
+  // Net-before-introducer = gross profit minus all known cost deductions
+  // EXCEPT the introducer fee itself. This is the basis a percent-of-profit
+  // introducer fee is applied against — so as costs eat into gross, the
+  // introducer's share scales down with the shopper's, instead of the
+  // shopper bearing the entire reduction. Handling/shipping/card fees are
+  // not in here because they're billed straight to the client on the
+  // invoice (handlingLineItem) and do not reduce shopper profit.
+  const netBeforeIntroducerGBP = useMemo(() => {
+    const importExportCost = roundCurrency(state.estimatedImportExportGBP ?? 0);
+    const importVATCost = roundCurrency(state.importVAT ?? 0);
+    const entrupyCost = roundCurrency(state.entrupyFee ?? 0);
+    const deductions = roundCurrency(
+      impliedCosts.total + importExportCost + importVATCost + entrupyCost
+    );
+    return subtractCurrency(grossMarginGBP, deductions);
+  }, [
+    grossMarginGBP,
+    impliedCosts,
+    state.estimatedImportExportGBP,
+    state.importVAT,
+    state.entrupyFee,
+  ]);
+
+  // Introducer fee is captured either as a % of net-before-introducer or as
+  // a flat £ amount on the wizard. Derive the £ amount here for display +
+  // deductions.
   const introducerFeeGBP = useMemo(() => {
     if (!state.hasIntroducer) return 0;
     if (state.introducerFeeType === "flat") {
@@ -135,34 +159,20 @@ export function StepReview() {
       return roundCurrency(flat);
     }
     const percent = state.introducerFeePercent ?? 0;
-    if (percent <= 0 || grossMarginGBP <= 0) return 0;
-    return roundCurrency(grossMarginGBP * (percent / 100));
+    if (percent <= 0 || netBeforeIntroducerGBP <= 0) return 0;
+    return roundCurrency(netBeforeIntroducerGBP * (percent / 100));
   }, [
     state.hasIntroducer,
     state.introducerFeeType,
     state.introducerFeePercent,
     state.introducerFeeFlat,
-    grossMarginGBP,
+    netBeforeIntroducerGBP,
   ]);
 
-  // Calculate commissionable margin with currency rounding
-  // Phase 2: introducer fee + entrupy fee are also cost deductions.
+  // Commissionable margin = net-before-introducer minus the introducer fee.
   const commissionableMarginGBP = useMemo(() => {
-    const importExportCost = roundCurrency(state.estimatedImportExportGBP ?? 0);
-    const importVATCost = roundCurrency(state.importVAT ?? 0);
-    const entrupyCost = roundCurrency(state.entrupyFee ?? 0);
-    const totalDeductions = roundCurrency(
-      impliedCosts.total + importExportCost + importVATCost + introducerFeeGBP + entrupyCost
-    );
-    return subtractCurrency(grossMarginGBP, totalDeductions);
-  }, [
-    grossMarginGBP,
-    impliedCosts,
-    state.estimatedImportExportGBP,
-    state.importVAT,
-    introducerFeeGBP,
-    state.entrupyFee,
-  ]);
+    return subtractCurrency(netBeforeIntroducerGBP, introducerFeeGBP);
+  }, [netBeforeIntroducerGBP, introducerFeeGBP]);
 
   // Handle invoice creation via native Xero API
   const handleCreateInvoice = async () => {
@@ -514,7 +524,7 @@ export function StepReview() {
                     {" "}·{" "}
                     {state.introducerFeeType === "flat"
                       ? `Flat £${introducerFeeGBP.toFixed(2)}`
-                      : `${(state.introducerFeePercent ?? 0).toFixed(0)}% (£${introducerFeeGBP.toFixed(2)})`}
+                      : `${(state.introducerFeePercent ?? 0).toFixed(0)}% of net (£${introducerFeeGBP.toFixed(2)})`}
                   </span>
                 </div>
               </div>
@@ -587,25 +597,38 @@ export function StepReview() {
                 </span>
               </div>
             )}
+          {state.entrupyFee > 0 && (
+            <div className="flex justify-between">
+              <span className="text-purple-700">Entrupy fee:</span>
+              <span className="font-medium text-purple-900">
+                −£{state.entrupyFee.toFixed(2)}
+              </span>
+            </div>
+          )}
+          {/* Net before introducer is the basis for percent-based introducer fees,
+              shown only when an introducer is present so it stays out of the way
+              for sales without one. */}
+          {state.hasIntroducer &&
+            state.introducerFeeType !== "flat" &&
+            netBeforeIntroducerGBP !== grossMarginGBP && (
+              <div className="border-t border-purple-200 pt-2 mt-1 flex justify-between text-xs">
+                <span className="text-purple-600 italic">Net before introducer:</span>
+                <span className="font-medium text-purple-700 italic">
+                  £{netBeforeIntroducerGBP.toFixed(2)}
+                </span>
+              </div>
+            )}
           {state.hasIntroducer && introducerFeeGBP > 0 && (
             <div className="flex justify-between">
               <span className="text-purple-700">
                 Introducer fee ({state.introducerName},{" "}
                 {state.introducerFeeType === "flat"
                   ? "flat £"
-                  : `${(state.introducerFeePercent ?? 0).toFixed(0)}%`}
+                  : `${(state.introducerFeePercent ?? 0).toFixed(0)}% of net`}
                 ):
               </span>
               <span className="font-medium text-purple-900">
                 −£{introducerFeeGBP.toFixed(2)}
-              </span>
-            </div>
-          )}
-          {state.entrupyFee > 0 && (
-            <div className="flex justify-between">
-              <span className="text-purple-700">Entrupy fee:</span>
-              <span className="font-medium text-purple-900">
-                −£{state.entrupyFee.toFixed(2)}
               </span>
             </div>
           )}
@@ -617,12 +640,18 @@ export function StepReview() {
           </div>
         </div>
         <div className="mt-3 text-xs text-purple-700 bg-white border border-purple-200 p-2 rounded">
-          Handling/shipping is billed to the client on the invoice. Commission is calculated on gross margin
+          Handling/shipping is billed to the client on the invoice.
+          {state.hasIntroducer && state.introducerFeeType !== "flat" && introducerFeeGBP > 0
+            ? " Percent-based introducer fees apply to net (gross"
+            : " Commission is calculated on gross margin"}
           {(state.importVAT ?? 0) > 0 && " minus import VAT"}
           {(state.estimatedImportExportGBP ?? 0) > 0 && ", import/export taxes"}
-          {state.hasIntroducer && introducerFeeGBP > 0 && ", introducer fee"}
           {state.entrupyFee > 0 && ", Entrupy fee"}
-          .
+          {state.hasIntroducer && state.introducerFeeType !== "flat" && introducerFeeGBP > 0
+            ? "), so the introducer's share scales with actual costs."
+            : state.hasIntroducer && introducerFeeGBP > 0
+              ? ", introducer fee."
+              : "."}
         </div>
       </div>
 
