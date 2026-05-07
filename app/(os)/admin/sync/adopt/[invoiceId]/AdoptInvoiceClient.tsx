@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { BRANDS, CATEGORIES } from "@/lib/constants";
 import { NewSupplierModal } from "@/components/modals/NewSupplierModal";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 
 interface XeroInvoice {
   invoiceId: string;
@@ -391,14 +392,12 @@ export function AdoptInvoiceClient({ invoiceId, shoppers, suppliers: initialSupp
             <Banknote className="w-4 h-4" />
             Buy Price ({invoice.currencyCode}) *
           </label>
-          <input
-            type="number"
+          <MoneyInput
             value={buyPrice}
-            onChange={(e) => setBuyPrice(e.target.value)}
+            onChange={setBuyPrice}
             placeholder="0.00"
-            min="0"
-            step="0.01"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            min={0}
+            className="w-full border border-gray-300 rounded-lg pr-3 py-2.5 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
           {buyPriceNum > 0 && (
             <div className="mt-2 p-3 bg-gray-50 rounded-lg">

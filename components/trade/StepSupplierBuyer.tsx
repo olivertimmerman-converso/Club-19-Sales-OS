@@ -5,6 +5,7 @@ import { useTrade } from "@/contexts/TradeContext";
 import { fetchXeroBuyers, NormalizedContact } from "@/lib/xero";
 import { BuyerType } from "@/lib/types/invoice";
 import { COUNTRIES, POPULAR_COUNTRIES } from "@/lib/constants";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import * as logger from '@/lib/logger';
 
 /**
@@ -715,29 +716,17 @@ export function StepSupplierBuyer() {
                   : "Introducer fee (%)"}{" "}
                 <span className="text-red-600">*</span>
               </label>
-              <div className="relative">
-                {introducerFeeTypeLocal === "flat" && (
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">
-                    £
-                  </span>
-                )}
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  max={introducerFeeTypeLocal === "flat" ? undefined : 100}
-                  step={introducerFeeTypeLocal === "flat" ? "0.01" : "1"}
-                  value={introducerFeeLocal}
-                  onChange={(e) => setIntroducerFeeLocal(e.target.value)}
-                  onBlur={handleIntroducerFeeBlur}
-                  placeholder={
-                    introducerFeeTypeLocal === "flat" ? "e.g. 500" : "e.g. 50"
-                  }
-                  className={`w-full border border-gray-300 rounded-md ${
-                    introducerFeeTypeLocal === "flat" ? "pl-7 pr-3" : "px-3"
-                  } py-2 focus:outline-none focus:ring-2 focus:ring-orange-500`}
-                />
-              </div>
+              <MoneyInput
+                mode={introducerFeeTypeLocal === "flat" ? "money" : "percent"}
+                value={introducerFeeLocal}
+                onChange={setIntroducerFeeLocal}
+                onBlur={handleIntroducerFeeBlur}
+                min={0}
+                placeholder={
+                  introducerFeeTypeLocal === "flat" ? "e.g. 500" : "e.g. 50"
+                }
+                className="w-full border border-gray-300 rounded-md py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
               <p className="text-xs text-gray-600 mt-1">
                 {introducerFeeTypeLocal === "flat"
                   ? "Flat fee paid to the introducer in GBP."

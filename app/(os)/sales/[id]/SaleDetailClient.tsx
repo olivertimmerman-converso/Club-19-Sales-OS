@@ -8,6 +8,7 @@ import { BRANDS, CATEGORIES } from '@/lib/constants';
 import { NewSupplierModal } from '@/components/modals/NewSupplierModal';
 import { FileDown } from 'lucide-react';
 import { getInvoiceStatusDisplay } from '@/lib/invoice-status';
+import { MoneyInput } from '@/components/ui/MoneyInput';
 
 interface LinkedInvoice {
   xero_invoice_id: string;
@@ -337,6 +338,11 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
   const [showCreatePlanModal, setShowCreatePlanModal] = useState(false);
   const [showEditInstalmentModal, setShowEditInstalmentModal] = useState(false);
   const [editingInstalment, setEditingInstalment] = useState<PaymentInstalment | null>(null);
+  // Parallel string state for the amount field while editing — keeps the
+  // input as a controlled string (Pattern A) instead of round-tripping
+  // through parseFloat on every keystroke. Synced from editingInstalment
+  // when the modal opens; parsed back into editingInstalment on save.
+  const [editingInstalmentAmount, setEditingInstalmentAmount] = useState<string>("");
   const [planInstalments, setPlanInstalments] = useState<Array<{ due_date: string; amount: string }>>([]);
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
   const [isDeletingPlan, setIsDeletingPlan] = useState(false);
@@ -1013,6 +1019,7 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
 
   const handleEditInstalment = (instalment: PaymentInstalment) => {
     setEditingInstalment(instalment);
+    setEditingInstalmentAmount(String(instalment.amount ?? ""));
     setShowEditInstalmentModal(true);
     setPaymentPlanError(null);
   };
@@ -1024,12 +1031,20 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
     setPaymentPlanError(null);
 
     try {
+      // Parse the string-state amount back into the typed PaymentInstalment
+      // shape just before sending. NaN falls back to 0 to match the prior
+      // parseFloat-on-change behaviour at submit time.
+      const parsedAmount = parseFloat(editingInstalmentAmount);
+      const body = {
+        ...editingInstalment,
+        amount: isNaN(parsedAmount) ? 0 : parsedAmount,
+      };
       const response = await fetch(`/api/payment-schedule/${editingInstalment.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(editingInstalment),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -1605,19 +1620,14 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
               </label>
               {isFieldEditable('buy_price') ? (
                 <div>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">£</span>
-                    <input
-                      type="number"
-                      value={editBuyPrice}
-                      onChange={(e) => setEditBuyPrice(e.target.value)}
-                      className="block w-full h-12 pl-7 text-base rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                      disabled={isSavingEdit}
-                    />
-                  </div>
+                  <MoneyInput
+                    value={editBuyPrice}
+                    onChange={setEditBuyPrice}
+                    placeholder="0.00"
+                    min={0}
+                    disabled={isSavingEdit}
+                    className="block w-full h-12 text-base rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
                   <p className="mt-1 text-xs text-gray-500">Margin will be recalculated automatically</p>
                 </div>
               ) : (
@@ -2191,18 +2201,15 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                   Actual delivery cost
                 </label>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center">
-                    <span className="mr-2 text-gray-700">£</span>
-                    <input
+                  <div className="w-32">
+                    <MoneyInput
                       id="delivery-cost"
-                      type="number"
-                      min="0"
-                      step="0.01"
                       value={shippingCostInput}
-                      onChange={(e) => setShippingCostInput(e.target.value)}
+                      onChange={setShippingCostInput}
                       placeholder="0.00"
-                      className="w-32 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                      min={0}
                       disabled={isConfirmingShipping}
+                      className="w-full pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                     />
                   </div>
                   <button
@@ -2317,17 +2324,15 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Commission Amount (£)
                 </label>
-                <input
-                  type="number"
+                <MoneyInput
                   value={introducerCommission}
-                  onChange={(e) => {
-                    setIntroducerCommission(e.target.value);
+                  onChange={(v) => {
+                    setIntroducerCommission(v);
                     setIntroducerSaveError(null);
                     setIntroducerSaveSuccess(false);
                   }}
                   placeholder="0.00"
-                  step="0.01"
-                  min="0"
+                  min={0}
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
                   disabled={isSavingIntroducer}
                 />
@@ -2607,13 +2612,11 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                           <label className="block text-xs font-medium text-gray-700 mb-1">
                             Amount (£)
                           </label>
-                          <input
-                            type="number"
-                            step="0.01"
+                          <MoneyInput
                             value={inst.amount}
-                            onChange={(e) => {
+                            onChange={(v) => {
                               const updated = [...planInstalments];
-                              updated[idx].amount = e.target.value;
+                              updated[idx].amount = v;
                               setPlanInstalments(updated);
                             }}
                             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
@@ -2713,11 +2716,11 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Amount (£)
                     </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={editingInstalment.amount}
-                      onChange={(e) => setEditingInstalment({ ...editingInstalment, amount: parseFloat(e.target.value) })}
+                    <MoneyInput
+                      value={editingInstalmentAmount}
+                      onChange={setEditingInstalmentAmount}
+                      placeholder="0.00"
+                      min={0}
                       className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
                     />
                   </div>

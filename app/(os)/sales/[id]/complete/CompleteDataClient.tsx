@@ -11,6 +11,7 @@ import type { CompletenessResult, SaleForCompleteness } from "@/lib/completeness
 import type { IntroducerFeeType } from "@/lib/types/invoice";
 import { ArrowLeft, CheckCircle, AlertCircle, Info, ChevronDown, ChevronUp, Link2, PlusCircle, X, Loader2 } from "lucide-react";
 import { NewSupplierModal } from "@/components/modals/NewSupplierModal";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 
 interface LinkedInvoice {
   xero_invoice_id: string;
@@ -919,15 +920,12 @@ export function CompleteDataClient({
                     </p>
                   </div>
                 )}
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0.01"
-                  placeholder="0.00"
+                <MoneyInput
                   value={buyPrice}
-                  onChange={(e) => setBuyPrice(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={setBuyPrice}
+                  placeholder="0.00"
+                  min={0.01}
+                  className="w-full border border-gray-300 rounded-lg py-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 {/* Live Margin Display */}
                 {liveMargin && (
@@ -1057,15 +1055,12 @@ export function CompleteDataClient({
                   Card Fees ({sale.currency})
                   <span className="ml-1 text-xs text-gray-400">(recommended)</span>
                 </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
+                <MoneyInput
                   value={cardFees}
-                  onChange={(e) => setCardFees(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={setCardFees}
+                  placeholder="0.00"
+                  min={0}
+                  className="w-full border border-gray-300 rounded-lg py-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <p className="mt-2 text-xs text-gray-500">
                   Enter 0 if there were no card processing fees.
@@ -1173,90 +1168,72 @@ export function CompleteDataClient({
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   DHL / Shipping ({sale.currency})
                 </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
+                <MoneyInput
                   value={dhlCost}
-                  onChange={(e) => setDhlCost(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={setDhlCost}
+                  placeholder="0.00"
+                  min={0}
+                  className="w-full border border-gray-300 rounded-lg py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Addison Lee ({sale.currency})
                 </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
+                <MoneyInput
                   value={addisonLeeCost}
-                  onChange={(e) => setAddisonLeeCost(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={setAddisonLeeCost}
+                  placeholder="0.00"
+                  min={0}
+                  className="w-full border border-gray-300 rounded-lg py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Taxi ({sale.currency})
                 </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
+                <MoneyInput
                   value={taxiCost}
-                  onChange={(e) => setTaxiCost(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={setTaxiCost}
+                  placeholder="0.00"
+                  min={0}
+                  className="w-full border border-gray-300 rounded-lg py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Hand Delivery ({sale.currency})
                 </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
+                <MoneyInput
                   value={handDeliveryCost}
-                  onChange={(e) => setHandDeliveryCost(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={setHandDeliveryCost}
+                  placeholder="0.00"
+                  min={0}
+                  className="w-full border border-gray-300 rounded-lg py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Other Logistics ({sale.currency})
                 </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
+                <MoneyInput
                   value={otherLogisticsCost}
-                  onChange={(e) => setOtherLogisticsCost(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={setOtherLogisticsCost}
+                  placeholder="0.00"
+                  min={0}
+                  className="w-full border border-gray-300 rounded-lg py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Entrupy Fee ({sale.currency})
                 </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
+                <MoneyInput
                   value={entrupyFee}
-                  onChange={(e) => setEntrupyFee(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={setEntrupyFee}
+                  placeholder="0.00"
+                  min={0}
+                  className="w-full border border-gray-300 rounded-lg py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             </div>
@@ -1308,15 +1285,12 @@ export function CompleteDataClient({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Deposit Amount ({sale.currency})
                   </label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
+                  <MoneyInput
                     value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 sm:px-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onChange={setDepositAmount}
+                    placeholder="0.00"
+                    min={0}
+                    className="w-full border border-gray-300 rounded-lg py-3 sm:py-2 text-base sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <p className="mt-1 text-xs text-gray-500">
                     If a deposit was paid upfront, enter the amount here.

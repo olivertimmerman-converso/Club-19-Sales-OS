@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useTrade } from "@/contexts/TradeContext";
 import { PaymentMethod } from "@/lib/types/invoice";
 import { roundCurrency, subtractCurrency, multiplyCurrency, addCurrency } from '@/lib/utils/currency';
+import { MoneyInput } from "@/components/ui/MoneyInput";
 
 /**
  * Step 3 — Pricing (Phase 2 reordered wizard)
@@ -148,41 +149,29 @@ export function StepPricing() {
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Buy (£)
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">£</span>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0"
-                      max="10000000"
-                      value={prices.buyPrice}
-                      onChange={(e) => handlePriceChange(item.id, "buyPrice", e.target.value)}
-                      onBlur={() => handlePriceBlur(item.id, "buyPrice")}
-                      placeholder="0"
-                      className="w-full border border-gray-300 rounded-md pl-7 pr-2 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                    />
-                  </div>
+                  <MoneyInput
+                    value={prices.buyPrice}
+                    onChange={(v) => handlePriceChange(item.id, "buyPrice", v)}
+                    onBlur={() => handlePriceBlur(item.id, "buyPrice")}
+                    placeholder="0"
+                    min={0}
+                    max={10000000}
+                    className="w-full border border-gray-300 rounded-md pr-2 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Sell (£)
                   </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">£</span>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.01"
-                      min="0"
-                      max="10000000"
-                      value={prices.sellPrice}
-                      onChange={(e) => handlePriceChange(item.id, "sellPrice", e.target.value)}
-                      onBlur={() => handlePriceBlur(item.id, "sellPrice")}
-                      placeholder="0"
-                      className="w-full border border-gray-300 rounded-md pl-7 pr-2 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    />
-                  </div>
+                  <MoneyInput
+                    value={prices.sellPrice}
+                    onChange={(v) => handlePriceChange(item.id, "sellPrice", v)}
+                    onBlur={() => handlePriceBlur(item.id, "sellPrice")}
+                    placeholder="0"
+                    min={0}
+                    max={10000000}
+                    className="w-full border border-gray-300 rounded-md pr-2 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  />
                 </div>
               </div>
 
@@ -250,36 +239,26 @@ export function StepPricing() {
                     {item.quantity}
                   </td>
                   <td className="px-3 py-3">
-                    <div className="relative">
-                      <span className="absolute left-2 top-2 text-gray-500 text-sm">£</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="10000000"
-                        value={prices.buyPrice}
-                        onChange={(e) => handlePriceChange(item.id, 'buyPrice', e.target.value)}
-                        onBlur={() => handlePriceBlur(item.id, 'buyPrice')}
-                        placeholder="0"
-                        className="w-full border border-gray-300 rounded-md pl-5 pr-1 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                      />
-                    </div>
+                    <MoneyInput
+                      value={prices.buyPrice}
+                      onChange={(v) => handlePriceChange(item.id, 'buyPrice', v)}
+                      onBlur={() => handlePriceBlur(item.id, 'buyPrice')}
+                      placeholder="0"
+                      min={0}
+                      max={10000000}
+                      className="w-full border border-gray-300 rounded-md pr-1 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
                   </td>
                   <td className="px-3 py-3">
-                    <div className="relative">
-                      <span className="absolute left-2 top-2 text-gray-500 text-sm">£</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="10000000"
-                        value={prices.sellPrice}
-                        onChange={(e) => handlePriceChange(item.id, 'sellPrice', e.target.value)}
-                        onBlur={() => handlePriceBlur(item.id, 'sellPrice')}
-                        placeholder="0"
-                        className="w-full border border-gray-300 rounded-md pl-5 pr-1 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      />
-                    </div>
+                    <MoneyInput
+                      value={prices.sellPrice}
+                      onChange={(v) => handlePriceChange(item.id, 'sellPrice', v)}
+                      onBlur={() => handlePriceBlur(item.id, 'sellPrice')}
+                      placeholder="0"
+                      min={0}
+                      max={10000000}
+                      className="w-full border border-gray-300 rounded-md pr-1 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    />
                   </td>
                   <td className="px-3 py-3 text-right">
                     <span className={`text-sm font-medium ${lineMargin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -379,21 +358,17 @@ export function StepPricing() {
         <p className="text-xs text-gray-500 mb-3">
           If there&apos;s a cost to ship this item to the client, enter it here. Actual DHL/courier costs are entered after delivery.
         </p>
-        <div className="relative w-full sm:w-48">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">£</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
+        <div className="w-full sm:w-48">
+          <MoneyInput
             value={localShippingCost}
-            onChange={(e) => setLocalShippingCost(e.target.value)}
+            onChange={setLocalShippingCost}
             onBlur={() => {
               const parsed = parseFloat(localShippingCost);
               setShippingCost(!isNaN(parsed) && parsed > 0 ? parsed : 0);
             }}
             placeholder="0.00"
-            className="w-full h-12 text-base border border-gray-300 rounded-lg pl-7 pr-3 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            min={0}
+            className="w-full h-12 text-base border border-gray-300 rounded-lg pr-3 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
       </div>
@@ -404,21 +379,17 @@ export function StepPricing() {
         <p className="text-xs text-gray-500 mb-3">
           Authentication fee paid for this sale, if known. Deducted from commissionable profit.
         </p>
-        <div className="relative w-full sm:w-48">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">£</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
+        <div className="w-full sm:w-48">
+          <MoneyInput
             value={localEntrupyFee}
-            onChange={(e) => setLocalEntrupyFee(e.target.value)}
+            onChange={setLocalEntrupyFee}
             onBlur={() => {
               const parsed = parseFloat(localEntrupyFee);
               setEntrupyFee(!isNaN(parsed) && parsed > 0 ? parsed : 0);
             }}
             placeholder="0.00"
-            className="w-full h-12 text-base border border-gray-300 rounded-lg pl-7 pr-3 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            min={0}
+            className="w-full h-12 text-base border border-gray-300 rounded-lg pr-3 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
       </div>
