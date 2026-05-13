@@ -7,6 +7,7 @@ import { eq, and, or, gte, lte, desc, ne, isNull, isNotNull } from "drizzle-orm"
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { ViewAsSelector } from "@/components/ui/ViewAsSelector";
 import { getMonthDateRange } from "@/lib/dateUtils";
+import { effectiveInvoiceValue } from "@/lib/economics";
 // import { DashboardClientWrapper } from "./DashboardClientWrapper"; // Temporarily disabled
 
 /**
@@ -107,17 +108,26 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
       : Promise.resolve([]),
   ]);
 
-  // Filter out xero_import, deleted, needs_allocation, and dismissed sales in JavaScript
+  // Filter out xero_import, deleted, needs_allocation, dismissed, and ongoing
+  // sales. Also exclude CREDITED / DRAFT / VOIDED at the invoice_status layer
+  // so credit-noted, unsent, and cancelled invoices drop out of headline
+  // revenue. (DELETED-status rows are handled by the existing source-based
+  // filter for ~76 of 78, and the remaining 2 atelier-source DELETED rows
+  // are a separate workstream — see Phase 1 notes.)
   const salesData = allSalesRaw.filter(sale =>
     sale.source !== 'xero_import' &&
     !sale.deletedAt &&
     !sale.needsAllocation &&
     !sale.dismissed &&
-    sale.status !== 'ongoing'
+    sale.status !== 'ongoing' &&
+    sale.invoiceStatus !== 'CREDITED' &&
+    sale.invoiceStatus !== 'DRAFT' &&
+    sale.invoiceStatus !== 'VOIDED'
   );
 
-  // Calculate metrics
-  const total = salesData.reduce((sum, sale) => sum + (sale.saleAmountIncVat || 0), 0);
+  // Calculate metrics. effectiveInvoiceValue = AmountPaid + AmountDue;
+  // partial-credit cases land here at their reduced (post-credit) value.
+  const total = salesData.reduce((sum, sale) => sum + effectiveInvoiceValue(sale), 0);
   const margin = salesData.reduce((sum, sale) => sum + (sale.grossMargin || 0), 0);
   const totalSales = total;
   const totalMargin = margin;
@@ -128,10 +138,15 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
   let lastMonthData = null;
   if (needsLastMonth && lastMonthSalesRaw.length > 0) {
     const lastMonthSales = lastMonthSalesRaw.filter(sale =>
-      sale.source !== 'xero_import' && !sale.deletedAt && sale.status !== 'ongoing'
+      sale.source !== 'xero_import' &&
+      !sale.deletedAt &&
+      sale.status !== 'ongoing' &&
+      sale.invoiceStatus !== 'CREDITED' &&
+      sale.invoiceStatus !== 'DRAFT' &&
+      sale.invoiceStatus !== 'VOIDED'
     );
 
-    const lastTotal = lastMonthSales.reduce((sum, sale) => sum + (sale.saleAmountIncVat || 0), 0);
+    const lastTotal = lastMonthSales.reduce((sum, sale) => sum + effectiveInvoiceValue(sale), 0);
     const lastMargin = lastMonthSales.reduce((sum, sale) => sum + (sale.grossMargin || 0), 0);
     lastMonthData = {
       totalSales: lastTotal,
@@ -186,7 +201,7 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
 
   // Unpaid invoices: AUTHORISED status
   const unpaidInvoices = salesData.filter(sale => sale.invoiceStatus === 'AUTHORISED');
-  const unpaidTotal = unpaidInvoices.reduce((sum, sale) => sum + (sale.saleAmountIncVat || 0), 0);
+  const unpaidTotal = unpaidInvoices.reduce((sum, sale) => sum + effectiveInvoiceValue(sale), 0);
 
   // Shopper leaderboard (this month only)
   // Uses gross_margin to match the margin shown in the sales table

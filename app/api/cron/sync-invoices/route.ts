@@ -22,6 +22,10 @@ import {
   toNumber,
 } from '@/lib/economics';
 import { roundCurrency, addCurrency } from '@/lib/utils/currency';
+import {
+  mapXeroInvoiceToSaleFields,
+  xeroAmountsChanged,
+} from '@/lib/xero-invoice-mapping';
 import * as logger from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -303,17 +307,19 @@ export async function GET(request: NextRequest) {
             continue;
           }
 
-          // Non-deleted record: check if status or amounts changed
-          const statusChanged = existing.invoiceStatus !== invoice.Status;
-          const amountsChanged = xeroIsNewer && (
-            roundCurrency(toNumber(existing.saleAmountIncVat)) !== roundCurrency(invoice.Total || 0)
-          );
+          // Non-deleted record: check if status or amounts changed.
+          // The new amountsChanged guard fires on any of {Total, AmountPaid,
+          // AmountDue, AmountCredited} differing — fixes the credit-note auto-
+          // flip case where Total stays the same but AmountCredited goes 0 → Total.
+          const mapped = mapXeroInvoiceToSaleFields(invoice);
+          const statusChanged = existing.invoiceStatus !== mapped.invoiceStatus;
+          const amountsChanged = xeroIsNewer && xeroAmountsChanged(existing, invoice);
           // Backfill brandingTheme if we have it from Xero and the local record is missing it
           const brandingThemeNeedsBackfill = invoice.BrandingThemeID && !existing.brandingTheme;
 
           if (statusChanged || amountsChanged || brandingThemeNeedsBackfill) {
             const updateSet: Record<string, any> = {
-              invoiceStatus: invoice.Status,
+              invoiceStatus: mapped.invoiceStatus,
               invoicePaidDate: invoice.FullyPaidOnDate ? safeDate(invoice.FullyPaidOnDate) : null,
             };
 
@@ -327,11 +333,14 @@ export async function GET(request: NextRequest) {
             }
 
             if (amountsChanged) {
-              const newIncVat = roundCurrency(invoice.Total || 0);
+              const newIncVat = mapped.saleAmountIncVat;
               const newExVat = roundCurrency(invoice.SubTotal || (newIncVat / 1.2));
 
               updateSet.saleAmountIncVat = newIncVat;
               updateSet.saleAmountExVat = newExVat;
+              updateSet.xeroAmountPaid = mapped.xeroAmountPaid;
+              updateSet.xeroAmountDue = mapped.xeroAmountDue;
+              updateSet.xeroAmountCredited = mapped.xeroAmountCredited;
               updateSet.xeroInvoiceNumber = invoice.InvoiceNumber;
 
               // Recalculate margins with new amounts (keep existing buy price etc)
@@ -432,15 +441,19 @@ export async function GET(request: NextRequest) {
           const dueDateNote = dueDate ? ` Due: ${safeISOString(dueDate) || 'Unknown'}` : '';
           const importNotes = `Auto-imported by cron on ${new Date().toISOString()}. Client: ${contactName}.${dueDateNote} Needs shopper allocation.`;
 
+          const insertMapped = mapXeroInvoiceToSaleFields(invoice);
           const [createdSale] = await db
             .insert(sales)
             .values({
               xeroInvoiceId: invoice.InvoiceID,
               xeroInvoiceNumber: invoice.InvoiceNumber,
-              invoiceStatus: invoice.Status,
+              invoiceStatus: insertMapped.invoiceStatus,
               saleDate: invoiceDate,
-              saleAmountIncVat: invoice.Total || 0,
-              saleAmountExVat: invoice.SubTotal || (invoice.Total / 1.2),
+              saleAmountIncVat: insertMapped.saleAmountIncVat,
+              saleAmountExVat: invoice.SubTotal || (insertMapped.saleAmountIncVat / 1.2),
+              xeroAmountPaid: insertMapped.xeroAmountPaid,
+              xeroAmountDue: insertMapped.xeroAmountDue,
+              xeroAmountCredited: insertMapped.xeroAmountCredited,
               currency: 'GBP',
               source: 'xero_import',
               needsAllocation: true,

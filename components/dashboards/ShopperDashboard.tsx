@@ -11,6 +11,7 @@ import { eq, and, gte, lte, desc, ilike, isNull, or, ne } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/getCurrentUser";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { getMonthDateRange } from "@/lib/dateUtils";
+import { effectiveInvoiceValue } from "@/lib/economics";
 
 interface ShopperDashboardProps {
   monthParam?: string;
@@ -143,14 +144,19 @@ export async function ShopperDashboard({
     }),
   ]);
 
-  // Filter out xero_import, deleted, ongoing, and VOIDED sales in JavaScript
+  // Filter out xero_import, deleted, ongoing, and CREDITED/DRAFT/VOIDED sales.
   const salesData = allSalesRaw.filter(sale =>
-    sale.source !== 'xero_import' && !sale.deletedAt && sale.status !== 'ongoing' && sale.invoiceStatus !== 'VOIDED'
+    sale.source !== 'xero_import' &&
+    !sale.deletedAt &&
+    sale.status !== 'ongoing' &&
+    sale.invoiceStatus !== 'CREDITED' &&
+    sale.invoiceStatus !== 'DRAFT' &&
+    sale.invoiceStatus !== 'VOIDED'
   );
 
-  // Calculate totals
+  // Calculate totals using effective value (Total - AmountCredited).
   const totalSales = salesData.length;
-  const totalRevenue = salesData.reduce((sum, sale) => sum + (sale.saleAmountIncVat || 0), 0);
+  const totalRevenue = salesData.reduce((sum, sale) => sum + effectiveInvoiceValue(sale), 0);
   const totalMargin = salesData.reduce((sum, sale) => sum + (sale.grossMargin || 0), 0);
 
   // Commission breakdown

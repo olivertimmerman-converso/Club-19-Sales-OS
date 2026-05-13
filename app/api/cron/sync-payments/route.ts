@@ -16,6 +16,10 @@ import { db } from "@/db";
 import { sales, errors } from "@/db/schema";
 import { and, ne, isNotNull, isNull, eq } from "drizzle-orm";
 import * as logger from '@/lib/logger';
+import {
+  mapXeroInvoiceToSaleFields,
+  xeroAmountsChanged,
+} from '@/lib/xero-invoice-mapping';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +76,10 @@ export async function GET(request: NextRequest) {
         xeroInvoiceId: sales.xeroInvoiceId,
         xeroInvoiceNumber: sales.xeroInvoiceNumber,
         invoiceStatus: sales.invoiceStatus,
+        saleAmountIncVat: sales.saleAmountIncVat,
+        xeroAmountPaid: sales.xeroAmountPaid,
+        xeroAmountDue: sales.xeroAmountDue,
+        xeroAmountCredited: sales.xeroAmountCredited,
       })
       .from(sales)
       .where(
@@ -142,20 +150,31 @@ export async function GET(request: NextRequest) {
 
         checkedCount++;
 
-        // Check if status changed
-        if (invoice.Status !== sale.invoiceStatus) {
-          logger.info('XERO_CRON_PAYMENTS', 'Status changed', {
+        // Re-derive status from amounts (catches credit-note flips that don't
+        // change Xero's raw status) and refresh the four amount columns if any
+        // of them moved.
+        const mapped = mapXeroInvoiceToSaleFields(invoice);
+        const statusChanged = sale.invoiceStatus !== mapped.invoiceStatus;
+        const amountsChanged = xeroAmountsChanged(sale, invoice);
+
+        if (statusChanged || amountsChanged) {
+          logger.info('XERO_CRON_PAYMENTS', 'Status or amounts changed', {
             invoiceNumber: sale.xeroInvoiceNumber,
             oldStatus: sale.invoiceStatus,
-            newStatus: invoice.Status
+            newStatus: mapped.invoiceStatus,
+            xeroRawStatus: invoice.Status,
+            amountCredited: mapped.xeroAmountCredited,
           });
 
           // Auto-soft-delete VOIDED invoices so they disappear from active views
           const updateData: Record<string, unknown> = {
-            invoiceStatus: invoice.Status,
-            invoicePaidDate: invoice.Status === 'PAID' ? new Date() : null,
+            invoiceStatus: mapped.invoiceStatus,
+            invoicePaidDate: mapped.invoiceStatus === 'PAID' ? new Date() : null,
+            xeroAmountPaid: mapped.xeroAmountPaid,
+            xeroAmountDue: mapped.xeroAmountDue,
+            xeroAmountCredited: mapped.xeroAmountCredited,
           };
-          if (invoice.Status === 'VOIDED') {
+          if (mapped.invoiceStatus === 'VOIDED') {
             updateData.deletedAt = new Date();
             logger.info('XERO_CRON_PAYMENTS', 'Auto-deleting VOIDED invoice', {
               invoiceNumber: sale.xeroInvoiceNumber,

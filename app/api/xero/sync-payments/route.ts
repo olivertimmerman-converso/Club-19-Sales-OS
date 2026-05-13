@@ -17,6 +17,7 @@ import { db } from "@/db";
 import { sales, errors } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { updateSalePaymentStatusFromXero } from "@/lib/xata-sales";
+import { mapXeroInvoiceToSaleFields } from "@/lib/xero-invoice-mapping";
 import { getValidTokens } from "@/lib/xero-auth";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY } from "@/lib/error-types";
 import { withRateLimit, RATE_LIMITS } from "@/lib/rate-limit";
@@ -185,14 +186,15 @@ export async function GET(req: NextRequest) {
           amountDue: invoice.AmountDue,
         });
 
-        // Check if invoice is paid
-        const isPaid =
-          invoice.Status === "PAID" ||
-          (invoice.AmountDue !== undefined && invoice.AmountDue === 0);
-
-        if (!isPaid) {
-          logger.info("XERO_SYNC", "Invoice not paid yet - skipping", {
+        // Use the shared mapper for status — distinguishes PAID from CREDITED
+        // even though both have AmountDue=0. Skip if the derived status is
+        // anything other than PAID (CREDITED, AUTHORISED, DRAFT, VOIDED all
+        // fall here).
+        const mapped = mapXeroInvoiceToSaleFields(invoice);
+        if (mapped.invoiceStatus !== "PAID") {
+          logger.info("XERO_SYNC", "Invoice not paid (or now credited) - skipping", {
             invoiceNumber: invoice.InvoiceNumber,
+            derivedStatus: mapped.invoiceStatus,
           });
           continue;
         }

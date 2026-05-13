@@ -14,6 +14,7 @@ import { sales, shoppers, buyers } from "@/db/schema";
 import { eq, and, or, gte, lte, desc, ne, isNull, isNotNull } from "drizzle-orm";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { getMonthDateRange, formatMonthLabel } from "@/lib/dateUtils";
+import { effectiveInvoiceValue } from "@/lib/economics";
 import * as logger from '@/lib/logger';
 
 // ORIGINAL XATA: const xata = new XataClient();
@@ -112,14 +113,17 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
     }),
   ]);
 
-  // Filter out xero_import, deleted, and ongoing sales in JavaScript
-  const salesData = allSalesRaw.filter(sale =>
-    sale.source !== 'xero_import' && !sale.deletedAt && sale.status !== 'ongoing'
-  );
+  // Filter out xero_import, deleted, ongoing, and CREDITED/DRAFT/VOIDED.
+  const headlineFilter = (sale: { source: string | null; deletedAt: Date | null; status: string | null; invoiceStatus: string | null }) =>
+    sale.source !== 'xero_import' &&
+    !sale.deletedAt &&
+    sale.status !== 'ongoing' &&
+    sale.invoiceStatus !== 'CREDITED' &&
+    sale.invoiceStatus !== 'DRAFT' &&
+    sale.invoiceStatus !== 'VOIDED';
 
-  const ytdSales = ytdSalesRaw.filter(sale =>
-    sale.source !== 'xero_import' && !sale.deletedAt && sale.status !== 'ongoing'
-  );
+  const salesData = allSalesRaw.filter(headlineFilter);
+  const ytdSales = ytdSalesRaw.filter(headlineFilter);
 
   // Calculate shopper performance
   const shopperStats = new Map<string, ShopperPerformance>();
@@ -140,7 +144,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
       });
     }
     const stats = shopperStats.get(shopperId)!;
-    stats.thisMonthSales += sale.saleAmountIncVat || 0;
+    stats.thisMonthSales += effectiveInvoiceValue(sale);
     stats.margin += sale.grossMargin || 0;
     stats.commission += sale.commissionableMargin || 0;
   });
@@ -149,7 +153,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
   ytdSales.forEach(sale => {
     const shopperId = sale.shopper?.id || 'unassigned';
     if (shopperStats.has(shopperId)) {
-      shopperStats.get(shopperId)!.ytdSales += sale.saleAmountIncVat || 0;
+      shopperStats.get(shopperId)!.ytdSales += effectiveInvoiceValue(sale);
     }
   });
 
@@ -182,7 +186,7 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
       });
     }
     const client = clientStats.get(sale.buyer.id)!;
-    client.totalSpend += sale.saleAmountIncVat || 0;
+    client.totalSpend += effectiveInvoiceValue(sale);
     client.purchaseCount += 1;
   });
 

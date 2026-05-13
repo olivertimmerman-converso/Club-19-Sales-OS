@@ -33,6 +33,10 @@ import {
 import { getValidTokens } from "@/lib/xero-auth";
 import { ERROR_TYPES, ERROR_TRIGGERED_BY } from "@/lib/error-types";
 import * as logger from "@/lib/logger";
+import {
+  mapXeroInvoiceToSaleFields,
+  xeroAmountsChanged,
+} from "@/lib/xero-invoice-mapping";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -432,6 +436,7 @@ export async function POST(req: NextRequest) {
           // ORIGINAL XATA:   invoice_paid_date: invoice.Status === 'PAID' ? new Date() : undefined,
           // ORIGINAL XATA:   internal_notes: `Auto-imported via Xero webhook on ${new Date().toISOString()}. Client: ${invoice.Contact?.Name || 'Unknown'}. Needs shopper allocation and cost details.`,
           // ORIGINAL XATA: });
+          const insertMapped = mapXeroInvoiceToSaleFields(invoice);
           const [newSale] = await db
             .insert(sales)
             .values({
@@ -442,8 +447,11 @@ export async function POST(req: NextRequest) {
               needsAllocation: true,
               saleDate: saleDate,
               buyerId: buyer?.id || null,
-              saleAmountIncVat: invoice.Total || 0,
-              saleAmountExVat: invoice.SubTotal || (invoice.Total / 1.2),
+              saleAmountIncVat: insertMapped.saleAmountIncVat,
+              saleAmountExVat: invoice.SubTotal || (insertMapped.saleAmountIncVat / 1.2),
+              xeroAmountPaid: insertMapped.xeroAmountPaid,
+              xeroAmountDue: insertMapped.xeroAmountDue,
+              xeroAmountCredited: insertMapped.xeroAmountCredited,
               currency: invoice.CurrencyCode || 'GBP',
               brand: 'Unknown',
               category: 'Unknown',
@@ -451,8 +459,8 @@ export async function POST(req: NextRequest) {
               quantity: firstLineItem?.Quantity || 1,
               buyPrice: 0,
               grossMargin: 0,
-              invoiceStatus: invoice.Status,
-              invoicePaidDate: invoice.Status === 'PAID' ? new Date() : null,
+              invoiceStatus: insertMapped.invoiceStatus,
+              invoicePaidDate: insertMapped.invoiceStatus === 'PAID' ? new Date() : null,
               internalNotes: `Auto-imported via Xero webhook on ${new Date().toISOString()}. Client: ${invoice.Contact?.Name || 'Unknown'}. Needs shopper allocation and cost details.`,
             })
             .returning();
@@ -501,13 +509,19 @@ export async function POST(req: NextRequest) {
           newStatus: invoice.Status,
         });
 
-        // Update sale with latest invoice data
+        // Update sale with latest invoice data — use the shared mapper so
+        // credit-note flips (PAID → CREDITED) and amount changes are handled
+        // consistently with the cron paths.
+        const mapped = mapXeroInvoiceToSaleFields(invoice);
         const updateData: Partial<typeof sales.$inferInsert> = {
-          invoiceStatus: invoice.Status,
+          invoiceStatus: mapped.invoiceStatus,
+          xeroAmountPaid: mapped.xeroAmountPaid,
+          xeroAmountDue: mapped.xeroAmountDue,
+          xeroAmountCredited: mapped.xeroAmountCredited,
         };
 
         // If invoice is now paid, set the paid date
-        if (invoice.Status === "PAID" && !sale.invoicePaidDate) {
+        if (mapped.invoiceStatus === "PAID" && !sale.invoicePaidDate) {
           updateData.invoicePaidDate = new Date();
           logger.info("XERO_WEBHOOKS", "Marking invoice as paid", {
             saleId: sale.id,

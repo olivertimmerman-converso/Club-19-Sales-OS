@@ -67,6 +67,33 @@ export function toNumber(value: unknown): number {
 }
 
 /**
+ * Effective invoice value = AmountPaid + AmountDue (= Total − AmountCredited).
+ *
+ * Use this anywhere headline revenue, margin, or commission is being aggregated
+ * — never sum `saleAmountIncVat` directly. Sum-of-effective drops fully-credited
+ * sales to £0 and reports partial-credit cases at their reduced post-credit value.
+ *
+ * Falls back to `saleAmountIncVat` for legacy rows that haven't been re-synced
+ * since the credit-note migration. The fallback is bug-compatible with pre-fix
+ * behaviour (over-states fully-credited sales) but only fires for rows we
+ * haven't touched — every cron pass narrows that set toward zero.
+ *
+ * Drizzle returns NUMERIC columns as JS strings; `Number()` coercion required.
+ */
+export function effectiveInvoiceValue(sale: {
+  xeroAmountPaid?: string | number | null;
+  xeroAmountDue?: string | number | null;
+  saleAmountIncVat?: number | string | null;
+}): number {
+  if (sale.xeroAmountPaid != null && sale.xeroAmountDue != null) {
+    return roundCurrency(
+      Number(sale.xeroAmountPaid) + Number(sale.xeroAmountDue)
+    );
+  }
+  return roundCurrency(toNumber(sale.saleAmountIncVat));
+}
+
+/**
  * Calculate amount excluding VAT from amount including VAT
  *
  * @deprecated Use calculateExVatWithRate() instead to handle different VAT rates

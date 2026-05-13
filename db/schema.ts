@@ -15,6 +15,7 @@ import {
   boolean,
   integer,
   doublePrecision,
+  numeric,
   timestamp,
   jsonb,
   uuid,
@@ -185,6 +186,16 @@ export const sales = pgTable(
     // Financial - Sale Amounts
     saleAmountIncVat: doublePrecision("sale_amount_inc_vat"),
     saleAmountExVat: doublePrecision("sale_amount_ex_vat"),
+    // Xero credit-note tracking (May 2026). NUMERIC(10,2) intentionally —
+    // these drive headline revenue via effectiveInvoiceValue() and need
+    // to round-trip exactly. Drizzle returns numeric as JS string; coerce
+    // with Number() at read sites.
+    //   effective value = xero_amount_paid + xero_amount_due
+    //                   = sale_amount_inc_vat - xero_amount_credited
+    // Populated by lib/xero-invoice-mapping.ts on every sync path.
+    xeroAmountPaid: numeric("xero_amount_paid", { precision: 10, scale: 2 }),
+    xeroAmountDue: numeric("xero_amount_due", { precision: 10, scale: 2 }),
+    xeroAmountCredited: numeric("xero_amount_credited", { precision: 10, scale: 2 }),
     buyPrice: doublePrecision("buy_price"),
     cardFees: doublePrecision("card_fees"),
     shippingCost: doublePrecision("shipping_cost"),

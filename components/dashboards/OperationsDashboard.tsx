@@ -12,6 +12,7 @@ import { eq, and, gte, lte, desc, asc, isNotNull, isNull, or, sql } from "drizzl
 import Link from "next/link";
 import { MonthPicker } from "@/components/ui/MonthPicker";
 import { getMonthDateRange, formatMonthLabel } from "@/lib/dateUtils";
+import { effectiveInvoiceValue } from "@/lib/economics";
 // import { DashboardClientWrapper } from "./DashboardClientWrapper"; // Temporarily disabled
 
 // ORIGINAL XATA: const xata = new XataClient();
@@ -161,18 +162,20 @@ export async function OperationsDashboard({
     }),
   ]);
 
-  // Filter out xero_import, deleted, and ongoing sales in JavaScript
-  const salesData = allSalesRaw.filter(sale =>
-    sale.source !== 'xero_import' && !sale.deletedAt && sale.status !== 'ongoing'
-  );
+  // Filter out xero_import, deleted, and ongoing sales. Also exclude
+  // CREDITED / DRAFT / VOIDED at the invoice_status layer so credit-noted,
+  // unsent, and cancelled invoices drop out of headline revenue.
+  const headlineFilter = (sale: { source: string | null; deletedAt: Date | null; status: string | null; invoiceStatus: string | null }) =>
+    sale.source !== 'xero_import' &&
+    !sale.deletedAt &&
+    sale.status !== 'ongoing' &&
+    sale.invoiceStatus !== 'CREDITED' &&
+    sale.invoiceStatus !== 'DRAFT' &&
+    sale.invoiceStatus !== 'VOIDED';
 
-  const lastMonthSales = lastMonthSalesRaw.filter(sale =>
-    sale.source !== 'xero_import' && !sale.deletedAt && sale.status !== 'ongoing'
-  );
-
-  const ytdSales = ytdSalesRaw.filter(sale =>
-    sale.source !== 'xero_import' && !sale.deletedAt && sale.status !== 'ongoing'
-  );
+  const salesData = allSalesRaw.filter(headlineFilter);
+  const lastMonthSales = lastMonthSalesRaw.filter(headlineFilter);
+  const ytdSales = ytdSalesRaw.filter(headlineFilter);
 
   const invoices = invoicesRaw.filter(sale =>
     sale.source !== 'xero_import' && !sale.deletedAt
@@ -198,8 +201,10 @@ export async function OperationsDashboard({
     }
   });
 
-  // Calculate key metrics
-  const revenue = salesData.reduce((sum, s) => sum + (s.saleAmountIncVat || 0), 0);
+  // Calculate key metrics. effectiveInvoiceValue handles the partial-credit
+  // case correctly (Total - AmountCredited) and falls back to saleAmountIncVat
+  // for legacy rows not yet re-synced.
+  const revenue = salesData.reduce((sum, s) => sum + effectiveInvoiceValue(s), 0);
   const margin = salesData.reduce((sum, s) => sum + (s.grossMargin || 0), 0);
   const totalRevenue = revenue;
   const totalMargin = margin;
@@ -213,7 +218,7 @@ export async function OperationsDashboard({
   );
   const outstandingInvoices = outstanding;
   const outstandingAmount = outstanding.reduce(
-    (sum, inv) => sum + (inv.saleAmountIncVat || 0),
+    (sum, inv) => sum + effectiveInvoiceValue(inv),
     0
   );
 
@@ -276,7 +281,7 @@ export async function OperationsDashboard({
     }
 
     const perf = shopperPerformance.get(shopperId)!;
-    perf.thisMonthSales += sale.saleAmountIncVat || 0;
+    perf.thisMonthSales += effectiveInvoiceValue(sale);
     perf.thisMonthMargin += sale.grossMargin || 0;
     perf.thisMonthTrades++;
 
@@ -292,7 +297,7 @@ export async function OperationsDashboard({
     const shopperId = sale.shopper?.id || "unassigned";
     if (shopperPerformance.has(shopperId)) {
       const perf = shopperPerformance.get(shopperId)!;
-      perf.lastMonthSales += sale.saleAmountIncVat || 0;
+      perf.lastMonthSales += effectiveInvoiceValue(sale);
       perf.lastMonthMargin += sale.grossMargin || 0;
       perf.lastMonthTrades++;
     }
@@ -303,7 +308,7 @@ export async function OperationsDashboard({
     const shopperId = sale.shopper?.id || "unassigned";
     if (shopperPerformance.has(shopperId)) {
       const perf = shopperPerformance.get(shopperId)!;
-      perf.ytdSales += sale.saleAmountIncVat || 0;
+      perf.ytdSales += effectiveInvoiceValue(sale);
       perf.ytdMargin += sale.grossMargin || 0;
     }
   });
@@ -333,7 +338,7 @@ export async function OperationsDashboard({
       });
     }
     const stats = brandStats.get(brand)!;
-    stats.revenue += sale.saleAmountIncVat || 0;
+    stats.revenue += effectiveInvoiceValue(sale);
     stats.margin += sale.grossMargin || 0;
     stats.tradeCount++;
   });
@@ -377,7 +382,7 @@ export async function OperationsDashboard({
     }
 
     const stats = clientStatsMap.get(buyerId)!;
-    stats.totalSpend += sale.saleAmountIncVat || 0;
+    stats.totalSpend += effectiveInvoiceValue(sale);
     stats.marginGenerated += sale.grossMargin || 0;
     stats.trades++;
   });
@@ -451,7 +456,7 @@ export async function OperationsDashboard({
 
   // Last month comparison for key metrics
   const lastMonthRevenue = lastMonthSales.reduce(
-    (sum, s) => sum + (s.saleAmountIncVat || 0),
+    (sum, s) => sum + effectiveInvoiceValue(s),
     0
   );
   const lastMonthMargin = lastMonthSales.reduce(
@@ -892,7 +897,7 @@ export async function OperationsDashboard({
             <p className="text-xs text-gray-500">
               {formatCurrency(
                 invoicesByStatus.overdue.reduce(
-                  (sum, inv) => sum + (inv.saleAmountIncVat || 0),
+                  (sum, inv) => sum + effectiveInvoiceValue(inv),
                   0
                 )
               )}

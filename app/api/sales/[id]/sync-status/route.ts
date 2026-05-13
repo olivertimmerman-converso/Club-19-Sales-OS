@@ -15,6 +15,10 @@ import { sales } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getValidTokens } from '@/lib/xero-auth';
 import * as logger from '@/lib/logger';
+import {
+  mapXeroInvoiceToSaleFields,
+  xeroAmountsChanged,
+} from '@/lib/xero-invoice-mapping';
 
 // ORIGINAL XATA: import { getXataClient } from '@/src/xata';
 
@@ -161,17 +165,28 @@ export async function POST(
       amountPaid: invoice.AmountPaid,
     });
 
-    // 5. Update sale with new status
+    // 5. Update sale with new status. Use the shared mapper so credit-note
+    // flips and amount changes are persisted alongside the status.
+    const mapped = mapXeroInvoiceToSaleFields(invoice);
     const updates: Partial<typeof sales.$inferInsert> = {};
     const changes: string[] = [];
 
-    if (sale.invoiceStatus !== invoice.Status) {
-      updates.invoiceStatus = invoice.Status;
-      changes.push(`status: ${sale.invoiceStatus} → ${invoice.Status}`);
+    if (sale.invoiceStatus !== mapped.invoiceStatus) {
+      updates.invoiceStatus = mapped.invoiceStatus;
+      changes.push(`status: ${sale.invoiceStatus} → ${mapped.invoiceStatus}`);
+    }
+
+    if (xeroAmountsChanged(sale, invoice)) {
+      updates.xeroAmountPaid = mapped.xeroAmountPaid;
+      updates.xeroAmountDue = mapped.xeroAmountDue;
+      updates.xeroAmountCredited = mapped.xeroAmountCredited;
+      changes.push(
+        `amounts: paid=${mapped.xeroAmountPaid} due=${mapped.xeroAmountDue} credited=${mapped.xeroAmountCredited}`
+      );
     }
 
     // Set paid date if invoice is now paid
-    if (invoice.Status === 'PAID' && !sale.invoicePaidDate) {
+    if (mapped.invoiceStatus === 'PAID' && !sale.invoicePaidDate) {
       const paidDate = parseXeroDate(invoice.FullyPaidOnDate) || new Date();
       updates.invoicePaidDate = paidDate;
       changes.push(`paid_date: null → ${paidDate.toISOString()}`);
@@ -202,7 +217,8 @@ export async function POST(
       success: true,
       message: 'Invoice status synced from Xero',
       previousStatus: sale.invoiceStatus,
-      newStatus: invoice.Status,
+      newStatus: mapped.invoiceStatus,
+      xeroRawStatus: invoice.Status,
       changes,
     });
 

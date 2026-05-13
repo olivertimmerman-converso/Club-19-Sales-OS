@@ -16,6 +16,7 @@ import { getValidTokens } from "@/lib/xero-auth";
 import { getUserRole } from "@/lib/getUserRole";
 import { calculateMargins } from "@/lib/economics";
 import { roundCurrency } from "@/lib/utils/currency";
+import { mapXeroInvoiceToSaleFields } from "@/lib/xero-invoice-mapping";
 import * as logger from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
@@ -231,8 +232,11 @@ export async function POST(request: NextRequest) {
       buyerId = buyer.id;
     }
 
-    // Calculate financials
-    const saleAmountIncVat = roundCurrency(invoice.Total);
+    // Calculate financials. Use the shared mapper so the credit-note status
+    // flip applies even when adopting an already-credited invoice (rare but
+    // possible for adoption of historical invoices).
+    const mapped = mapXeroInvoiceToSaleFields(invoice);
+    const saleAmountIncVat = mapped.saleAmountIncVat;
     const saleAmountExVat = roundCurrency(invoice.SubTotal);
     const roundedBuyPrice = roundCurrency(buyPrice);
 
@@ -262,8 +266,9 @@ export async function POST(request: NextRequest) {
       saleDate = new Date();
     }
 
-    // Determine invoice status
-    const invoiceStatus = invoice.Status || "DRAFT";
+    // Use the app-derived status from the mapper (handles CREDITED). isPaid
+    // gates payment-date population.
+    const invoiceStatus = mapped.invoiceStatus;
     const isPaid = invoiceStatus === "PAID";
 
     // Create the Sale record
@@ -321,6 +326,9 @@ export async function POST(request: NextRequest) {
         buyPrice: roundedBuyPrice,
         saleAmountExVat,
         saleAmountIncVat,
+        xeroAmountPaid: mapped.xeroAmountPaid,
+        xeroAmountDue: mapped.xeroAmountDue,
+        xeroAmountCredited: mapped.xeroAmountCredited,
         currency: invoice.CurrencyCode || "GBP",
 
         // Margins

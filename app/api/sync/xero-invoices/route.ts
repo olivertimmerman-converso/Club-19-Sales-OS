@@ -23,6 +23,10 @@ import {
   calculateMargins,
   toNumber,
 } from '@/lib/economics';
+import {
+  mapXeroInvoiceToSaleFields,
+  xeroAmountsChanged,
+} from '@/lib/xero-invoice-mapping';
 import { roundCurrency } from '@/lib/utils/currency';
 
 // ORIGINAL XATA:
@@ -315,19 +319,24 @@ export async function POST(request: Request) {
           .limit(1);
 
         if (existing) {
+          // Compute the canonical mapping once — drives both the change-detect
+          // guard and the update payload.
+          const mapped = mapXeroInvoiceToSaleFields(invoice);
+
           // Update status, date, or amounts if changed
-          const statusChanged = existing.invoiceStatus !== invoice.Status;
+          const statusChanged = existing.invoiceStatus !== mapped.invoiceStatus;
           const dateChanged = existing.saleDate && invoiceDate && existing.saleDate.getTime() !== invoiceDate.getTime();
 
-          // Check if amounts changed in Xero
+          // Check if amounts changed in Xero. The new guard fires when ANY of
+          // {Total, AmountPaid, AmountDue, AmountCredited} differ — the old
+          // Total-only guard never noticed credit notes (Xero leaves Total
+          // unchanged when a CN is applied).
           const xeroUpdated = safeDate(invoice.UpdatedDateUTC);
           const ourUpdated = existing.updatedAt;
           const xeroIsNewer = xeroUpdated && ourUpdated
             ? xeroUpdated.getTime() > ourUpdated.getTime()
             : false;
-          const amountsChanged = xeroIsNewer && (
-            roundCurrency(toNumber(existing.saleAmountIncVat)) !== roundCurrency(invoice.Total || 0)
-          );
+          const amountsChanged = xeroIsNewer && xeroAmountsChanged(existing, invoice);
 
           // During full sync, update date even if existing date is null
           const shouldUpdateDate = fullSync && invoiceDate && (
@@ -352,7 +361,7 @@ export async function POST(request: Request) {
           if (statusChanged || dateChanged || shouldUpdateDate || amountsChanged) {
             const updates: Record<string, any> = {};
             if (statusChanged) {
-              updates.invoiceStatus = invoice.Status;
+              updates.invoiceStatus = mapped.invoiceStatus;
               // Use actual paid date from Xero if available, otherwise null
               updates.invoicePaidDate = invoice.FullyPaidOnDate ? safeDate(invoice.FullyPaidOnDate) : null;
             }
@@ -361,11 +370,17 @@ export async function POST(request: Request) {
               updates.saleDate = invoiceDate;
             }
             if (amountsChanged) {
-              const newIncVat = roundCurrency(invoice.Total || 0);
+              const newIncVat = mapped.saleAmountIncVat;
               const newExVat = roundCurrency(invoice.SubTotal || (newIncVat / 1.2));
 
               updates.saleAmountIncVat = newIncVat;
               updates.saleAmountExVat = newExVat;
+              updates.xeroAmountPaid = mapped.xeroAmountPaid;
+              updates.xeroAmountDue = mapped.xeroAmountDue;
+              updates.xeroAmountCredited = mapped.xeroAmountCredited;
+              // Status logic depends on amounts (CREDITED is amount-derived),
+              // so always refresh status when amounts change.
+              updates.invoiceStatus = mapped.invoiceStatus;
               updates.xeroInvoiceNumber = invoice.InvoiceNumber;
 
               // Recalculate margins with new amounts
@@ -385,6 +400,8 @@ export async function POST(request: Request) {
                 invoiceNumber: invoice.InvoiceNumber,
                 oldIncVat: existing.saleAmountIncVat,
                 newIncVat,
+                amountCredited: mapped.xeroAmountCredited,
+                derivedStatus: mapped.invoiceStatus,
                 grossMargin: margins.grossMargin,
               });
             }
@@ -498,15 +515,19 @@ export async function POST(request: Request) {
           // await xata.db.Sales.create({...});
 
           // DRIZZLE:
+          const insertMapped = mapXeroInvoiceToSaleFields(invoice);
           const [createdSale] = await db
             .insert(sales)
             .values({
               xeroInvoiceId: invoice.InvoiceID,
               xeroInvoiceNumber: invoice.InvoiceNumber,
-              invoiceStatus: invoice.Status,
+              invoiceStatus: insertMapped.invoiceStatus,
               saleDate: saleDate, // Use invoice date from Xero (validated above)
-              saleAmountIncVat: total,
-              saleAmountExVat: invoice.SubTotal || (total / 1.2), // Use SubTotal or assume 20% VAT
+              saleAmountIncVat: insertMapped.saleAmountIncVat,
+              saleAmountExVat: invoice.SubTotal || (insertMapped.saleAmountIncVat / 1.2), // Use SubTotal or assume 20% VAT
+              xeroAmountPaid: insertMapped.xeroAmountPaid,
+              xeroAmountDue: insertMapped.xeroAmountDue,
+              xeroAmountCredited: insertMapped.xeroAmountCredited,
               currency: 'GBP',
               source: 'xero_import', // Xero sync origin
               needsAllocation: true, // Requires shopper assignment

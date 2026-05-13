@@ -15,6 +15,10 @@ import { sales } from "@/db/schema";
 import { and, ne, isNotNull, eq } from "drizzle-orm";
 import { getValidTokens } from '@/lib/xero-auth';
 import * as logger from '@/lib/logger';
+import {
+  mapXeroInvoiceToSaleFields,
+  xeroAmountsChanged,
+} from '@/lib/xero-invoice-mapping';
 
 // ORIGINAL XATA: import { getXataClient } from '@/src/xata';
 
@@ -84,6 +88,10 @@ export async function POST() {
         xeroInvoiceId: sales.xeroInvoiceId,
         xeroInvoiceNumber: sales.xeroInvoiceNumber,
         invoiceStatus: sales.invoiceStatus,
+        saleAmountIncVat: sales.saleAmountIncVat,
+        xeroAmountPaid: sales.xeroAmountPaid,
+        xeroAmountDue: sales.xeroAmountDue,
+        xeroAmountCredited: sales.xeroAmountCredited,
       })
       .from(sales)
       .where(
@@ -169,34 +177,41 @@ export async function POST() {
 
         checkedCount++;
 
-        // Check if status changed
-        if (invoice.Status !== sale.invoiceStatus) {
-          logger.info('PAYMENT_SYNC', 'Status changed', {
+        // Re-derive status + amounts from Xero. Catches credit-note flips
+        // even when Xero's raw Status hasn't changed (CN application leaves
+        // the invoice as PAID — only AmountCredited/AmountDue move).
+        const mapped = mapXeroInvoiceToSaleFields(invoice);
+        const statusChanged = sale.invoiceStatus !== mapped.invoiceStatus;
+        const amountsChanged = xeroAmountsChanged(sale, invoice);
+
+        if (statusChanged || amountsChanged) {
+          logger.info('PAYMENT_SYNC', 'Status or amounts changed', {
             invoiceNumber: sale.xeroInvoiceNumber,
             oldStatus: sale.invoiceStatus,
-            newStatus: invoice.Status
+            newStatus: mapped.invoiceStatus,
+            xeroRawStatus: invoice.Status,
+            amountCredited: mapped.xeroAmountCredited,
           });
 
-          // ORIGINAL XATA: await xata.db.Sales.update(sale.id, {
-          // ORIGINAL XATA:   invoice_status: invoice.Status,
-          // ORIGINAL XATA:   invoice_paid_date: invoice.Status === 'PAID' ? new Date() : null,
-          // ORIGINAL XATA: });
           await db
             .update(sales)
             .set({
-              invoiceStatus: invoice.Status,
-              invoicePaidDate: invoice.Status === 'PAID' ? new Date() : null,
+              invoiceStatus: mapped.invoiceStatus,
+              invoicePaidDate: mapped.invoiceStatus === 'PAID' ? new Date() : null,
+              xeroAmountPaid: mapped.xeroAmountPaid,
+              xeroAmountDue: mapped.xeroAmountDue,
+              xeroAmountCredited: mapped.xeroAmountCredited,
             })
             .where(eq(sales.id, sale.id));
 
           updatedCount++;
-          logger.info('PAYMENT_SYNC', 'Updated invoice status', {
+          logger.info('PAYMENT_SYNC', 'Updated invoice status + amounts', {
             invoiceNumber: sale.xeroInvoiceNumber
           });
         } else {
-          logger.info('PAYMENT_SYNC', 'No status change', {
+          logger.info('PAYMENT_SYNC', 'No change', {
             invoiceNumber: sale.xeroInvoiceNumber,
-            status: invoice.Status
+            status: mapped.invoiceStatus
           });
         }
 
