@@ -63,6 +63,11 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     href: "/finance",
     icon: "Calculator",
   },
+  {
+    label: "Team Performance",
+    href: "/team-performance",
+    icon: "TrendingUp",
+  },
   // {
   //   label: "Sales Sheet Data",
   //   href: "/legacy",

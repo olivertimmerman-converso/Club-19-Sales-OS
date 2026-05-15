@@ -94,6 +94,10 @@ export const ROUTE_PERMISSIONS: Record<string, {
     allowedRoles: ["superadmin", "founder", "operations", "admin"],
     description: "Xero integration health dashboard",
   },
+  "/team-performance": {
+    allowedRoles: ["superadmin", "admin", "founder", "operations"],
+    description: "Cross-shopper performance trends and comparison",
+  },
 
   // ============================================================================
   // STAFF PORTAL ROUTES (app/staff/*)

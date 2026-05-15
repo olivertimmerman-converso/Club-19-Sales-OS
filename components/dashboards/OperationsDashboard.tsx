@@ -92,6 +92,7 @@ export async function OperationsDashboard({
     incompleteCountResult,
     completedTodayCountResult,
     allSalesForBuyersRaw,
+    incompleteByShopperRaw,
   ] = await Promise.all([
     // 1. Monthly sales
     db.query.sales.findMany({
@@ -160,6 +161,33 @@ export async function OperationsDashboard({
       orderBy: [asc(sales.saleDate)],
       limit: 1000,
     }),
+    // 10. Incomplete count + oldest age, grouped by shopper (Brief 3).
+    // Same predicate as #7 + joined to shoppers for the display name.
+    db
+      .select({
+        shopperId: sales.shopperId,
+        shopperName: shoppers.name,
+        count: sql<number>`count(*)`,
+        oldest: sql<Date | null>`min(${sales.saleDate})`,
+      })
+      .from(sales)
+      .leftJoin(shoppers, eq(sales.shopperId, shoppers.id))
+      .where(
+        and(
+          isNull(sales.deletedAt),
+          isNotNull(sales.shopperId),
+          gte(sales.saleDate, dataFloorDate),
+          or(
+            eq(sales.buyPrice, 0),
+            isNull(sales.buyPrice),
+            isNull(sales.supplierId),
+            isNull(sales.brand),
+            eq(sales.brand, "Unknown")
+          )
+        )
+      )
+      .groupBy(sales.shopperId, shoppers.name)
+      .orderBy(desc(sql`count(*)`)),
   ]);
 
   // Filter out xero_import, deleted, and ongoing sales. Also exclude
@@ -186,6 +214,20 @@ export async function OperationsDashboard({
     incomplete: Number(incompleteCountResult[0]?.count ?? 0),
     completedToday: Number(completedTodayCountResult[0]?.count ?? 0),
   };
+
+  // Brief 3: per-shopper breakdown of the Incomplete tile.
+  const incompleteByShopper = incompleteByShopperRaw.map((r) => {
+    const oldest = r.oldest ? new Date(r.oldest as unknown as string) : null;
+    const oldestAgeDays = oldest
+      ? Math.floor((Date.now() - oldest.getTime()) / (1000 * 60 * 60 * 24))
+      : null;
+    return {
+      shopperId: r.shopperId,
+      shopperName: r.shopperName ?? "Unassigned",
+      count: Number(r.count),
+      oldestAgeDays,
+    };
+  });
 
   const buyerFirstPurchase = new Map<string, Date>();
 
@@ -489,7 +531,15 @@ export async function OperationsDashboard({
           <h1 className="text-2xl font-semibold text-gray-900">
             Operations Dashboard
           </h1>
-          <p className="text-sm text-gray-600">{monthLabel} · Detailed Analytics</p>
+          <p className="text-sm text-gray-600">
+            {monthLabel} · Detailed Analytics ·{" "}
+            <Link
+              href="/team-performance"
+              className="text-gray-700 underline decoration-gray-300 hover:decoration-gray-700"
+            >
+              Team performance →
+            </Link>
+          </p>
         </div>
         <MonthPicker />
       </div>
@@ -538,6 +588,40 @@ export async function OperationsDashboard({
           <p className="text-[10px] text-green-400 mt-0.5">Today</p>
         </div>
       </div>
+
+      {/* Incomplete by shopper (Brief 3) — only render when the aggregate
+          tile is non-zero, otherwise it's just noise. */}
+      {pipelineStats.incomplete > 0 && (
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-slate-700">Incomplete by shopper</h3>
+            <Link
+              href="/team-performance"
+              className="text-xs text-slate-500 hover:text-slate-700"
+            >
+              → Team performance
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {incompleteByShopper.map((row) => (
+              <div
+                key={row.shopperId ?? "unassigned"}
+                className="flex items-baseline justify-between border-l-2 border-slate-200 pl-3 py-1"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm text-slate-800 truncate">{row.shopperName}</p>
+                  {row.oldestAgeDays != null && (
+                    <p className="text-[11px] text-slate-500">
+                      Oldest: {row.oldestAgeDays} {row.oldestAgeDays === 1 ? "day" : "days"} old
+                    </p>
+                  )}
+                </div>
+                <p className="text-lg font-bold text-slate-900 ml-3">{row.count}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* SECTION 1: Key Metrics Bar */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">

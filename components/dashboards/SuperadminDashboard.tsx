@@ -351,7 +351,13 @@ export async function SuperadminDashboard({ monthParam = "current" }: Superadmin
             Dashboard
           </h1>
           <p className="text-gray-600">
-            Full system access and administration • {monthName}
+            Full system access and administration • {monthName} ·{" "}
+            <Link
+              href="/team-performance"
+              className="text-gray-700 underline decoration-gray-300 hover:decoration-gray-700"
+            >
+              Team performance →
+            </Link>
           </p>
         </div>
         <div className="flex items-center gap-4">

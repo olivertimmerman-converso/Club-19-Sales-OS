@@ -28,6 +28,7 @@ import {
   HeartPulse,
   Hourglass,
   Trash2,
+  TrendingUp,
 } from "lucide-react";
 
 /**
@@ -68,6 +69,7 @@ const iconMap = {
   HeartPulse,
   Hourglass,
   Trash2,
+  TrendingUp,
 };
 
 interface SidebarProps {

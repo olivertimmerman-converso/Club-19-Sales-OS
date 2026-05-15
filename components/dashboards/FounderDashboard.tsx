@@ -262,7 +262,13 @@ export async function FounderDashboard({ monthParam = "current" }: FounderDashbo
             Sales Manager Dashboard
           </h1>
           <p className="text-gray-600">
-            {monthLabel} overview · {salesData.length} sales
+            {monthLabel} overview · {salesData.length} sales ·{" "}
+            <Link
+              href="/team-performance"
+              className="text-gray-700 underline decoration-gray-300 hover:decoration-gray-700"
+            >
+              Team performance →
+            </Link>
           </p>
         </div>
         <div className="flex items-center gap-4">
