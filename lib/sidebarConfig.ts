@@ -24,6 +24,11 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "LayoutDashboard",
   },
   {
+    label: "Team Performance",
+    href: "/team-performance",
+    icon: "TrendingUp",
+  },
+  {
     label: "New Sale",
     href: "/trade/new",
     icon: "PlusCircle",
@@ -62,11 +67,6 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     label: "Finance",
     href: "/finance",
     icon: "Calculator",
-  },
-  {
-    label: "Team Performance",
-    href: "/team-performance",
-    icon: "TrendingUp",
   },
   // {
   //   label: "Sales Sheet Data",
