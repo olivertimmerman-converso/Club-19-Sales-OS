@@ -14,7 +14,7 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { sales, shoppers, buyers } from "@/db/schema";
-import { and, eq, gte, lte, isNull, sql, desc } from "drizzle-orm";
+import { and, eq, gte, lte, isNull, inArray, sql, desc } from "drizzle-orm";
 import type { DateRange } from "@/lib/dateUtils";
 import type { StaffRole } from "@/lib/permissions";
 
@@ -190,7 +190,7 @@ export async function getShopperHeadlines(
       and(
         realSalePredicate(),
         dateInRange(range),
-        sql`${sales.shopperId} = ANY(${shopperIds})`
+        inArray(sales.shopperId, shopperIds)
       )
     )
     .groupBy(sales.shopperId);
@@ -261,7 +261,7 @@ export async function getMonthlyTrendByShopper(
       and(
         realSalePredicate(),
         dateInRange(range),
-        sql`${sales.shopperId} = ANY(${shopperIds})`
+        inArray(sales.shopperId, shopperIds)
       )
     )
     .groupBy(
@@ -399,7 +399,7 @@ export async function getNewVsRepeatByShopper(
       and(
         gte(tagged.saleDate, range.start),
         lte(tagged.saleDate, range.end),
-        sql`${tagged.shopperId} = ANY(${shopperIds})`
+        inArray(tagged.shopperId, shopperIds)
       )
     )
     .groupBy(tagged.shopperId);
@@ -464,7 +464,7 @@ export async function getPendingCompletionByShopper(
         isNull(sales.deletedAt),
         sql`${sales.invoiceStatus} IS DISTINCT FROM 'VOIDED'`,
         sql`(${sales.buyPrice} = 0 OR ${sales.buyPrice} IS NULL OR ${sales.supplierId} IS NULL)`,
-        sql`${sales.shopperId} = ANY(${shopperIds})`
+        inArray(sales.shopperId, shopperIds)
       )
     )
     .groupBy(sales.shopperId);
