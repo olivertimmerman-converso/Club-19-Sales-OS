@@ -1,8 +1,8 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { redirect, notFound } from 'next/navigation';
 // ORIGINAL XATA: import { getXataClient } from '@/src/xata';
 import { db } from "@/db";
-import { sales, shoppers, suppliers } from "@/db/schema";
+import { sales, shoppers, suppliers, introducerCommissionEdits } from "@/db/schema";
 import { eq, and, isNull, inArray, desc, asc } from "drizzle-orm";
 import { getUserRole } from '@/lib/getUserRole';
 import { SaleDetailClient } from './SaleDetailClient';
@@ -105,6 +105,51 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
       })
     : [];
 
+  // Latest introducer-commission edit (for the panel's "edited by X on Y" line).
+  // Inheriting permission from route-level access — anyone who can hit the sale
+  // page can see the audit summary; the brief calls this out explicitly.
+  const [latestEdit] = await db
+    .select()
+    .from(introducerCommissionEdits)
+    .where(eq(introducerCommissionEdits.saleId, sale.id))
+    .orderBy(desc(introducerCommissionEdits.editedAt))
+    .limit(1);
+
+  let introducerCommissionLastEdit: {
+    previous_value: number | null;
+    new_value: number | null;
+    edited_by: string;
+    edited_by_display_name: string | null;
+    edited_at: string;
+  } | null = null;
+
+  if (latestEdit) {
+    // Resolve Clerk ID → display name. Shoppers table first (covers Oliver/
+    // Sophie/Alys and every real editor), Clerk API as fallback for any edge
+    // case. Inline by design — no shared util until a second consumer needs it.
+    const editorShopper = await db.query.shoppers.findFirst({
+      where: eq(shoppers.clerkUserId, latestEdit.editedBy),
+    });
+    let displayName = editorShopper?.name ?? null;
+    if (!displayName) {
+      try {
+        const client = await clerkClient();
+        const editorUser = await client.users.getUser(latestEdit.editedBy);
+        displayName = editorUser.fullName ?? editorUser.firstName ?? null;
+      } catch {
+        // Clerk lookup failure is non-fatal — panel just shows the raw ID.
+      }
+    }
+
+    introducerCommissionLastEdit = {
+      previous_value: latestEdit.previousValue,
+      new_value: latestEdit.newValue,
+      edited_by: latestEdit.editedBy,
+      edited_by_display_name: displayName,
+      edited_at: latestEdit.editedAt.toISOString(),
+    };
+  }
+
   // Serialize data for client component
   const serializedSale = {
     id: sale.id,
@@ -142,6 +187,8 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
     internal_notes: sale.internalNotes || null,
     has_introducer: sale.hasIntroducer || false,
     introducer_commission: sale.introducerCommission || null,
+    introducer_commission_at_sale: sale.introducerCommissionAtSale ?? null,
+    introducer_commission_last_edit: introducerCommissionLastEdit,
     introducer_name: sale.introducerName || null,
     is_payment_plan: sale.isPaymentPlan || false,
     payment_plan_instalments: sale.paymentPlanInstalments || null,

@@ -24,6 +24,7 @@ export default defineConfig({
     "commission_bands",
     "sales",
     "errors",
+    "introducer_commission_edits",
     "payment_schedule",
     "line_items",
     "legacy_suppliers",

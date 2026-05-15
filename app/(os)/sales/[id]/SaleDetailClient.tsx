@@ -58,6 +58,19 @@ interface Sale {
   introducer: { id: string; name: string } | null;
   has_introducer: boolean;
   introducer_commission: number | null;
+  /** Write-once snapshot of the introducer fee at sale creation. Null for
+   *  rows that never had an introducer, or pre-Brief-2 rows that weren't
+   *  reachable by the backfill (e.g. adopt-without-fee). */
+  introducer_commission_at_sale: number | null;
+  /** Latest entry in the introducer-commission audit log. Null when no
+   *  edit has ever been recorded for this sale. */
+  introducer_commission_last_edit: {
+    previous_value: number | null;
+    new_value: number | null;
+    edited_by: string;
+    edited_by_display_name: string | null;
+    edited_at: string;
+  } | null;
   /** Phase 2: free-text introducer name set by the wizard. Distinct from the
    *  FK-linked `introducer` above. May be set even when no FK is attached. */
   introducer_name: string | null;
@@ -2233,30 +2246,84 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
             {/* Phase 2: Free-text introducer name from wizard. Read-only label
                 shown above the FK dropdown when the wizard set a name but no
                 introducers-table row was attached. Management can still attach
-                a curated row via the dropdown if they want. */}
-            {sale.introducer_name && !sale.introducer && (
-              <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">
-                      Set by shopper at sale
-                    </p>
-                    <p className="text-sm font-medium text-purple-900 mt-0.5">
-                      {sale.introducer_name}
-                      {sale.introducer_commission != null && (
-                        <span className="text-purple-700">
-                          {" "}
-                          · £{sale.introducer_commission.toFixed(2)} fee
-                        </span>
+                a curated row via the dropdown if they want.
+
+                Brief 2 (May 2026): rendering branches on provenance.
+                  - `_at_sale == null`: panel just labels the current value
+                    (legacy rows or rows that never got a snapshot)
+                  - `_at_sale == current`: collapsed "set by shopper at sale"
+                  - `_at_sale != current`: show both the original and the
+                    edit, with editor + timestamp from the audit log. */}
+            {sale.introducer_name && !sale.introducer && (() => {
+              const atSale = sale.introducer_commission_at_sale;
+              const current = sale.introducer_commission;
+              const lastEdit = sale.introducer_commission_last_edit;
+              const hasSnapshot = atSale != null;
+              const valuesDiffer =
+                hasSnapshot && current != null && atSale !== current;
+              const editorName =
+                lastEdit?.edited_by_display_name ||
+                lastEdit?.edited_by ||
+                "—";
+              const editedDate = lastEdit
+                ? new Date(lastEdit.edited_at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : null;
+
+              return (
+                <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <div className="w-full">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">
+                        Set by shopper at sale
+                      </p>
+                      <p className="text-sm font-medium text-purple-900 mt-0.5">
+                        {sale.introducer_name}
+                        {!valuesDiffer && current != null && (
+                          <span className="text-purple-700">
+                            {" "}
+                            · £{current.toFixed(2)} fee
+                          </span>
+                        )}
+                      </p>
+
+                      {valuesDiffer && (
+                        <div className="mt-2 space-y-1 text-sm">
+                          <p className="text-purple-900">
+                            <span className="text-purple-700">Originally</span>{" "}
+                            <span className="font-medium">
+                              £{(atSale as number).toFixed(2)}
+                            </span>{" "}
+                            <span className="text-purple-700">
+                              (shopper at sale)
+                            </span>
+                          </p>
+                          <p className="text-purple-900">
+                            <span className="text-purple-700">Now</span>{" "}
+                            <span className="font-medium">
+                              £{(current as number).toFixed(2)}
+                            </span>{" "}
+                            {lastEdit && (
+                              <span className="text-purple-700">
+                                (edited by {editorName}
+                                {editedDate ? `, ${editedDate}` : ""})
+                              </span>
+                            )}
+                          </p>
+                        </div>
                       )}
-                    </p>
-                    <p className="text-xs text-purple-600 mt-1">
-                      Optionally attach a curated introducer record below.
-                    </p>
+
+                      <p className="text-xs text-purple-600 mt-1">
+                        Optionally attach a curated introducer record below.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Success/Error Messages */}
             {introducerSaveSuccess && (

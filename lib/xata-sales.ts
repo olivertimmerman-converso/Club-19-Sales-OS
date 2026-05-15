@@ -726,6 +726,13 @@ export async function createSaleFromAppPayload(
       isNewClient: sanitizedPayload.isNewClient || false,
       entrupyFee: sanitizedPayload.entrupyFee || 0,
       introducerCommission: sanitizedPayload.introducerCommission || 0,
+      // Write-once snapshot of the introducer fee at the moment of sale.
+      // Only set when this sale actually has an introducer — leaving it
+      // null for non-introducer sales keeps the column honest (no spurious
+      // "£0.00 at sale" for rows that never had a fee).
+      introducerCommissionAtSale: sanitizedPayload.hasIntroducer
+        ? sanitizedPayload.introducerCommission || 0
+        : null,
       introducerFeePercent: sanitizedPayload.introducerFeePercent ?? null,
       introducerFeeType: sanitizedPayload.introducerFeeType ?? null,
     })

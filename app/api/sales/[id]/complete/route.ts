@@ -255,6 +255,13 @@ export async function POST(
         entrupy_fee: entrupyFee,
       });
       updateData.introducerCommission = recalculatedIntroducerCommission;
+      // First-capture semantics: this is the only path where a non-wizard
+      // sale's introducer fee gets a real £ value derived from the wizard-
+      // captured percent. Snapshot it as `_at_sale` ONCE — subsequent saves
+      // recalc against the same percent but the snapshot stays put.
+      if (currentSale.introducerCommissionAtSale == null) {
+        updateData.introducerCommissionAtSale = recalculatedIntroducerCommission;
+      }
     }
 
     // Add recalculated values to update

@@ -22,7 +22,7 @@ import {
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 // ============================================================================
 // SHOPPERS
@@ -238,6 +238,12 @@ export const sales = pgTable(
     // Introducer
     hasIntroducer: boolean("has_introducer").default(false),
     introducerCommission: doublePrecision("introducer_commission"),
+    // Write-once provenance: the £ fee originally captured when the sale was
+    // first created (or first non-null capture for adopt/complete paths).
+    // Never updated after — edits go through the Save Introducer handler
+    // which only touches `introducerCommission`. See
+    // `introducer_commission_edits` for the full edit history.
+    introducerCommissionAtSale: doublePrecision("introducer_commission_at_sale"),
     introducerName: text("introducer_name"),
     // Phase 2: percent of gross profit (wizard input). introducerCommission
     // is the calculated £ amount and remains the source of truth for sheets
@@ -365,6 +371,9 @@ export const salesRelations = relations(sales, ({ one, many }) => ({
   errors: many(errors, { relationName: "saleErrors" }),
   paymentSchedule: many(paymentSchedule, { relationName: "salePayments" }),
   lineItems: many(lineItems, { relationName: "saleLineItems" }),
+  introducerCommissionEdits: many(introducerCommissionEdits, {
+    relationName: "saleIntroducerEdits",
+  }),
 }));
 
 // ============================================================================
@@ -398,6 +407,51 @@ export const errorsRelations = relations(errors, ({ one }) => ({
     relationName: "saleErrors",
   }),
 }));
+
+// ============================================================================
+// INTRODUCER COMMISSION EDITS (audit log)
+// ============================================================================
+// One row per edit to `sales.introducer_commission` made via the Save
+// Introducer handler. First-time captures (sale creation, adopt completion)
+// are NOT logged here — those land in `sales.introducer_commission_at_sale`.
+// Only mutations of an existing value produce an audit row.
+export const introducerCommissionEdits = pgTable(
+  "introducer_commission_edits",
+  {
+    // Underlying column is `text` (matches the Xata-managed convention used
+    // across `sales.id`, `errors.id`, etc. — see drizzle/0000_glorious_logan).
+    // The DB-level default `'rec_' || xata_private.xid()` populates the
+    // value; we mirror it here so Drizzle treats the column as auto-generated
+    // and lets inserts omit it.
+    id: text("id")
+      .primaryKey()
+      .default(sql`('rec_'::text || (xata_private.xid())::text)`),
+    saleId: text("sale_id")
+      .notNull()
+      .references(() => sales.id),
+    previousValue: doublePrecision("previous_value"),
+    newValue: doublePrecision("new_value"),
+    editedBy: text("edited_by").notNull(),
+    editedAt: timestamp("edited_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("introducer_commission_edits_sale_id_idx").on(table.saleId),
+    index("introducer_commission_edits_edited_at_idx").on(table.editedAt),
+  ]
+);
+
+export const introducerCommissionEditsRelations = relations(
+  introducerCommissionEdits,
+  ({ one }) => ({
+    sale: one(sales, {
+      fields: [introducerCommissionEdits.saleId],
+      references: [sales.id],
+      relationName: "saleIntroducerEdits",
+    }),
+  })
+);
 
 // ============================================================================
 // PAYMENT SCHEDULE
@@ -575,6 +629,11 @@ export type NewSale = typeof sales.$inferInsert;
 
 export type Error = typeof errors.$inferSelect;
 export type NewError = typeof errors.$inferInsert;
+
+export type IntroducerCommissionEdit =
+  typeof introducerCommissionEdits.$inferSelect;
+export type NewIntroducerCommissionEdit =
+  typeof introducerCommissionEdits.$inferInsert;
 
 export type PaymentScheduleRecord = typeof paymentSchedule.$inferSelect;
 export type NewPaymentScheduleRecord = typeof paymentSchedule.$inferInsert;

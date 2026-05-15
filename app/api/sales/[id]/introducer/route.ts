@@ -16,7 +16,7 @@ import * as logger from '@/lib/logger';
 
 // Drizzle imports
 import { db } from "@/db";
-import { sales, introducers } from "@/db/schema";
+import { sales, introducers, introducerCommissionEdits } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 // ORIGINAL XATA:
@@ -100,15 +100,50 @@ export async function PUT(
       updateData.introducerCommission = introducerCommission;
     }
 
-    // ORIGINAL XATA:
-    // const updatedSale = await xata.db.Sales.update(id, updateData);
+    // Transaction: read previous value, conditionally insert audit row,
+    // perform the update — atomically. Audit rows are only written when the
+    // £ fee actually moves, so no-op saves (introducer-only edits, identical
+    // value resubmits) don't pollute the log.
+    const updatedSale = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({
+          introducerCommission: sales.introducerCommission,
+        })
+        .from(sales)
+        .where(eq(sales.id, id))
+        .limit(1);
 
-    // DRIZZLE:
-    const [updatedSale] = await db
-      .update(sales)
-      .set(updateData)
-      .where(eq(sales.id, id))
-      .returning();
+      if (!existing) {
+        return null;
+      }
+
+      const previousValue = existing.introducerCommission ?? null;
+      const newValue =
+        introducerCommission === undefined
+          ? previousValue
+          : introducerCommission ?? null;
+
+      // Only log if the £ value moved. Null↔number transitions count as a
+      // change (first-time capture via this route, or clearing a value).
+      const valueChanged =
+        introducerCommission !== undefined && previousValue !== newValue;
+
+      if (valueChanged) {
+        await tx.insert(introducerCommissionEdits).values({
+          saleId: id,
+          previousValue,
+          newValue,
+          editedBy: userId,
+        });
+      }
+
+      const [row] = await tx
+        .update(sales)
+        .set(updateData)
+        .where(eq(sales.id, id))
+        .returning();
+      return row;
+    });
 
     if (!updatedSale) {
       return NextResponse.json(
