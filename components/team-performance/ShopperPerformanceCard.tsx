@@ -88,9 +88,6 @@ export function ShopperPerformanceCard({
   return (
     <div className="rounded-xl border border-club19-warmgrey bg-white p-5 shadow-subtle">
       <h3 className="font-serif text-lg text-club19-navy">{shopper.name}</h3>
-      <p className="text-xs uppercase tracking-wide text-club19-taupe">
-        {shopper.role}
-      </p>
 
       <dl className="mt-4 space-y-3">
         {rows.map((r) => (

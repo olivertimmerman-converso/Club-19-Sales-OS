@@ -11,12 +11,10 @@
  * exactly. If this becomes the 4th duplication, extract to a helper.
  */
 
-import { auth, clerkClient } from "@clerk/nextjs/server";
 import { db } from "@/db";
 import { sales, shoppers, buyers } from "@/db/schema";
 import { and, eq, gte, lte, isNull, inArray, sql, desc } from "drizzle-orm";
 import type { DateRange } from "@/lib/dateUtils";
-import type { StaffRole } from "@/lib/permissions";
 
 // ---------------------------------------------------------------------------
 // Shared SQL fragments
@@ -67,57 +65,40 @@ const dateInRange = (range: DateRange) =>
 export interface SellingShopper {
   id: string;
   name: string;
-  clerkUserId: string;
-  role: StaffRole;
+  clerkUserId: string | null;
 }
 
 /**
- * Active shoppers whose Clerk role is "shopper" OR "founder" — the people
- * who sell professionally. Resolved on every page load (small N, Clerk is
- * cheap, no caching needed). Order: by name, ascending.
+ * Active shoppers flagged as sellers (`shoppers.is_seller = true`).
  *
- * Inactive shoppers and admin/operations/superadmin sellers are excluded,
- * per Brief 3 ambiguity (A) resolution.
+ * Decoupled from Clerk role: Sophie holds `superadmin` for permission
+ * reasons but is a seller for the Team Performance view, so the role
+ * filter doesn't reach her. The `is_seller` flag is the single source
+ * of truth; to add or remove someone, flip the column.
+ *
+ * Ordered by name ascending so the card columns render in a stable
+ * order across renders.
  */
 export async function getSellingShoppers(): Promise<SellingShopper[]> {
-  // Ensure we have an authenticated context — Clerk's getUserList requires it.
-  await auth();
-
-  const activeShoppers = await db
+  const rows = await db
     .select({
       id: shoppers.id,
       name: shoppers.name,
       clerkUserId: shoppers.clerkUserId,
     })
     .from(shoppers)
-    .where(eq(shoppers.active, true));
+    .where(and(eq(shoppers.active, true), eq(shoppers.isSeller, true)))
+    .orderBy(shoppers.name);
 
-  const sellingRoles: StaffRole[] = ["shopper", "founder"];
-  const results: SellingShopper[] = [];
-
-  // Small N (<10 in practice) — per-user fetch is fine. Could switch to
-  // getUserList({ userId: [...] }) if this grows past ~20.
-  const client = await clerkClient();
-  for (const row of activeShoppers) {
-    if (!row.clerkUserId || !row.name) continue;
-    try {
-      const u = await client.users.getUser(row.clerkUserId);
-      const role = u.publicMetadata?.staffRole as StaffRole | undefined;
-      if (role && sellingRoles.includes(role)) {
-        results.push({
-          id: row.id,
-          name: row.name,
-          clerkUserId: row.clerkUserId,
-          role,
-        });
-      }
-    } catch {
-      // Clerk user missing/deleted — skip silently. Shopper row stays in DB
-      // but won't appear in the team view until the Clerk side is fixed.
-    }
-  }
-
-  return results.sort((a, b) => a.name.localeCompare(b.name));
+  return rows
+    .filter((r): r is { id: string; name: string; clerkUserId: string | null } =>
+      r.name != null
+    )
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      clerkUserId: r.clerkUserId,
+    }));
 }
 
 // ---------------------------------------------------------------------------

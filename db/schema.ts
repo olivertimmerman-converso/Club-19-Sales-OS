@@ -36,6 +36,11 @@ export const shoppers = pgTable(
     clerkUserId: text("clerk_user_id"),
     commissionScheme: text("commission_scheme"),
     active: boolean("active").default(true),
+    // True when this shopper sells professionally (drives the Team
+    // Performance per-shopper cards). Decoupled from Clerk role so people
+    // who need elevated permissions — Sophie holds superadmin — can still
+    // be flagged as sellers without affecting their auth.
+    isSeller: boolean("is_seller").notNull().default(false),
     createdAt: timestamp("xata.createdAt", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("xata.updatedAt", { withTimezone: true }).defaultNow(),
     xataVersion: integer("xata.version"),
