@@ -26,8 +26,16 @@ const formatCurrency = (n: number) =>
 function describeDelta(
   current: number,
   previous: number | null | undefined,
-  format: DeltaFormat
-): { sign: "up" | "down" | "flat" | "new"; label: string } {
+  format: DeltaFormat,
+  noPriorData: boolean
+): { sign: "up" | "down" | "flat" | "new" | "no-prior"; label: string } {
+  // "no prior data" — the prior period predates the data we have. Distinct
+  // from "new" (entity exists, prior was genuinely zero) so the UI doesn't
+  // mislabel structural absence as a fresh-arrival signal.
+  if (noPriorData) {
+    return { sign: "no-prior", label: "no prior data" };
+  }
+
   if (previous == null || previous === 0) {
     if (current === 0) return { sign: "flat", label: "no change" };
     return { sign: "new", label: "new" };
@@ -69,11 +77,18 @@ interface DeltaPillProps {
   previous: number | null | undefined;
   format?: DeltaFormat;
   className?: string;
+  /**
+   * Set true when the prior period predates the data we have (e.g. YTD /
+   * Last 12 in a tenant whose data only goes back a few months). The pill
+   * renders "no prior data" instead of "new" so the absence reads as
+   * structural rather than a fresh-shopper signal.
+   */
+  noPriorData?: boolean;
 }
 
 /**
  * Inline delta indicator: arrow + tinted text, green when current > previous,
- * red when current < previous, neutral grey on flat/no-prior data.
+ * red when current < previous, neutral grey on flat / "new" / no-prior data.
  *
  * Tiny by design — meant to sit next to a hero number, not below it.
  */
@@ -82,8 +97,9 @@ export function DeltaPill({
   previous,
   format = "currency",
   className = "",
+  noPriorData = false,
 }: DeltaPillProps) {
-  const { sign, label } = describeDelta(current, previous, format);
+  const { sign, label } = describeDelta(current, previous, format, noPriorData);
 
   const tone =
     sign === "up"

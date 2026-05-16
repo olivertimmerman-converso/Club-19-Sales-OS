@@ -14,6 +14,7 @@ interface Props {
   current: HeadlineTotals;
   previous: HeadlineTotals;
   periodLabel: string;
+  noPriorData: boolean;
 }
 
 const fmtCurrency = (n: number) =>
@@ -23,7 +24,7 @@ const fmtCount = (n: number) => n.toLocaleString("en-GB");
 
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
-export function HeadlineTiles({ current, previous, periodLabel }: Props) {
+export function HeadlineTiles({ current, previous, periodLabel, noPriorData }: Props) {
   const tiles = [
     {
       label: "Total revenue",
@@ -33,6 +34,7 @@ export function HeadlineTiles({ current, previous, periodLabel }: Props) {
           current={current.revenue}
           previous={previous.revenue}
           format="currency"
+          noPriorData={noPriorData}
         />
       ),
     },
@@ -44,6 +46,7 @@ export function HeadlineTiles({ current, previous, periodLabel }: Props) {
           current={current.margin}
           previous={previous.margin}
           format="currency"
+          noPriorData={noPriorData}
         />
       ),
     },
@@ -55,6 +58,7 @@ export function HeadlineTiles({ current, previous, periodLabel }: Props) {
           current={current.salesCount}
           previous={previous.salesCount}
           format="integer"
+          noPriorData={noPriorData}
         />
       ),
     },
@@ -66,10 +70,17 @@ export function HeadlineTiles({ current, previous, periodLabel }: Props) {
           current={current.avgMarginPct}
           previous={previous.avgMarginPct}
           format="percentPoints"
+          noPriorData={noPriorData}
         />
       ),
     },
   ];
+
+  // When prior is N/A, the "vs ... prior" trailing text would read oddly
+  // alongside "no prior data" — drop it for this case.
+  const trailingText = noPriorData
+    ? null
+    : `vs ${periodLabel.toLowerCase()} prior`;
 
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -86,7 +97,9 @@ export function HeadlineTiles({ current, previous, periodLabel }: Props) {
           </p>
           <div className="mt-2 flex items-center gap-2">
             {t.delta}
-            <span className="text-xs text-club19-taupe">vs {periodLabel.toLowerCase()} prior</span>
+            {trailingText && (
+              <span className="text-xs text-club19-taupe">{trailingText}</span>
+            )}
           </div>
         </div>
       ))}

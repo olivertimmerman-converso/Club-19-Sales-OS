@@ -60,7 +60,7 @@ export function CategoryBreakdownChart({ data }: CategoryBreakdownChartProps) {
           <YAxis
             stroke="#6b7280"
             style={{ fontSize: "12px" }}
-            tickFormatter={(value) => formatCurrency(value)}
+            tickFormatter={(value: number) => formatCurrency(value)}
           />
           <Tooltip
             contentStyle={{

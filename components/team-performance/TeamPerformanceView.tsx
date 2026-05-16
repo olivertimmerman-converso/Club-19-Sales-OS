@@ -28,6 +28,8 @@ interface Props {
   periodLabel: string;
   customStart: string | null;
   customEnd: string | null;
+  /** True when the prior period predates the earliest real-sale data. */
+  noPriorData: boolean;
   sellingShoppers: SellingShopper[];
   headlineCurrent: HeadlineTotals;
   headlinePrevious: HeadlineTotals;
@@ -44,6 +46,7 @@ export function TeamPerformanceView({
   periodLabel,
   customStart,
   customEnd,
+  noPriorData,
   sellingShoppers,
   headlineCurrent,
   headlinePrevious,
@@ -95,6 +98,7 @@ export function TeamPerformanceView({
           current={headlineCurrent}
           previous={headlinePrevious}
           periodLabel={periodLabel}
+          noPriorData={noPriorData}
         />
       </section>
 
@@ -149,6 +153,7 @@ export function TeamPerformanceView({
                   }
                 }
                 pending={pendingBy.get(s.id)}
+                noPriorData={noPriorData}
               />
             ))}
           </div>

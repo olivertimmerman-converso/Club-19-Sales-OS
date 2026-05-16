@@ -53,7 +53,7 @@ export function SupplierContributionChart({ data }: SupplierContributionChartPro
             type="number"
             stroke="#6b7280"
             style={{ fontSize: "12px" }}
-            tickFormatter={(value) => formatCurrency(value)}
+            tickFormatter={(value: number) => formatCurrency(value)}
           />
           <YAxis
             type="category"

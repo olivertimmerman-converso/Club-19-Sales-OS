@@ -15,6 +15,7 @@ interface Props {
   current: ShopperHeadline;
   previous: ShopperHeadline;
   pending: PendingCompletionRow | undefined;
+  noPriorData: boolean;
 }
 
 const fmtCurrency = (n: number) =>
@@ -26,6 +27,7 @@ export function ShopperPerformanceCard({
   current,
   previous,
   pending,
+  noPriorData,
 }: Props) {
   const rows: { label: string; value: string; delta: React.ReactNode }[] = [
     {
@@ -36,6 +38,7 @@ export function ShopperPerformanceCard({
           current={current.revenue}
           previous={previous.revenue}
           format="currency"
+          noPriorData={noPriorData}
         />
       ),
     },
@@ -47,6 +50,7 @@ export function ShopperPerformanceCard({
           current={current.margin}
           previous={previous.margin}
           format="currency"
+          noPriorData={noPriorData}
         />
       ),
     },
@@ -58,6 +62,7 @@ export function ShopperPerformanceCard({
           current={current.marginPct}
           previous={previous.marginPct}
           format="percentPoints"
+          noPriorData={noPriorData}
         />
       ),
     },
@@ -69,6 +74,7 @@ export function ShopperPerformanceCard({
           current={current.salesCount}
           previous={previous.salesCount}
           format="integer"
+          noPriorData={noPriorData}
         />
       ),
     },
@@ -80,6 +86,7 @@ export function ShopperPerformanceCard({
           current={current.avgSaleValue}
           previous={previous.avgSaleValue}
           format="currency"
+          noPriorData={noPriorData}
         />
       ),
     },

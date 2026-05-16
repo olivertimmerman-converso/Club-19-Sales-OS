@@ -50,6 +50,15 @@ export default async function TeamPerformancePage({ searchParams }: PageProps) {
     params.end
   );
 
+  // Earliest "real sale" in the DB is Dec 2025 but all pre-2026 rows are
+  // either xero_import or CREDITED/DELETED — both excluded by the canonical
+  // real-sale filter. Effective floor for headline numbers is Jan 1 2026.
+  // When the prior window ends before this floor, the prior query returns
+  // genuinely zero rows and DeltaPill should say "no prior data" instead
+  // of "new" (which would falsely imply a fresh-shopper signal).
+  const DATA_FLOOR = new Date(2026, 0, 1, 0, 0, 0, 0);
+  const noPriorData = previous.end < DATA_FLOOR;
+
   // Trend chart range: Jan 2026 → end of current month, fixed regardless
   // of the page's period filter (it's a trend view, not a period view).
   const now = new Date();
@@ -91,6 +100,7 @@ export default async function TeamPerformancePage({ searchParams }: PageProps) {
       periodLabel={label}
       customStart={params.start ?? null}
       customEnd={params.end ?? null}
+      noPriorData={noPriorData}
       sellingShoppers={sellingShoppers}
       headlineCurrent={headlineCurrent}
       headlinePrevious={headlinePrevious}

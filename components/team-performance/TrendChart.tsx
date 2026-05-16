@@ -218,7 +218,7 @@ export function TrendChart({
             />
             <Legend
               wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-              formatter={(value) =>
+              formatter={(value: string) =>
                 sellingShoppers.find((s) => s.id === value)?.name ?? value
               }
             />
