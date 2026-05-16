@@ -2,6 +2,8 @@
  * Debug Role Page - Shows current user's Clerk metadata
  */
 
+export const dynamic = "force-dynamic";
+
 import { auth, clerkClient } from "@clerk/nextjs/server";
 
 export default async function DebugRolePage() {

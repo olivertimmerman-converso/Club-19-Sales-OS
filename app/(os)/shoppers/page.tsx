@@ -5,6 +5,8 @@
  * Accessible to: superadmin, founder, operations
  */
 
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Users, Plus } from "lucide-react";

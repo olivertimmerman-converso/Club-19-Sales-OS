@@ -58,6 +58,8 @@ export function StepPricing() {
     if (Object.keys(initialPrices).length > 0) {
       setLocalPrices(prev => ({ ...prev, ...initialPrices }));
     }
+    // intentional — effect mutates localPrices via setLocalPrices; including it would cause infinite re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.items]);
 
   // Handle price change for an item

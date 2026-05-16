@@ -16,6 +16,11 @@ export default defineConfig({
   // Explicit table allowlist — prevents drizzle-kit from touching Neon's
   // system views (e.g. pg_stat_statements_info) or any other objects in the
   // public schema we don't manage. Without this, push tries to drop them.
+  //
+  // MAINTENANCE CONTRACT: when you add a new pgTable() to db/schema.ts,
+  // you MUST add the underlying table name here too. drizzle-kit silently
+  // skips tables not in this allowlist — it won't error, your migration
+  // just won't include them.
   tablesFilter: [
     "shoppers",
     "buyers",

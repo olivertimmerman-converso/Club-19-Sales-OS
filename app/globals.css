@@ -60,10 +60,6 @@
   }
 
   /* Card styles */
-  .card {
-    @apply bg-white border border-club19-warmgrey rounded-xl shadow-subtle transition-all duration-150;
-  }
-
   .card-hover {
     @apply transition-all duration-150 hover:shadow-md;
   }

@@ -184,18 +184,6 @@ export function hasIncompleteRequiredFields(sale: SaleForCompleteness): boolean 
 }
 
 /**
- * Get only the required missing fields for a sale.
- *
- * @param sale - Sale record with fields to check
- * @returns Array of missing required field labels
- */
-export function getMissingRequiredFields(sale: SaleForCompleteness): string[] {
-  return FIELD_CHECKS.filter(
-    (check) => check.priority === "required" && check.isMissing(sale[check.field])
-  ).map((check) => check.label);
-}
-
-/**
  * Get completion bar color based on percentage.
  *
  * @param percentage - Completion percentage (0-100)
@@ -205,16 +193,4 @@ export function getCompletionColor(percentage: number): string {
   if (percentage <= 40) return "bg-red-500";
   if (percentage <= 70) return "bg-amber-500";
   return "bg-green-500";
-}
-
-/**
- * Get completion text color based on percentage.
- *
- * @param percentage - Completion percentage (0-100)
- * @returns Tailwind text color class
- */
-export function getCompletionTextColor(percentage: number): string {
-  if (percentage <= 40) return "text-red-600";
-  if (percentage <= 70) return "text-amber-600";
-  return "text-green-600";
 }

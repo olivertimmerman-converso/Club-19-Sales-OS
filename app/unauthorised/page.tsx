@@ -4,6 +4,8 @@
  * Shown when user attempts to access a route they don't have permission for
  */
 
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
 import { getUserRole } from "@/lib/getUserRole";

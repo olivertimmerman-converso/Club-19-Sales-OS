@@ -4,6 +4,8 @@
  * Redirects to appropriate dashboard based on user role
  */
 
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { getUserRole } from "@/lib/getUserRole";
 import { getHomepage } from "@/lib/rbac";

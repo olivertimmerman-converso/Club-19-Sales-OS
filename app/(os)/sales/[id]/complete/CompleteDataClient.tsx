@@ -203,10 +203,19 @@ export function CompleteDataClient({
     return supplierList.filter((s) => s.name.toLowerCase().includes(search));
   }, [supplierList, supplierSearch]);
 
-  // Check which fields are missing (to show/hide form sections)
+  // Check which fields are missing (to show/hide form sections).
+  // requiredMissing is memoised so its identity is stable across renders —
+  // otherwise the useMemo at `isValid` below sees a new Set every render and
+  // re-runs unnecessarily.
   const missingFields = new Set(completeness.missingFields.map((f) => f.field));
-  const requiredMissing = new Set(
-    completeness.missingFields.filter((f) => f.priority === "required").map((f) => f.field)
+  const requiredMissing = useMemo(
+    () =>
+      new Set(
+        completeness.missingFields
+          .filter((f) => f.priority === "required")
+          .map((f) => f.field)
+      ),
+    [completeness.missingFields]
   );
 
   // Handle brand "Other" option

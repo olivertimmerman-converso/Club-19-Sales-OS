@@ -14,27 +14,6 @@ import {
 } from "./permissions";
 import * as logger from "./logger";
 
-/**
- * Check if a role can access a specific route
- *
- * @param pathname - The route path to check
- * @param role - User's staff role
- * @returns true if access granted, false otherwise
- */
-export function canAccessRoute_Deprecated(pathname: string, role: StaffRole): boolean {
-  logger.info("AUTH", "Checking access", { pathname, role });
-
-  const hasAccess = canAccessRoute(role, pathname);
-
-  if (hasAccess) {
-    logger.info("AUTH", "Access GRANTED", { role, pathname });
-  } else {
-    logger.info("AUTH", "Access DENIED", { role, pathname });
-  }
-
-  return hasAccess;
-}
-
 // Re-export the main function with the expected name for backward compatibility
 export { canAccessRoute };
 
