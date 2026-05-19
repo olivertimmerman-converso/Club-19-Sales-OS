@@ -29,6 +29,11 @@ const ALL_SIDEBAR_ITEMS: SidebarItem[] = [
     icon: "TrendingUp",
   },
   {
+    label: "Introducers",
+    href: "/introducers",
+    icon: "Handshake",
+  },
+  {
     label: "New Sale",
     href: "/trade/new",
     icon: "PlusCircle",

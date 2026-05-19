@@ -35,6 +35,7 @@ import {
   HeartPulse,
   Trash2,
   TrendingUp,
+  Handshake,
   MoreHorizontal,
 } from "lucide-react";
 
@@ -53,6 +54,7 @@ const iconMap: Record<string, React.ElementType> = {
   HeartPulse,
   Trash2,
   TrendingUp,
+  Handshake,
 };
 
 interface TabConfig {

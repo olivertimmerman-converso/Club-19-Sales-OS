@@ -98,6 +98,10 @@ export const ROUTE_PERMISSIONS: Record<string, {
     allowedRoles: ["superadmin", "admin", "founder", "operations"],
     description: "Cross-shopper performance trends and comparison",
   },
+  "/introducers": {
+    allowedRoles: ["superadmin", "admin", "founder", "operations"],
+    description: "Introducer channel performance: who drives what business, what we pay, and channel profitability vs direct sales",
+  },
 
   // ============================================================================
   // STAFF PORTAL ROUTES (app/staff/*)

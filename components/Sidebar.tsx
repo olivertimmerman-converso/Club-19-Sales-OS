@@ -29,6 +29,7 @@ import {
   Hourglass,
   Trash2,
   TrendingUp,
+  Handshake,
 } from "lucide-react";
 
 /**
@@ -70,6 +71,7 @@ const iconMap = {
   Hourglass,
   Trash2,
   TrendingUp,
+  Handshake,
 };
 
 interface SidebarProps {
