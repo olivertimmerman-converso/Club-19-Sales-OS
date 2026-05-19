@@ -100,13 +100,15 @@ export async function PUT(
       updateData.introducerCommission = introducerCommission;
     }
 
-    // Transaction: read previous value, conditionally insert audit row,
-    // perform the update — atomically. Audit rows are only written when the
-    // £ fee actually moves, so no-op saves (introducer-only edits, identical
-    // value resubmits) don't pollute the log.
+    // Transaction: read previous values, conditionally insert audit rows,
+    // perform the update — atomically. Audit rows are written separately
+    // for fee changes and FK link changes so the timeline on the sale
+    // detail page stays readable. Two no-op cases never log: identical
+    // fee resubmits, and dropdown saves that don't move the FK.
     const updatedSale = await db.transaction(async (tx) => {
       const [existing] = await tx
         .select({
+          introducerId: sales.introducerId,
           introducerCommission: sales.introducerCommission,
         })
         .from(sales)
@@ -123,17 +125,34 @@ export async function PUT(
           ? previousValue
           : introducerCommission ?? null;
 
-      // Only log if the £ value moved. Null↔number transitions count as a
-      // change (first-time capture via this route, or clearing a value).
-      const valueChanged =
+      const feeChanged =
         introducerCommission !== undefined && previousValue !== newValue;
-
-      if (valueChanged) {
+      if (feeChanged) {
         await tx.insert(introducerCommissionEdits).values({
           saleId: id,
           previousValue,
           newValue,
           editedBy: userId,
+          eventType: "fee_change",
+        });
+      }
+
+      // Link audit: 'manual_link' when an operator attaches/swaps a curated
+      // record, 'unlink' when the FK is cleared. previous/new values stay
+      // null for these rows — the fee is logged separately if it also moves.
+      const previousIntroducerId = existing.introducerId ?? null;
+      const requestedIntroducerId =
+        introducerId === undefined ? previousIntroducerId : introducerId || null;
+      const linkChanged =
+        introducerId !== undefined && previousIntroducerId !== requestedIntroducerId;
+      if (linkChanged) {
+        await tx.insert(introducerCommissionEdits).values({
+          saleId: id,
+          previousValue: null,
+          newValue: null,
+          editedBy: userId,
+          eventType: requestedIntroducerId ? "manual_link" : "unlink",
+          linkedIntroducerId: requestedIntroducerId,
         });
       }
 

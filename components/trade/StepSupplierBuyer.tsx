@@ -66,9 +66,10 @@ export function StepSupplierBuyer() {
   // Curated introducer log (from /api/introducers). Loaded lazily the first
   // time the introducer toggle is switched on. Used to populate a search-and-
   // pick combobox so shoppers reuse existing names instead of creating dupes
-  // via typos. The wizard still passes the typed name through on submit; the
-  // backend's getOrCreateIntroducer upserts so a brand-new name attaches a
-  // real FK to the sale row.
+  // via typos. The wizard passes the typed name through on submit; the
+  // backend's tryLinkIntroducer attaches a curated FK iff there's an exact
+  // (case-insensitive trimmed) match. Brand-new names land as orphans on
+  // the sale detail page for manual resolution (no auto-create).
   const [knownIntroducers, setKnownIntroducers] = useState<
     Array<{ id: string; name: string }>
   >([]);

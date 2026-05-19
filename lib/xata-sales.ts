@@ -17,6 +17,7 @@ import {
   buyers,
   suppliers,
   introducers,
+  introducerCommissionEdits,
   commissionBands,
   sales,
   errors,
@@ -30,6 +31,7 @@ import {
   type LineItem,
 } from "@/db/schema";
 import { eq, and, lte, desc, asc, sql } from "drizzle-orm";
+import { tryLinkIntroducer } from "@/lib/introducers/autoLink";
 
 // ============================================================================
 // LEGACY XATA IMPORTS (Preserved for reference - DO NOT USE)
@@ -309,6 +311,15 @@ export async function getOrCreateSupplier(
 // UPSTREAM TABLE HELPERS - INTRODUCERS
 // ============================================================================
 
+/**
+ * @deprecated Phase B (May 2026): the wizard save path now uses the pure
+ * `tryLinkIntroducer` lookup in `lib/introducers/autoLink.ts` and never
+ * auto-creates curated rows. This upsert helper is retained only for
+ * scripted backfills or admin tooling that must legitimately materialise
+ * a curated record (e.g. data import). New callers should use the
+ * sale-detail "Create curated record" path, which goes through the
+ * `/api/introducers` POST endpoint instead.
+ */
 export async function getOrCreateIntroducer(
   name: string,
   commission_percent?: number
@@ -554,13 +565,27 @@ export async function createSaleFromAppPayload(
   );
   logger.info("XATA", "Supplier resolved", { name: supplier.name, id: supplier.id });
 
+  // Phase B (May 2026): auto-link the wizard's free-text introducer name to a
+  // curated `introducers` row by case-insensitive trimmed exact match. Pure
+  // lookup — no auto-create. If 0 or 2+ matches, the FK stays null and the
+  // sale lights up the orphan-state UI on the detail page where an operator
+  // resolves manually (creating a curated record or selecting an existing
+  // one). Replaces the prior getOrCreateIntroducer call which silently
+  // inserted curated rows on every new typed name.
   let introducer: Introducer | null = null;
   if (sanitizedPayload.introducerName) {
-    introducer = await getOrCreateIntroducer(
-      sanitizedPayload.introducerName,
-      sanitizedPayload.introducerCommission
-    );
-    logger.info("XATA", "Introducer resolved", { name: introducer.name, id: introducer.id });
+    introducer = await tryLinkIntroducer(sanitizedPayload.introducerName);
+    if (introducer) {
+      logger.info("XATA", "Introducer auto-linked", {
+        typed: sanitizedPayload.introducerName,
+        resolvedName: introducer.name,
+        introducerId: introducer.id,
+      });
+    } else {
+      logger.info("XATA", "Introducer not auto-linked (no exact match)", {
+        typed: sanitizedPayload.introducerName,
+      });
+    }
   }
 
   // VALIDATION) RUN VALIDATION CHECKS
@@ -716,10 +741,10 @@ export async function createSaleFromAppPayload(
 
       // ----------------------------------------------------------------
       // Phase 2 wizard fields (free-text introducer name, new client flag,
-      // entrupy fee). Persisted directly to sales row, no FK lookups.
-      // The legacy `introducerId` FK is left null when the wizard sets a
-      // free-text name; future management edits via /api/sales/[id]/introducer
-      // can attach a curated introducer record if needed.
+      // entrupy fee). The free-text name is always recorded; `introducerId`
+      // is set above via tryLinkIntroducer when an exact match against the
+      // curated `introducers` table exists, otherwise it stays null and the
+      // sale detail page surfaces an orphan-state UI for manual resolution.
       // ----------------------------------------------------------------
       introducerName: sanitizedPayload.introducerNameFreeText || null,
       hasIntroducer: sanitizedPayload.hasIntroducer || false,
@@ -739,6 +764,35 @@ export async function createSaleFromAppPayload(
     .returning();
 
   logger.info("XATA", "Sale created", { saleId: sale.id });
+
+  // Phase B (May 2026): persist the auto-link decision to the audit log.
+  // One row per linked sale, event_type='auto_link', linked_introducer_id
+  // set to the resolved curated record. previous/new value left null —
+  // those columns belong to the fee-change branch of this table. Failures
+  // are caught locally so the sale create call never fails because of an
+  // audit-row write (the sale itself is the source of truth).
+  if (introducer) {
+    try {
+      await db.insert(introducerCommissionEdits).values({
+        saleId: sale.id,
+        previousValue: null,
+        newValue: null,
+        editedBy: "system:wizard-autolink",
+        eventType: "auto_link",
+        linkedIntroducerId: introducer.id,
+      });
+      logger.info("XATA", "Auto-link audit row written", {
+        saleId: sale.id,
+        introducerId: introducer.id,
+      });
+    } catch (auditErr) {
+      logger.error("XATA", "Failed to write auto-link audit row (non-fatal)", {
+        saleId: sale.id,
+        introducerId: introducer.id,
+        error: auditErr as any,
+      });
+    }
+  }
 
   // E) ECONOMICS SANITY WARNINGS (Story 5)
   // Check for suspicious margin patterns based on buyer type

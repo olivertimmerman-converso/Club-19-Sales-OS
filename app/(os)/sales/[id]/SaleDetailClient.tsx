@@ -344,6 +344,15 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
   const [isSavingIntroducer, setIsSavingIntroducer] = useState(false);
   const [introducerSaveError, setIntroducerSaveError] = useState<string | null>(null);
   const [introducerSaveSuccess, setIntroducerSaveSuccess] = useState(false);
+  // Phase B (May 2026): the introducer card branches into three rendered
+  // states — linked (FK attached), orphan (free-text name only), and absent.
+  // `linkMode` controls which sub-UI is visible inside each non-absent state:
+  //   'view'   — collapsed summary (linked badge OR orphan CTAs)
+  //   'select' — existing-introducer dropdown
+  //   'create' — quick-create input pre-filled with the wizard's typed name
+  // The commission editor is always visible so £-edits work in any state
+  // independently of FK changes.
+  const [linkMode, setLinkMode] = useState<'view' | 'select' | 'create'>('view');
 
   // Payment plan state
   const [instalments, setInstalments] = useState<PaymentInstalment[]>([]);
@@ -927,6 +936,9 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
       }
 
       setIntroducerSaveSuccess(true);
+      // Collapse back into the summary state — the linked badge or orphan
+      // panel will redraw from the refreshed sale data below.
+      setLinkMode('view');
 
       // Refresh the page data after a short delay to show success message
       setTimeout(() => {
@@ -2238,92 +2250,142 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
           )}
         </div>
 
-        {/* Introducer Management Card - Only show if has_introducer is true OR introducer exists */}
-        {(sale.has_introducer || sale.introducer || sale.introducer_name) && (
+        {/* Introducer Management Card - Only show if has_introducer is true OR introducer exists.
+            Phase B (May 2026) — three rendered states:
+              - Linked (FK attached): green badge + Change affordance, dropdown hidden
+              - Orphan (free-text name only): purple panel + Create/Select CTAs
+              - Absent: card is hidden entirely (outer guard).
+            The commission editor is always visible so the £-edit audit trail
+            from the Save Introducer handler remains accessible in every state. */}
+        {(sale.has_introducer || sale.introducer || sale.introducer_name) && (() => {
+          const isLinked = !!sale.introducer;
+          const isOrphan = !isLinked && !!sale.introducer_name;
+          // Provenance reused by both linked and orphan headers — keeps the
+          // "originally £X · now £Y (edited by Z)" affordance from Brief 2.
+          const atSale = sale.introducer_commission_at_sale;
+          const current = sale.introducer_commission;
+          const lastEdit = sale.introducer_commission_last_edit;
+          const hasSnapshot = atSale != null;
+          const valuesDiffer = hasSnapshot && current != null && atSale !== current;
+          const editorName =
+            lastEdit?.edited_by_display_name || lastEdit?.edited_by || "—";
+          const editedDate = lastEdit
+            ? new Date(lastEdit.edited_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })
+            : null;
+          const provenanceBlock = valuesDiffer ? (
+            <div className="mt-2 space-y-1 text-sm">
+              <p>
+                <span className="opacity-70">Originally</span>{" "}
+                <span className="font-medium">£{(atSale as number).toFixed(2)}</span>{" "}
+                <span className="opacity-70">(shopper at sale)</span>
+              </p>
+              <p>
+                <span className="opacity-70">Now</span>{" "}
+                <span className="font-medium">£{(current as number).toFixed(2)}</span>{" "}
+                {lastEdit && (
+                  <span className="opacity-70">
+                    (edited by {editorName}
+                    {editedDate ? `, ${editedDate}` : ""})
+                  </span>
+                )}
+              </p>
+            </div>
+          ) : null;
+
+          return (
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 lg:col-span-2">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Introducer</h2>
 
-            {/* Phase 2: Free-text introducer name from wizard. Read-only label
-                shown above the FK dropdown when the wizard set a name but no
-                introducers-table row was attached. Management can still attach
-                a curated row via the dropdown if they want.
-
-                Brief 2 (May 2026): rendering branches on provenance.
-                  - `_at_sale == null`: panel just labels the current value
-                    (legacy rows or rows that never got a snapshot)
-                  - `_at_sale == current`: collapsed "set by shopper at sale"
-                  - `_at_sale != current`: show both the original and the
-                    edit, with editor + timestamp from the audit log. */}
-            {sale.introducer_name && !sale.introducer && (() => {
-              const atSale = sale.introducer_commission_at_sale;
-              const current = sale.introducer_commission;
-              const lastEdit = sale.introducer_commission_last_edit;
-              const hasSnapshot = atSale != null;
-              const valuesDiffer =
-                hasSnapshot && current != null && atSale !== current;
-              const editorName =
-                lastEdit?.edited_by_display_name ||
-                lastEdit?.edited_by ||
-                "—";
-              const editedDate = lastEdit
-                ? new Date(lastEdit.edited_at).toLocaleDateString("en-GB", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })
-                : null;
-
-              return (
-                <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-3">
-                  <div className="flex items-start gap-2">
-                    <div className="w-full">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">
-                        Set by shopper at sale
-                      </p>
-                      <p className="text-sm font-medium text-purple-900 mt-0.5">
-                        {sale.introducer_name}
-                        {!valuesDiffer && current != null && (
-                          <span className="text-purple-700">
-                            {" "}
-                            · £{current.toFixed(2)} fee
-                          </span>
-                        )}
-                      </p>
-
-                      {valuesDiffer && (
-                        <div className="mt-2 space-y-1 text-sm">
-                          <p className="text-purple-900">
-                            <span className="text-purple-700">Originally</span>{" "}
-                            <span className="font-medium">
-                              £{(atSale as number).toFixed(2)}
-                            </span>{" "}
-                            <span className="text-purple-700">
-                              (shopper at sale)
-                            </span>
-                          </p>
-                          <p className="text-purple-900">
-                            <span className="text-purple-700">Now</span>{" "}
-                            <span className="font-medium">
-                              £{(current as number).toFixed(2)}
-                            </span>{" "}
-                            {lastEdit && (
-                              <span className="text-purple-700">
-                                (edited by {editorName}
-                                {editedDate ? `, ${editedDate}` : ""})
-                              </span>
-                            )}
-                          </p>
-                        </div>
+            {/* State A: Linked — green "set by shopper at sale · Linked to … ✓" badge
+                with an inline Change affordance that reveals the dropdown. */}
+            {isLinked && (
+              <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="text-green-900">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-green-700">
+                      Set by shopper at sale
+                    </p>
+                    <p className="text-sm font-medium mt-0.5">
+                      Linked to {sale.introducer?.name}{" "}
+                      <span aria-hidden className="text-green-600">✓</span>
+                      {!valuesDiffer && current != null && (
+                        <span className="text-green-700"> · £{current.toFixed(2)} fee</span>
                       )}
-
-                      <p className="text-xs text-purple-600 mt-1">
-                        Optionally attach a curated introducer record below.
-                      </p>
-                    </div>
+                    </p>
+                    {provenanceBlock}
                   </div>
+                  {linkMode === 'view' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkMode('select');
+                        setSelectedIntroducerId(sale.introducer?.id || '');
+                        setShowAddNew(false);
+                        setIntroducerSaveError(null);
+                        setIntroducerSaveSuccess(false);
+                      }}
+                      className="shrink-0 text-xs font-medium text-green-800 hover:text-green-900 underline underline-offset-2"
+                    >
+                      Change
+                    </button>
+                  )}
                 </div>
-              );
-            })()}
+              </div>
+            )}
+
+            {/* State B: Orphan — purple panel explains no match, with two CTAs to
+                resolve (create curated record, or select existing one). */}
+            {isOrphan && (
+              <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-purple-700">
+                  Set by shopper at sale
+                </p>
+                <p className="text-sm font-medium text-purple-900 mt-0.5">
+                  No curated introducer matches &ldquo;{sale.introducer_name}&rdquo;
+                  {!valuesDiffer && current != null && (
+                    <span className="text-purple-700"> · £{current.toFixed(2)} fee</span>
+                  )}
+                </p>
+                {provenanceBlock && (
+                  <div className="text-purple-900">{provenanceBlock}</div>
+                )}
+                {linkMode === 'view' && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkMode('create');
+                        setShowAddNew(true);
+                        setNewIntroducerName(sale.introducer_name || '');
+                        setSelectedIntroducerId('');
+                        setIntroducerSaveError(null);
+                        setIntroducerSaveSuccess(false);
+                      }}
+                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition-colors"
+                    >
+                      Create curated record
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkMode('select');
+                        setShowAddNew(false);
+                        setSelectedIntroducerId('');
+                        setIntroducerSaveError(null);
+                        setIntroducerSaveSuccess(false);
+                      }}
+                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md border border-purple-300 text-purple-800 hover:bg-purple-100 transition-colors"
+                    >
+                      Select existing introducer
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Success/Error Messages */}
             {introducerSaveSuccess && (
@@ -2338,43 +2400,66 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
             )}
 
             <div className="space-y-4">
-              {/* Introducer Dropdown */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Introducer
-                </label>
-                <select
-                  value={showAddNew ? 'add_new' : selectedIntroducerId}
-                  onChange={(e) => {
-                    if (e.target.value === 'add_new') {
-                      setShowAddNew(true);
-                      setSelectedIntroducerId('');
-                    } else {
-                      setShowAddNew(false);
+              {/* Dropdown — visible whenever the user has chosen 'select' mode
+                  (Change in linked state, or "Select existing introducer" in
+                  orphan state). Otherwise hidden so the linked state stays
+                  collapsed and the orphan state surfaces the two CTAs first. */}
+              {linkMode === 'select' && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Select Introducer
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkMode('view');
+                        setSelectedIntroducerId(sale.introducer?.id || '');
+                        setShowAddNew(false);
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <select
+                    value={selectedIntroducerId}
+                    onChange={(e) => {
                       setSelectedIntroducerId(e.target.value);
                       setIntroducerSaveError(null);
                       setIntroducerSaveSuccess(false);
-                    }
-                  }}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
-                  disabled={isSavingIntroducer || isLoadingIntroducers}
-                >
-                  <option value="">— Select Introducer —</option>
-                  {introducers.map((introducer) => (
-                    <option key={introducer.id} value={introducer.id}>
-                      {introducer.name}
-                    </option>
-                  ))}
-                  <option value="add_new">+ Add New Introducer</option>
-                </select>
-              </div>
+                    }}
+                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                    disabled={isSavingIntroducer || isLoadingIntroducers}
+                  >
+                    <option value="">— Select Introducer —</option>
+                    {introducers.map((introducer) => (
+                      <option key={introducer.id} value={introducer.id}>
+                        {introducer.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              {/* Add New Introducer Input */}
-              {showAddNew && (
+              {linkMode === 'create' && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    New Introducer Name
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      New Introducer Name
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkMode('view');
+                        setShowAddNew(false);
+                        setNewIntroducerName('');
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                   <input
                     type="text"
                     value={newIntroducerName}
@@ -2383,10 +2468,14 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
                     disabled={isSavingIntroducer}
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Pre-filled with the name typed in the wizard. Edit before saving if needed.
+                  </p>
                 </div>
               )}
 
-              {/* Commission Amount */}
+              {/* Commission Amount — always editable so £ edits work
+                  independently of FK link changes. */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Commission Amount (£)
@@ -2405,11 +2494,22 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
                 />
               </div>
 
-              {/* Save Button */}
+              {/* Save Button — enabled when the user has either chosen an
+                  existing introducer, typed a new one, or edited the £ fee.
+                  In view mode (linked state, no change), disabled unless the
+                  £ fee has been modified since load. */}
               <div>
                 <button
                   onClick={handleSaveIntroducer}
-                  disabled={isSavingIntroducer || isLoadingIntroducers || (!selectedIntroducerId && !showAddNew)}
+                  disabled={
+                    isSavingIntroducer ||
+                    isLoadingIntroducers ||
+                    (linkMode === 'select' && !selectedIntroducerId) ||
+                    (linkMode === 'create' && !newIntroducerName.trim()) ||
+                    (linkMode === 'view' &&
+                      introducerCommission ===
+                        (sale.introducer_commission?.toString() || ''))
+                  }
                   className="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSavingIntroducer ? 'Saving...' : 'Save Introducer'}
@@ -2417,7 +2517,8 @@ export function SaleDetailClient({ sale, shoppers, suppliers, userRole, unalloca
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Invoice & Payment Card */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 lg:col-span-2">

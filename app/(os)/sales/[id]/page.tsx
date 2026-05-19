@@ -108,10 +108,18 @@ export default async function SaleDetailPage({ params }: { params: Promise<{ id:
   // Latest introducer-commission edit (for the panel's "edited by X on Y" line).
   // Inheriting permission from route-level access — anyone who can hit the sale
   // page can see the audit summary; the brief calls this out explicitly.
+  // Phase B (May 2026): filter to fee_change rows so auto-link / manual-link
+  // events on the same audit table don't render as fee edits. Legacy rows
+  // (created before event_type was added) were backfilled to 'fee_change'.
   const [latestEdit] = await db
     .select()
     .from(introducerCommissionEdits)
-    .where(eq(introducerCommissionEdits.saleId, sale.id))
+    .where(
+      and(
+        eq(introducerCommissionEdits.saleId, sale.id),
+        eq(introducerCommissionEdits.eventType, "fee_change")
+      )
+    )
     .orderBy(desc(introducerCommissionEdits.editedAt))
     .limit(1);
 

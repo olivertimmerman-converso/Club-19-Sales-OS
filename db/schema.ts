@@ -440,6 +440,15 @@ export const introducerCommissionEdits = pgTable(
     editedAt: timestamp("edited_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // Phase B (May 2026) auto-link audit extension. `event_type` partitions
+    // the table into fee-change rows ('fee_change' — the legacy single-purpose
+    // schema, what the Save Introducer handler writes) and link-event rows
+    // ('auto_link' set by the wizard at sale creation, 'manual_link' set when
+    // an operator attaches a curated record via the sale detail page, or
+    // 'unlink' when the FK is cleared). `linked_introducer_id` carries the
+    // resolved curated introducer ID for link-event rows; null otherwise.
+    eventType: text("event_type"),
+    linkedIntroducerId: text("linked_introducer_id"),
   },
   (table) => [
     index("introducer_commission_edits_sale_id_idx").on(table.saleId),

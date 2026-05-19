@@ -422,15 +422,16 @@ export async function POST(request: NextRequest) {
           supplierXeroId: undefined, // Not available in current payload
 
           // Introducer:
-          // - introducerName is passed through so getOrCreateIntroducer (case-
-          //   insensitive) attaches an introducers FK to the sale. The wizard's
-          //   combobox surfaces existing introducers as the shopper types so they
-          //   pick the canonical record instead of typo-creating a duplicate; on
-          //   submit, brand-new names create a fresh row in the introducers log.
-          //   This replaces the old post-hoc admin step where management had to
-          //   manually attach a curated record from the sale detail page.
+          // - introducerName is passed through so tryLinkIntroducer (case- and
+          //   whitespace-insensitive, exact match) attaches an introducers FK
+          //   to the sale when there is exactly one curated record matching
+          //   the typed name. The wizard's combobox surfaces existing
+          //   introducers so shoppers pick a canonical record; brand-new
+          //   names land as orphans on the sale detail page where an operator
+          //   can either create a curated record or attach an existing one
+          //   manually (Phase B, May 2026 — replaces the prior upsert).
           // - introducerNameFreeText also populates sales.introducer_name for
-          //   sheet display and back-compat with rows where the FK is null.
+          //   sheet display and as the orphan-state label when the FK is null.
           // - introducerCommission is the £ amount from the wizard. The V1
           //   commission engine still consumes it; Phase 4 replaces the engine.
           introducerName:
