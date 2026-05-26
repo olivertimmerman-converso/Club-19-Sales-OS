@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     // 3. Build Xero OAuth authorization URL
     const redirectUri = `${appUrl}/api/xero/oauth/callback`;
-    const scope = "openid profile email accounting.contacts accounting.transactions offline_access";
+    const scope = "openid profile email accounting.contacts accounting.transactions accounting.settings offline_access";
     const state = userId; // Use userId as state for security verification
 
     const authUrl = new URL("https://login.xero.com/identity/connect/authorize");
