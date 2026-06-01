@@ -6,9 +6,9 @@
  *
  * CRITICAL RULES:
  * - VAT rate MUST be derived from branding theme, NEVER hardcoded
- * - Export sales (CN Export Sales) = 0% VAT
- * - UK domestic sales (CN 20% VAT) = 20% VAT
- * - Margin scheme sales (CN Margin Scheme) = 0% VAT
+ * - Export sales (CN Export VAT / legacy CN Export Sales / CN Export No Link) = 0% VAT
+ * - UK domestic sales (CN 20% VAT / CN 20% VAT No link) = 20% VAT
+ * - Margin scheme sales (CN Margin Scheme / CN Margin Scheme No Link) = 0% VAT
  */
 
 import {

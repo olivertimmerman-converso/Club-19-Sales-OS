@@ -9,7 +9,7 @@ import { TradeSchema } from "@/lib/schemas/trade";
 import { ZodError } from "zod";
 import { auth } from "@clerk/nextjs/server";
 import * as logger from "@/lib/logger";
-import { getBrandingThemeMapping, XERO_BRANDING_THEMES } from "@/lib/branding-theme-mappings";
+import { XERO_BRANDING_THEMES, resolveBrandingThemeForPayment } from "@/lib/branding-theme-mappings";
 import { getValidTokens } from "@/lib/xero-auth";
 import { createXeroInvoice } from "@/lib/xero";
 import { calculateMargins } from "@/lib/economics";
@@ -341,8 +341,9 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    // Get branding theme and tax info from first item
-    const brandingThemeMapping = getBrandingThemeMapping(firstItem.brandTheme);
+    // Get branding theme and tax info from first item. Swap to the No-Link variant
+    // when the buyer is paying by bank transfer (no 2.4% card fee was priced in).
+    const brandingThemeMapping = resolveBrandingThemeForPayment(firstItem.brandTheme, trade.paymentMethod);
     if (!brandingThemeMapping) {
       logger.error('TRADE_CREATE', 'Unknown branding theme - cannot create invoice', {
         brandTheme: firstItem.brandTheme,

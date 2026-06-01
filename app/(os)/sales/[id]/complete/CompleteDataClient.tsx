@@ -99,12 +99,17 @@ interface CompleteDataClientProps {
   lineItems?: LineItemData[];
 }
 
-// Branding theme options for dropdown
-const BRANDING_THEME_OPTIONS = Object.entries(XERO_BRANDING_THEMES).map(([id, theme]) => ({
-  id,
-  name: theme.name,
-  treatment: theme.treatment,
-}));
+// Branding theme options for the manual override dropdown. Only the active "with link"
+// themes are selectable — the No-Link variants are picked automatically based on
+// paymentMethod, and CN Export Sales is legacy (still resolvable for historical sales,
+// but not a valid choice for new ones).
+const BRANDING_THEME_OPTIONS = Object.entries(XERO_BRANDING_THEMES)
+  .filter(([, theme]) => theme.noLinkVariantId !== null)
+  .map(([id, theme]) => ({
+    id,
+    name: theme.name,
+    treatment: theme.treatment,
+  }));
 
 export function CompleteDataClient({
   sale,

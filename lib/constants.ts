@@ -357,7 +357,7 @@ export function getInvoiceResult(
     if (purchaseType === "retail") {
       return {
         taxLiability: "Export sale - VAT locked in UK retail purchase",
-        brandTheme: "CN Export Sales",
+        brandTheme: "CN Export VAT",
         amountsAre: "Exclusive",
         accountCode: "423",
         taxType: TAX_ZERO,
@@ -368,7 +368,7 @@ export function getInvoiceResult(
     if (purchaseType === "margin") {
       return {
         taxLiability: "Export sale - UK margin scheme (no VAT reclaim)",
-        brandTheme: "CN Export Sales",
+        brandTheme: "CN Export VAT",
         amountsAre: "Exclusive",
         accountCode: "423",
         taxType: TAX_ZERO,
@@ -386,7 +386,7 @@ export function getInvoiceResult(
     if (directShip === "yes" && insuranceLanded === "yes") {
       return {
         taxLiability: "Supplier handles import duties/taxes (landed delivery)",
-        brandTheme: "CN Export Sales",
+        brandTheme: "CN Export VAT",
         amountsAre: "Inclusive",
         accountCode: "423",
         taxType: TAX_ZERO,
@@ -416,7 +416,7 @@ export function getInvoiceResult(
   if (itemLocation === "outside" && clientLocation === "outside") {
     return {
       taxLiability: "Export sale - no UK import VAT",
-      brandTheme: "CN Export Sales",
+      brandTheme: "CN Export VAT",
       amountsAre: "Inclusive",
       accountCode: "423",
       taxType: TAX_ZERO,

@@ -3,6 +3,7 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { getValidTokens } from "@/lib/xero-auth";
 import { createXeroInvoice } from "@/lib/xero";
 import { getBrandingThemeId } from "@/lib/xero-branding-themes";
+import { resolveBrandingThemeForPayment } from "@/lib/branding-theme-mappings";
 import { syncSaleToMake, buildSalePayload } from "@/lib/make-sync";
 import { syncInvoiceAndAppDataToXata, saveLineItems } from "@/lib/xata-sales";
 import { pushSaleToShopperSheet } from "@/lib/google-sheets";
@@ -246,7 +247,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5. Resolve branding theme name to GUID (if provided)
+    // 5. Resolve branding theme name to GUID (if provided), then apply paymentMethod
+    //    swap so bank-transfer invoices land on the No-Link variant.
     let resolvedBrandingThemeId: string | undefined = payload.brandingThemeId;
 
     if (payload.brandingThemeId) {
@@ -282,6 +284,19 @@ export async function POST(request: NextRequest) {
           error: error as any
         } as any);
         resolvedBrandingThemeId = undefined;
+      }
+
+      if (resolvedBrandingThemeId) {
+        const finalTheme = resolveBrandingThemeForPayment(resolvedBrandingThemeId, payload.paymentMethod);
+        if (finalTheme && finalTheme.id !== resolvedBrandingThemeId) {
+          logger.info("XERO_INVOICES", "Swapped to No-Link branding theme for bank transfer", {
+            from: resolvedBrandingThemeId,
+            to: finalTheme.id,
+            themeName: finalTheme.name,
+            paymentMethod: payload.paymentMethod,
+          });
+          resolvedBrandingThemeId = finalTheme.id;
+        }
       }
     }
 
